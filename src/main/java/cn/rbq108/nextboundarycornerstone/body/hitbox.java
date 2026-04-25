@@ -27,7 +27,7 @@ public class hitbox {
             event.setNewSize(EntityDimensions.scalable(size, size));
             event.setNewEyeHeight(size * 0.85f + offsetY);
 
-            // 注意：我删除了你原本写在下面重复的 setNewSize 代码，保留上面的逻辑
+
         }
     }
 
