@@ -11,9 +11,9 @@ package cn.rbq108.test.event;
 import cn.rbq108.test.main;
 import cn.rbq108.test.VariableLibrary.GlobalVariables;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.event.entity.living.LivingFallEvent;
 
 @EventBusSubscriber(modid = main.MODID)
 public class DamageEvents {

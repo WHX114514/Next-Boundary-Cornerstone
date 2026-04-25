@@ -1,43 +1,72 @@
 package cn.rbq108.nextboundarycornerstone.item.equipment;
 
 import cn.rbq108.nextboundarycornerstone.client.model.BASIC_BACKPACK_Converted;
-import net.minecraft.core.Holder;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.Minecraft;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
-import net.minecraft.client.Minecraft;
-
 
 public class BasicBackpack extends ArmorItem {
 
-    private static final Holder<ArmorMaterial> BACKPACK_MATERIAL = Holder.direct(new ArmorMaterial(
-            Map.of(
-                    ArmorItem.Type.CHESTPLATE, 1 // 防御力喵
-            ),
-            0, // 附魔等级
-            SoundEvents.ARMOR_EQUIP_LEATHER, // 穿戴声效
-            () -> Ingredient.EMPTY, // 修复材料喵
-            // 指定贴图路径，注意全小写喵 它会去找 assets/test/textures/models/armor/basic_backpack_layer_1.png
-            List.of(new ArmorMaterial.Layer(ResourceLocation.fromNamespaceAndPath("next_boundary_cornerstone", "basic_backpack"))),
-            0.0F, // 韧性
-            0.0F  // 击退抗性
-    ));
+    // 1.20.1 专属改法：直接实现 ArmorMaterial 接口，手动填入所有属性
+    private static final ArmorMaterial BACKPACK_MATERIAL = new ArmorMaterial() {
+        @Override
+        public int getDurabilityForType(Type type) {
+            return 0; // 基础耐久度
+        }
+
+        @Override
+        public int getDefenseForType(Type type) {
+            return type == Type.CHESTPLATE ? 1 : 0; // 防御力喵
+        }
+
+        @Override
+        public int getEnchantmentValue() {
+            return 0; // 附魔等级
+        }
+
+        @Override
+        public SoundEvent getEquipSound() {
+            return SoundEvents.ARMOR_EQUIP_LEATHER; // 穿戴声效
+        }
+
+        @Override
+        public Ingredient getRepairIngredient() {
+            return Ingredient.EMPTY; // 修复材料喵
+        }
+
+        @Override
+        public String getName() {
+            // 1.20.1 是靠这个名字去找贴图的！
+            // 游戏会自动去 assets/next_boundary_cornerstone/textures/models/armor/ 下找 basic_backpack_layer_1.png
+            return "next_boundary_cornerstone:basic_backpack";
+        }
+
+        @Override
+        public float getToughness() {
+            return 0.0F; // 韧性
+        }
+
+        @Override
+        public float getKnockbackResistance() {
+            return 0.0F; // 击退抗性
+        }
+    };
 
     public BasicBackpack() {
+        // 直接传入刚才写好的材质，不再需要 1.21 的 Holder
         super(BACKPACK_MATERIAL, ArmorItem.Type.CHESTPLATE, new Item.Properties().stacksTo(1));
     }
 
-    //neof原版3d盔甲的接口
+    // 1.20.1 的模型注册接口
     @Override
     public void initializeClient(Consumer<IClientItemExtensions> consumer) {
         consumer.accept(new IClientItemExtensions() {
@@ -48,163 +77,11 @@ public class BasicBackpack extends ArmorItem {
                     net.minecraft.world.entity.EquipmentSlot slot,
                     net.minecraft.client.model.HumanoidModel<?> _default
             ) {
-                // 这里返回改好的那个模型
-                //return new BASIC_BACKPACK_Converted<>(_default.bakeLayer(BASIC_BACKPACK_Converted.LAYER_LOCATION));
-
-                return new BASIC_BACKPACK_Converted<>(
+                // 返回你转换好的那个背包 3D 模型
+                return new BASIC_BACKPACK_Converted(
                         Minecraft.getInstance().getEntityModels().bakeLayer(BASIC_BACKPACK_Converted.LAYER_LOCATION)
                 );
             }
         });
     }
 }
-
-/*package cn.rbq108.test.item.equipment;
-
-import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.ArmorMaterials;
-import net.minecraft.world.item.Item;
-import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
-import java.util.function.Consumer;
-
-public class BasicBackpack extends ArmorItem {
-    public BasicBackpack() {
-        // 借用皮革材质，胸甲类型
-        super(ArmorMaterials.LEATHER, ArmorItem.Type.CHESTPLATE, new Item.Properties().stacksTo(1));
-    }
-
-    //模型接口
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-
-    }
-}*/
-
-/*这是一大坨一大坨超超级大的屎山！模型也塞进来了（虽然用不了）
-package cn.rbq108.test.item.equipment;
-
-
-import net.minecraft.client.model.EntityModel;
-import net.minecraft.client.model.geom.ModelLayerLocation;
-import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.model.geom.PartPose;
-import net.minecraft.client.model.geom.builders.*;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-
-
-
-@OnlyIn(Dist.CLIENT)
-public class basic_backpack<T extends Entity> extends EntityModel<T> {
-
-    public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(ResourceLocation.fromNamespaceAndPath("test", "basic_backpack"), "main");
-
-    private final ModelPart bag;
-
-    public basic_backpack(ModelPart root) {
-
-        this.bag = root.getChild("root2").getChild("waist2").getChild("body2").getChild("bag2");
-    }
-
-    public static LayerDefinition createBodyLayer() {
-        MeshDefinition meshdefinition = new MeshDefinition();
-        PartDefinition partdefinition = meshdefinition.getRoot();
-
-
-        PartDefinition root2 = partdefinition.addOrReplaceChild("root2", CubeListBuilder.create(), PartPose.offset(8.0F, 24.0F, -8.0F));
-        PartDefinition waist2 = root2.addOrReplaceChild("waist2", CubeListBuilder.create(), PartPose.offset(0.0F, -12.0F, 0.0F));
-        PartDefinition body2 = waist2.addOrReplaceChild("body2", CubeListBuilder.create(), PartPose.offset(0.0F, -12.0F, 0.0F));
-        body2.addOrReplaceChild("bag2", CubeListBuilder.create().texOffs(7, 1).addBox(-1.25F, -0.25F, -2.5F, 1.0F, 1.0F, 4.75F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 0.0F));
-
-
-        return LayerDefinition.create(meshdefinition, 32, 32);
-    }
-
-    @Override
-    public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-
-    }
-
-    @Override
-    public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
-        bag.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
-    }
-}
-*/
-/*
-// 补上这些NeoF的原生接口
-
-import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
-import net.minecraft.client.model.HumanoidModel;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.NotNull;
-import java.util.function.Consumer;
-
-
-
-public class BasicBackpack extends ArmorItem {
-
-    public BasicBackpack() {
-        super(BACKPACK_MATERIAL, ArmorItem.Type.CHESTPLATE, new Item.Properties().stacksTo(1));
-    }
-
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
-            @Override
-            public @NotNull HumanoidModel<?> getHumanoidArmorModel(
-                    LivingEntity entity, ItemStack stack, EquipmentSlot slot, HumanoidModel<?> _default
-            ) {
-
-                return BackpackModel.INSTANCE;
-            }
-        });
-    }
-}
-
-/*
-下面是，一大坨！package cn.rbq108.test.item.equipment;
-
-
-import net.minecraft.core.Holder;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.ArmorMaterial;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.crafting.Ingredient;
-
-import java.util.List;
-import java.util.Map;
-
-
-
-public class BasicBackpack extends ArmorItem {
-
-
-    private static final Holder<ArmorMaterial> BACKPACK_MATERIAL = Holder.direct(new ArmorMaterial(
-            Map.of(
-                    ArmorItem.Type.CHESTPLATE, 1
-            ),
-            0,
-            SoundEvents.ARMOR_EQUIP_LEATHER,
-            () -> Ingredient.EMPTY,
-            // 关键，会去 assets/test/textures/models/armor/ 目录下找 basic_backpack_layer_1.png
-            List.of(new ArmorMaterial.Layer(ResourceLocation.fromNamespaceAndPath("test", "basic_backpack"))),
-            0.0F,
-            0.0F
-    ));
-
-    public BasicBackpack() {
-
-        super(BACKPACK_MATERIAL, ArmorItem.Type.CHESTPLATE, new Item.Properties()
-                .stacksTo(1)
-        );
-    }
-}*/

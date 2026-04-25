@@ -2,7 +2,8 @@
   "required": true,
   "minVersion": "0.8",
   "package": "cn.rbq108.nextboundarycornerstone.Mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "next_boundary_cornerstone.refmap.json",
   "mixins": [
   ],
   "client": [

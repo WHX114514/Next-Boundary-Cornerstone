@@ -20,8 +20,12 @@ public class BASIC_BACKPACK_Converted<T extends LivingEntity> extends HumanoidMo
 	// This layer location should be baked with EntityRendererProvider.Context in the entity renderer and passed into this model's constructor
     //这行不知道从哪抄来的，英文注释我怕删了到时候看不懂（虽然不删也看不懂）
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
-            ResourceLocation.fromNamespaceAndPath("test", "basic_backpack"), "main"
+            new ResourceLocation("next_boundary_cornerstone", "basic_backpack"), "main"
     );
+    /*这个是1.21neof的代码，这版本用不了
+    public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
+            ResourceLocation.fromNamespaceAndPath("next_boundary_cornerstone", "basic_backpack"), "main"
+    );*/
 	private final ModelPart root2;
 	private final ModelPart waist2;
 	private final ModelPart body2;
@@ -288,16 +292,11 @@ public class BASIC_BACKPACK_Converted<T extends LivingEntity> extends HumanoidMo
 		return LayerDefinition.create(meshdefinition, 32, 32);
 	}
 
-    // 把原来的 Entity entity 改成 T entity
     @Override
-    public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-        // 这里是我放旋转逻辑或者留空的地方喵（？）
-    }
+    public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
 
-    @Override
-    public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, int color) {
-
-        root2.render(poseStack, vertexConsumer, packedLight, packedOverlay, color);
-        root.render(poseStack, vertexConsumer, packedLight, packedOverlay, color);
+        // 1.20.1 需要把四个颜色浮点数全传进去
+        root2.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
+        root.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
     }
 }

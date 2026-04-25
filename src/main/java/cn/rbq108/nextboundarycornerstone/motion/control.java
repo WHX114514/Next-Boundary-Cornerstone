@@ -7,12 +7,14 @@ package cn.rbq108.nextboundarycornerstone.motion;
 import cn.rbq108.nextboundarycornerstone.core.Keybinds;
 import cn.rbq108.nextboundarycornerstone.main;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+//import net.minecraftforge.fml.common.EventBusSubscriber;
+//import net.minecraftforge.common.client.event.ClientTickEvent;
 
-@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class control {
 
 
@@ -23,7 +25,8 @@ public class control {
     public static boolean B_bag_pressed = false;
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 

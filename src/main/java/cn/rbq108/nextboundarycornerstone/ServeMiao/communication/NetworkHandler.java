@@ -1,33 +1,37 @@
 package cn.rbq108.nextboundarycornerstone.ServeMiao.communication;
 
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import cn.rbq108.nextboundarycornerstone.main;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.simple.SimpleChannel;
 import org.joml.Quaternionf;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class NetworkHandler {
 
-    //其他玩家的姿态记忆库：UUID转旋转四元数
+    // 其他玩家的姿态记忆库
     public static final ConcurrentHashMap<UUID, Quaternionf> REMOTE_ROTATIONS = new ConcurrentHashMap<>();
-    //其他玩家的失重状态库
+    // 其他玩家的失重状态库
     public static final ConcurrentHashMap<UUID, Boolean> REMOTE_GRAVITY_STATES = new ConcurrentHashMap<>();
 
-    //客户端收到包后的动作（画别人的时候用）
-    public static void handleDataOnClient(final SyncRotationPayload payload, final IPayloadContext context) {
-        context.enqueueWork(() -> {
-            // 记录下这个玩家的旋转和状态
-            REMOTE_ROTATIONS.put(payload.playerId(), payload.quat());
-            REMOTE_GRAVITY_STATES.put(payload.playerId(), payload.lowGravity());
-        });
-    }
+    private static final String PROTOCOL_VERSION = "1";
 
-    //服务端收到包后的动作（负责转发给所有人）
-    public static void handleDataOnServer(final SyncRotationPayload payload, final IPayloadContext context) {
-        context.enqueueWork(() -> {
-            //context.broadcast(payload);这个不能用，会坏
-            //要使用 PacketDistributor 广播给所有在线玩家
-            // 这一行代码会把 A 玩家的姿态数据，再同步给服务器里的所有人
-            net.neoforged.neoforge.network.PacketDistributor.sendToAllPlayers(payload);
-        });
+    // 1.20.1 核心：创建网络频道
+    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
+            new ResourceLocation(main.MODID, "main_channel"),
+            () -> PROTOCOL_VERSION,
+            PROTOCOL_VERSION::equals,
+            PROTOCOL_VERSION::equals
+    );
+
+    // 给 main 调用的注册方法
+    public static void register() {
+        int id = 0;
+        CHANNEL.messageBuilder(SyncRotationPayload.class, id++)
+                .encoder(SyncRotationPayload::encode)
+                .decoder(SyncRotationPayload::new)
+                .consumerMainThread(SyncRotationPayload::handle)
+                .add();
     }
 }

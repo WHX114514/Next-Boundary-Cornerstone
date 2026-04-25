@@ -12,11 +12,11 @@ import cn.rbq108.test.camera.CameraManager;
 import cn.rbq108.test.main;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
 
 /**
  * 这个类专门负责处理玩家模型的渲染事件。

@@ -4,10 +4,10 @@ import cn.rbq108.test.VariableLibrary.GlobalVariables;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Pose;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.EntityEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.event.entity.EntityEvent;
 
 @EventBusSubscriber(modid = cn.rbq108.test.main.MODID, value = Dist.CLIENT)
 public class hitbox {

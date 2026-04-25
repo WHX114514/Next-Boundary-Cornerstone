@@ -98,10 +98,10 @@ public class motion {
 
 import cn.rbq108.test.main;
 import cn.rbq108.test.VariableLibrary.GlobalVariables;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
 
 
  //* 专门负责 6DOF 状态下的玩家姿态整形喵！
@@ -143,10 +143,10 @@ public class motion {
 
 import cn.rbq108.test.main;
 import cn.rbq108.test.VariableLibrary.GlobalVariables;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
 
 
  // 专门负责 6DOF 状态下的玩家姿态整形喵！
@@ -197,15 +197,17 @@ package cn.rbq108.nextboundarycornerstone.body;
 
 import cn.rbq108.nextboundarycornerstone.main;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+//import net.minecraftforge.fml.common.EventBusSubscriber;
+//import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.fml.common.Mod;
 
 
- // 专门负责 6DOF 状态下的玩家姿态整形喵！
+// 专门负责 6DOF 状态下的玩家姿态整形喵！
 
-@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class motion {
 
     @SubscribeEvent

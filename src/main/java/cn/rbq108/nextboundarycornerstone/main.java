@@ -15,35 +15,37 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
-import net.neoforged.neoforge.registries.DeferredBlock;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import org.slf4j.Logger;
-import cn.rbq108.nextboundarycornerstone.VariableLibrary.Config;
-// NeoForge 1.21.1 网络核心组件
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
-import net.neoforged.neoforge.network.handling.DirectionalPayloadHandler;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModContainer;
+
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.fml.ModLoadingContext;
+// 注意：网络部分的包在 1.20.1 是完全不同的 (SimpleChannel)，后面需要重写网络注册
+
+
+
+
+
 // 自己搓的通讯组件
-import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.SyncRotationPayload;
-import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler;
+//import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.SyncRotationPayload;
+//import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler;
+import org.slf4j.Logger;
 // 这里的 MODID 在类里已经定义好了
 
 
-// The value here should match an entry in the META-INF/neoforge.mods.toml file
+// The value here should match an entry in the META-INF/mods.toml file
 @Mod(main.MODID)
 public class main
 {
@@ -61,27 +63,26 @@ public class main
     public static final String MODID = "next_boundary_cornerstone";
     // Directly reference a slf4j logger
     private static final Logger LOGGER = LogUtils.getLogger();
-    // Create a Deferred Register to hold Blocks which will all be registered under the "test" namespace
-    public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(MODID);
-    // Create a Deferred Register to hold Items which will all be registered under the "test" namespace
-    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
-    // Create a Deferred Register to hold CreativeModeTabs which will all be registered under the "test" namespace
+    // Create a Deferred Register to hold Blocks
+    public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
+    // Create a Deferred Register to hold Items
+    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
+    // Create a Deferred Register to hold CreativeModeTabs
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
 
-    // Creates a new Block with the id "test:example_block", combining the namespace and path
-    public static final DeferredBlock<Block> EXAMPLE_BLOCK = BLOCKS.registerSimpleBlock("example_block", BlockBehaviour.Properties.of().mapColor(MapColor.STONE));
-    // Creates a new BlockItem with the id "test:example_block", combining the namespace and path
-    public static final DeferredItem<BlockItem> EXAMPLE_BLOCK_ITEM = ITEMS.registerSimpleBlockItem("example_block", EXAMPLE_BLOCK);
+    // Creates a new Block
+    public static final RegistryObject<Block> EXAMPLE_BLOCK = BLOCKS.register("example_block", () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.STONE)));
+    // Creates a new BlockItem
+    public static final RegistryObject<Item> EXAMPLE_BLOCK_ITEM = ITEMS.register("example_block", () -> new BlockItem(EXAMPLE_BLOCK.get(), new Item.Properties()));
 
-    // Creates a new food item with the id "test:example_id", nutrition 1 and saturation 2
-    public static final DeferredItem<Item> EXAMPLE_ITEM = ITEMS.registerSimpleItem("example_item", new Item.Properties().food(new FoodProperties.Builder()
-            .alwaysEdible().nutrition(1).saturationModifier(2f).build()));
+    // Creates a new food item
+    public static final RegistryObject<Item> EXAMPLE_ITEM = ITEMS.register("example_item", () -> new Item(new Item.Properties().food(new FoodProperties.Builder()
+            .alwaysEat().nutrition(1).saturationMod(2f).build()))); // 将 alwaysEdible() 改为 alwaysEat()
 
-    public static final DeferredHolder<Item, BasicBackpack> BASIC_BACKPACK =
-            ITEMS.register("basic_backpack", () -> new BasicBackpack());//我寻思放这里他能运行，但是为什么能运行我就不知道了，穷举试出来的喵
+    public static final RegistryObject<Item> BASIC_BACKPACK = ITEMS.register("basic_backpack", () -> new BasicBackpack());
 
     // Creates a creative tab with the id "test:example_tab" for the example item, that is placed after the combat tab
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()
+    public static final RegistryObject<CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.next_boundary_cornerstone")) // 栏位标题
             .withTabsBefore(CreativeModeTabs.COMBAT)
             //把图标换成你的背包（反正只有这一个东西）
@@ -103,8 +104,10 @@ public class main
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
     // FML will recognize some parameter types like IEventBus or ModContainer and pass them in automatically.
-    public main(IEventBus modEventBus, ModContainer modContainer)
+    public main()//public main(IEventBus modEventBus, ModContainer modContainer)
     {
+        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
 
@@ -118,7 +121,7 @@ public class main
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (main) to respond directly to events.
         // Do not add this line if there are no @SubscribeEvent-annotated functions in this class, like onServerStarting() below.
-        NeoForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(this);
 
         // Register the item to a creative tab
         modEventBus.addListener(this::addCreative);
@@ -131,15 +134,25 @@ public class main
         // 游戏启动时，就会在 config 文件夹里自动生成一个 next-boundary.toml
         // 这是旧代码ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC, "next-boundary.toml");
         // 用最新的modContainer注册
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC, "next-boundary.toml");
+        //ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC, "next-boundary.toml");//modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC, "next-boundary.toml");
+        // 强制指定使用 VariableLibrary 下的 Config.SPEC
+        ModLoadingContext.get().registerConfig(
+                ModConfig.Type.COMMON,
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.Config.SPEC,
+                "next-boundary.toml"
+        );
 
-        modEventBus.addListener(this::registerNetwork);//手动把registerNetwork 挂载到模组总线上
+        //modEventBus.addListener(this::registerNetwork);//手动把registerNetwork 挂载到模组总线上
     }
 
     private void commonSetup(final FMLCommonSetupEvent event)
     {
         // Some common setup code
         LOGGER.info("HELLO FROM COMMON SETUP");
+
+        event.enqueueWork(() -> {
+            cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler.register();
+        });
 
         /*下面这一坨好像是没用的代码
         if (Config.logDirtBlock)
@@ -176,7 +189,7 @@ public class main
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
     //@EventBusSubscriber(modid = MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
-    @EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+    @Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
     public static class ClientModEvents
     {
         @SubscribeEvent
@@ -194,7 +207,7 @@ public class main
 
 
 
-    //@SubscribeEvent
+/*    //@SubscribeEvent
     public void registerNetwork(final RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar(main.MODID);
 
@@ -207,7 +220,7 @@ public class main
                         NetworkHandler::handleDataOnServer  // 服务端收到了怎么处理
                 )
         );
-    }
+    }待重写*/
 
     /*public static final String MODID = "test";
 

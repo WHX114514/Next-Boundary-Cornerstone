@@ -12,6 +12,8 @@ public class calculate {
         var mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
+        if (!Config.SPEC.isLoaded()) return;
+
         //碰撞同步
         double ax = mc.player.getX() - mc.player.xo;
         double ay = mc.player.getY() - mc.player.yo;

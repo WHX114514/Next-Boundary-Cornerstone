@@ -4,11 +4,14 @@ import cn.rbq108.nextboundarycornerstone.main;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.motion.control;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ViewportEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+//import net.minecraftforge.fml.common.EventBusSubscriber;
+//import net.minecraftforge.common.client.event.ClientTickEvent;
+//import net.minecraftforge.common.client.event.ViewportEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
@@ -20,11 +23,9 @@ import net.minecraft.world.level.GameType;
 这是，一坨究极究极大的屎山
 非必要千万别改
 真的真的
-
-
  */
 
-@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class ClientEvents {
 
     @SubscribeEvent
@@ -48,12 +49,10 @@ public class ClientEvents {
     }
 
     @SubscribeEvent
-    public static void onClientTickPre(ClientTickEvent.Pre event) {
+    public static void onClientTickPre(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.START) return;
         var mc = Minecraft.getInstance();
         if (mc.player == null || !GlobalVariables.B_LowGravity) return;
-
-
-
         //屏蔽原版按键动作
         while (mc.options.keyShift.consumeClick()) {}
         while (mc.options.keySprint.consumeClick()) {}
@@ -68,7 +67,8 @@ public class ClientEvents {
     }
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
         var mc = Minecraft.getInstance();
         var player = mc.player;
         if (player == null) return;
@@ -188,6 +188,10 @@ public class ClientEvents {
                 else control.B_INroll = 0;
             } else {
                 control.B_INroll = 0;
+            }
+
+            if (net.minecraft.client.Minecraft.getInstance().player == null) {
+                return;
             }
 
             float currentRollSpeed = cn.rbq108.nextboundarycornerstone.VariableLibrary.Config.PHYSICS.rollSpeed.get().floatValue();

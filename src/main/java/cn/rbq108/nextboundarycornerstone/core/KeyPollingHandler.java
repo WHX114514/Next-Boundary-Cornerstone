@@ -3,17 +3,20 @@ package cn.rbq108.nextboundarycornerstone.core;
 import cn.rbq108.nextboundarycornerstone.main;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+//import net.minecraftforge.fml.common.EventBusSubscriber;
+//import net.minecraftforge.common.client.event.ClientTickEvent;
 import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraftforge.fml.common.Mod;
 
-@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class KeyPollingHandler {
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
         var mc = Minecraft.getInstance();
         // 仅开启无重力操作才运行
         if (mc.player == null || !GlobalVariables.B_LowGravity) return;

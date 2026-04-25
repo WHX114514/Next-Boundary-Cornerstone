@@ -4,11 +4,14 @@ import cn.rbq108.nextboundarycornerstone.main;
 import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+//import net.minecraftforge.fml.common.EventBusSubscriber;
+//import net.minecraftforge.common.client.event.RenderPlayerEvent;
+//import net.minecraftforge.common.event.tick.PlayerTickEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.joml.Quaternionf;
 
 
@@ -16,7 +19,7 @@ import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class OtherPlayer {
 
     private static final WeakHashMap<Player, Float[]> SAVED_ROTS = new WeakHashMap<>();
@@ -34,8 +37,10 @@ public class OtherPlayer {
     public static final ConcurrentHashMap<UUID, RotationData> ROTATION_SYNC_MAP = new ConcurrentHashMap<>();
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        Player player = event.getEntity();
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        Player player = event.player;
+        //Player player = event.getEntity();
         if (player.level().isClientSide() && player != Minecraft.getInstance().player) {
             UUID id = player.getUUID();
             if (NetworkHandler.REMOTE_GRAVITY_STATES.getOrDefault(id, false)) {
@@ -67,7 +72,8 @@ public class OtherPlayer {
                 //float centerY = player.getBbHeight() * 0.5f;//这行是定义玩家模型偏离碰撞箱高度用的，用不着了
 
 
-                float frameTime = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
+                //float frameTime = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
+                float frameTime = Minecraft.getInstance().getFrameTime();
 
                 Quaternionf prevHead = NET_HEAD_QUATS_O.getOrDefault(id, headQuatNet);
                 Quaternionf currHead = NET_HEAD_QUATS.getOrDefault(id, headQuatNet);
@@ -161,11 +167,11 @@ import cn.rbq108.test.main;
 import cn.rbq108.test.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.common.event.tick.PlayerTickEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -280,11 +286,11 @@ import cn.rbq108.test.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.common.event.tick.PlayerTickEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -392,11 +398,11 @@ import cn.rbq108.test.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.common.event.tick.PlayerTickEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -495,10 +501,10 @@ import cn.rbq108.test.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -585,10 +591,10 @@ import cn.rbq108.test.main;
 import cn.rbq108.test.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -661,10 +667,10 @@ import cn.rbq108.test.main;
 import cn.rbq108.test.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -742,10 +748,10 @@ import cn.rbq108.test.main;
 import cn.rbq108.test.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 import java.util.UUID;
 
@@ -779,10 +785,10 @@ import cn.rbq108.test.main;
 import cn.rbq108.test.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;

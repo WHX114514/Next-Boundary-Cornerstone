@@ -5,14 +5,16 @@ import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.util.Mth;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+//import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
+//import net.minecraftforge.common.client.event.RenderPlayerEvent;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraftforge.fml.common.Mod;
 import org.joml.Quaternionf;
 
-@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class model {
 
     // 🩺 动画冰冻锁：防止抽搐的核心
@@ -52,10 +54,13 @@ public class model {
 
             //Mixin锁头
             GlobalVariables.isPlayerRendering = true;
-            if (event.getRenderer() instanceof PlayerRenderer renderer) {
-                GlobalVariables.playerHead = renderer.getModel().head;
-                GlobalVariables.playerHat = renderer.getModel().hat;
-            }
+
+            /*    GlobalVariables.playerHead = renderer.getModel().head;
+                GlobalVariables.playerHat = renderer.getModel().hat;*/
+            PlayerRenderer renderer = event.getRenderer();
+            GlobalVariables.playerHead = renderer.getModel().head;
+            GlobalVariables.playerHat = renderer.getModel().hat;
+
 
             // 计算头身隔离矩阵
             Quaternionf camQuat = new Quaternionf(GlobalVariables.prevQuat).slerp(GlobalVariables.currentQuat, pt);

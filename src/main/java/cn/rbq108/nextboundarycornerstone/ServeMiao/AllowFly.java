@@ -5,19 +5,20 @@ import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.GameType;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+//import net.minecraftforge.fml.common.EventBusSubscriber;
+//import net.minecraftforge.common.event.tick.PlayerTickEvent;
+import net.minecraftforge.fml.common.Mod;
 
 
-
-
-@EventBusSubscriber(modid = main.MODID)
+@Mod.EventBusSubscriber(modid = main.MODID)
 public class AllowFly {
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) { // 🩺 重点在这里！加个 .Post
-        Player player = event.getEntity();
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        Player player = event.player;
 
         /*不是这个if在这有任何卵用吗？
         if (!player.getAbilities().mayfly) {
@@ -122,9 +123,9 @@ package cn.rbq108.test.ServeMiao;
 import cn.rbq108.test.main;
 import cn.rbq108.test.VariableLibrary.GlobalVariables;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.common.event.tick.PlayerTickEvent;
 
 
 @EventBusSubscriber(modid = main.MODID)
