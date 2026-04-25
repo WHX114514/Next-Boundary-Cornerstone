@@ -21,7 +21,7 @@ public class hitbox {
     public static void onPlayerSize(EntityEvent.Size event) {
         if (event.getEntity() instanceof Player && GlobalVariables.B_LowGravity) {
             float size = GlobalVariables.B_HitboxSize;
-            float offsetY = 0.5f;
+            float offsetY = -0.4f;
 
             // 1.20.1 修复：分别设置碰撞箱尺寸和眼高，不能使用 withEyeHeight() 链式调用
             event.setNewSize(EntityDimensions.scalable(size, size));
