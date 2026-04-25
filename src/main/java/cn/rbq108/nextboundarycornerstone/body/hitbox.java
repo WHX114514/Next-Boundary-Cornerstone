@@ -12,7 +12,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.TickEvent;
 
-// 重点！绝对不能加 value = Dist.CLIENT！必须让服务端（负责算物理）也能跑这段代码！
+// 绝对不能加 value = Dist.CLIENT！必须让服务端（负责算物理）也能跑这段代码
 @Mod.EventBusSubscriber(modid = main.MODID)
 public class hitbox {
 
