@@ -17,7 +17,7 @@ import net.minecraftforge.common.client.settings.KeyModifier;*/
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)//@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class Keybinds {
 
     // 统一的分类名，确保所有按键都排在一起
