@@ -40,6 +40,22 @@ public class AllowFly {
 
 
         GameType gameMode = GameType.SURVIVAL;
+        // 1. 确定最终权限：开启低重力 OR 创造模式 OR 旁观模式
+        boolean canFly = GlobalVariables.B_LowGravity || player.isCreative() || player.isSpectator();
+
+// 2. 【关键】状态差异检查 (Dirty Check)
+// 只有当当前权限和目标不一致时才执行，解决时序问题和网络包冲突
+        if (player.getAbilities().mayfly != canFly) {
+            player.getAbilities().mayfly = canFly;
+
+            // 如果目标是关闭飞行权限（生存模式且关了重力），强制停止当前的飞行状态
+            if (!canFly) {
+                player.getAbilities().flying = false;
+            }
+
+            // 3. 同步能力修改
+            player.onUpdateAbilities();
+        }/*
         if (player instanceof ServerPlayer serverPlayer) {
             gameMode = serverPlayer.gameMode.getGameModeForPlayer();
         } else if (player.level().isClientSide) {

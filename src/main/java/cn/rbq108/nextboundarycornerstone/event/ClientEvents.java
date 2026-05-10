@@ -218,8 +218,9 @@ public class ClientEvents {
 
             player.setShiftKeyDown(false);
             player.setSprinting(false);
-            player.getAbilities().mayfly = true;
-            player.getAbilities().flying = true;
+            //player.getAbilities().mayfly = true;
+            //player.getAbilities().flying = true;
+            //这里不能写mayfly！
 
             player.setDeltaMovement(
                     GlobalVariables.B_Vx1 / 0.91f,
@@ -240,11 +241,11 @@ public class ClientEvents {
                 gameMode = Minecraft.getInstance().gameMode.getPlayerMode();
             }
             if(gameMode == GameType.SURVIVAL || gameMode == GameType.ADVENTURE){
-                player.getAbilities().flying = false;
-                player.getAbilities().mayfly = false;
+                //player.getAbilities().flying = false;
+                //player.getAbilities().mayfly = false;
 
-                player.onUpdateAbilities();
-
+                //player.onUpdateAbilities();
+                //为什么要在这里写mayfly
                 //System.out.println("飞行权限已收回1144556677889911");
 
             }
@@ -257,8 +258,9 @@ public class ClientEvents {
             GlobalVariables.B_Dx = player.getXRot();
             GlobalVariables.B_Dy = player.getYRot();
             if (!player.isCreative()) {
-                player.getAbilities().mayfly = false;
-                player.getAbilities().flying = false;
+                //player.getAbilities().mayfly = false;
+                //player.getAbilities().flying = false;
+                //在这里写mayfly会导致
             }
         }
     }
