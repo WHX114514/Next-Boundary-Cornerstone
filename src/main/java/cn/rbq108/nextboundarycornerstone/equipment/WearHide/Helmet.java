@@ -43,7 +43,7 @@ public class Helmet {
         }
     }
 
-    // 🎨 画画后（Post）：悄悄塞回去
+    //  Post后悄悄塞回去
     @SubscribeEvent
     public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
         Player player = event.getEntity();
@@ -51,7 +51,7 @@ public class Helmet {
         // 检查储物柜里有没有扣押他的头盔
         if (hiddenHelmets.containsKey(player)) {
 
-            // 💥 3. 悄悄把头盔塞回玩家的包里，假装什么都没发生过！
+            // 悄悄把头盔塞回玩家的包里，假装什么都没发生过骂我！
             player.getInventory().armor.set(3, hiddenHelmets.get(player));
 
             // 清理储物柜
