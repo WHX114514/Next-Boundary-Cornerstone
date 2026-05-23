@@ -22,7 +22,15 @@ public class calculate {
             if (Math.abs(ax) < 0.01) GlobalVariables.B_Vx1 = 0;
             if (Math.abs(az) < 0.01) GlobalVariables.B_Vz1 = 0;
         }
-        if (mc.player.verticalCollision && Math.abs(ay) < 0.01) GlobalVariables.B_Vy1 = 0;
+        //if (mc.player.verticalCollision && Math.abs(ay) < 0.01) GlobalVariables.B_Vy1 = 0;
+        if (mc.player.verticalCollision && Math.abs(ay) < 0.01) {
+            // mc.player.onGround() 是判断碰撞到底是不是“地板”的最稳方法
+            if (mc.player.onGround() && GlobalVariables.B_Vy1 < 0) {
+                GlobalVariables.B_Vy1 = 0; // 踩在地上，只把向下砸的速度清零，允许向上飞
+            } else if (!mc.player.onGround() && GlobalVariables.B_Vy1 > 0) {
+                GlobalVariables.B_Vy1 = 0; // 撞到了天花板，把向上冲的速度清零
+            }
+        }
 
         //Config 变量提取
         float cfgVmax = Config.PHYSICS.vMax.get().floatValue();
@@ -81,6 +89,8 @@ public class calculate {
         GlobalVariables.B_Vx1 = currentVel.x;
         GlobalVariables.B_Vy1 = currentVel.y;
         GlobalVariables.B_Vz1 = currentVel.z;
+
+
     }
 
     private static void printDebugInfo(String status) {
