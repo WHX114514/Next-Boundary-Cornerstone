@@ -4,16 +4,19 @@ import cn.rbq108.nextboundarycornerstone.main;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+//import net.neoforged.api.distmarker.Dist;
+//import net.neoforged.bus.api.SubscribeEvent;
+//import net.neoforged.fml.common.EventBusSubscriber;
+//import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-//import net.minecraftforge.fml.common.EventBusSubscriber;
-//import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 
 import java.util.WeakHashMap;
 
 @Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+//@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class Helmet {
 
     // 临时存放被摘下来的头盔（支持多人联机，一人一个格子）
@@ -45,7 +48,7 @@ public class Helmet {
         }
     }
 
-    // 画画后（Post）：悄悄塞回去
+    //  Post后悄悄塞回去
     @SubscribeEvent
     public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
         Player player = event.getEntity();
@@ -53,7 +56,7 @@ public class Helmet {
         // 检查储物柜里有没有扣押他的头盔
         if (hiddenHelmets.containsKey(player)) {
 
-            // 3. 悄悄把头盔塞回玩家的包里，假装什么都没发生过！
+            // 悄悄把头盔塞回玩家的包里，假装什么都没发生过骂我！
             player.getInventory().armor.set(3, hiddenHelmets.get(player));
 
             // 清理储物柜

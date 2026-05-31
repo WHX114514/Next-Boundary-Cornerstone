@@ -14,12 +14,13 @@ import net.minecraft.client.model.geom.ModelPart; // 治治治治治治治治
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*; // 这一行能治好下面那堆 LayerDefinitipn的报错喵
 
-
+@SuppressWarnings("deprecation")
 //把 EntityModel 换成 HumanoidModel，把 Entity 换成 LivingEntity 绕飞了
 public class BASIC_BACKPACK_Converted<T extends LivingEntity> extends HumanoidModel<T> {
 	// This layer location should be baked with EntityRendererProvider.Context in the entity renderer and passed into this model's constructor
     //这行不知道从哪抄来的，英文注释我怕删了到时候看不懂（虽然不删也看不懂）
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
+
             new ResourceLocation("next_boundary_cornerstone", "basic_backpack"), "main"
     );
     /*这个是1.21neof的代码，这版本用不了

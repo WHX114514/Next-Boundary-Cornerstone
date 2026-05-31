@@ -17,6 +17,7 @@ import net.minecraftforge.event.TickEvent;
 public class hitbox {
 
     // 尺寸定义
+    @SuppressWarnings("deprecation")
     @SubscribeEvent
     public static void onPlayerSize(EntityEvent.Size event) {
         if (event.getEntity() instanceof Player && GlobalVariables.B_LowGravity) {

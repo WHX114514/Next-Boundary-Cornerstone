@@ -10,7 +10,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
+@SuppressWarnings("deprecation")
 public class Config
 {
     private Config() {
@@ -51,6 +51,7 @@ public class Config
     }
 
     //@SubscribeEvent
+    @SuppressWarnings("deprecation")
     static void onLoad(final ModConfigEvent event)
     {
         logDirtBlock = LOG_DIRT_BLOCK.get();
