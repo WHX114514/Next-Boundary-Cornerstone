@@ -176,7 +176,7 @@ public class main
     public void onServerStarting(ServerStartingEvent event)
     {
         // Do something when the server starts
-        LOGGER.info("HELLO from server starting");
+        LOGGER.info("HELLO from Next Boundary Cornerstone meow~");
 
         // 暴力开启服务器飞行权限
         /*

@@ -1,6 +1,7 @@
 package cn.rbq108.nextboundarycornerstone.Mixin;
 
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -8,6 +9,7 @@ import cn.rbq108.nextboundarycornerstone.api.RollEntity;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin implements RollEntity {
@@ -70,6 +72,16 @@ public abstract class EntityMixin implements RollEntity {
             float currentPitch = player.getXRot();
             player.setYRot(currentYaw + net.minecraft.util.Mth.wrapDegrees(newYaw - currentYaw));
             player.setXRot(currentPitch + net.minecraft.util.Mth.wrapDegrees(newPitch - currentPitch));
+        }
+    }
+
+    @Inject(method = "getUpVector(F)Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
+    private void doABarrelRoll$injectUpVector(float partialTicks, CallbackInfoReturnable<Vec3> cir) {
+        Entity entity = (Entity) (Object) this;
+        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && entity.getType() == net.minecraft.world.entity.EntityType.PLAYER) {
+            org.joml.Vector3f up = new org.joml.Vector3f(0.0f, 1.0f, 0.0f);
+            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.transform(up);
+            cir.setReturnValue(new Vec3(up.x(), up.y(), up.z()));
         }
     }
 }
