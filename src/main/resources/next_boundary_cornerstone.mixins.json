@@ -12,7 +12,8 @@
     "KeyboardHandlerMixin",
     "MixinModelPart",
     "MixinRemotePlayerModel",
-    "FixTACZ"
+    "FixTACZ",
+    "MixinShellRender"
 
   ],
   "injectors": {
