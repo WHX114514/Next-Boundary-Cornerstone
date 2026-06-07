@@ -11,7 +11,8 @@
     "EntityMixin",
     "KeyboardHandlerMixin",
     "MixinModelPart",
-    "MixinRemotePlayerModel"
+    "MixinRemotePlayerModel",
+    "FixTACZ"
 
   ],
   "injectors": {
