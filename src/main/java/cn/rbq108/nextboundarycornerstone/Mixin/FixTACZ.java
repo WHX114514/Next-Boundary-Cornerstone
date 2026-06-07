@@ -2,15 +2,16 @@ package cn.rbq108.nextboundarycornerstone.Mixin;
 
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import org.joml.Vector3f;
+import com.tacz.guns.entity.EntityKineticBullet;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(targets = "com.tacz.guns.entity.EntityKineticBullet", remap = false)
+@Mixin(value = EntityKineticBullet.class)
 public class FixTACZ {
 
-    @Inject(method = "getFirstPersonRenderOffset", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "getFirstPersonRenderOffset", at = @At("RETURN"), cancellable = true, remap = false)
     private void nextboundary$fixFirstPersonRenderOffset(CallbackInfoReturnable<Vector3f> cir) {
         Vector3f originalOffset = cir.getReturnValue();
 
