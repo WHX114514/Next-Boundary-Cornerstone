@@ -26,7 +26,7 @@ public class FixTACZ {
         // 提取当前的 Roll (翻滚角)
         Vector3f euler = GlobalVariables.currentQuat.getEulerAnglesYXZ(new Vector3f());
 
-        // ⚠️ 极其关键：如果进游戏发现光束翻滚方向是反的，请把这里改成 -euler.z
+        //转反了记得在地下euler.z加上负号
         float rollAngle =- euler.z;
 
         Vector3f offset = new Vector3f(originalOffset);

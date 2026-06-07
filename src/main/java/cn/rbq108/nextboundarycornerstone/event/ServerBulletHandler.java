@@ -50,15 +50,15 @@ public class ServerBulletHandler {
                         );
                         wrongRotation.invert();
 
-                        // ==========================================
+
+
+
+
                         // 修正 1：方向与散布重构
-                        // ==========================================
-// ==========================================
-                        // 修正 1：方向与散布重构
-                        // ==========================================
+
                         Vec3 currentMovement = entity.getDeltaMovement();
 
-                        // 【核心修复】：剔除 TACZ 强加的玩家惯性速度！
+                        // 剔除 TACZ 强加的玩家惯性速度！
                         // 这样提取出来的 velocityVec 就只剩下：纯净的发射方向 + 枪械散布
                         Vec3 playerVel = player.getDeltaMovement();
                         double pVx = playerVel.x;
@@ -77,14 +77,13 @@ public class ServerBulletHandler {
                         // 套用真实的 6DoF 旋转矩阵
                         bulletQuat.transform(velocityVec);
 
-                        // (可选探讨：如果你想让子弹在太空中真实继承飞船/玩家的速度，
-                        // 可以把 playerVel 用 bulletQuat 旋转后加回来，但通常在射击游戏里不加手感最好)
 
                         // 赋予实体最终完美的真理弹道
                         entity.setDeltaMovement(velocityVec.x, velocityVec.y, velocityVec.z);
-                        // ==========================================
+
+
                         // 修正 2：生成位置重构 (解决头顶射子弹问题)
-                        // ==========================================
+
                         Vec3 eyePos = player.getEyePosition();
                         Vec3 currentPos = entity.position();
 
@@ -103,9 +102,10 @@ public class ServerBulletHandler {
                         // 重新设定子弹的出发点
                         entity.setPos(eyePos.x + posOffset.x, eyePos.y + posOffset.y, eyePos.z + posOffset.z);
 
-                        // ==========================================
+
+
                         // 修正 3：实体视觉朝向 (防止子弹模型歪斜)
-                        // ==========================================
+
                         double d0 = Math.sqrt(velocityVec.x * velocityVec.x + velocityVec.z * velocityVec.z);
                         entity.setYRot((float)(net.minecraft.util.Mth.atan2(velocityVec.x, velocityVec.z) * (180F / Math.PI)));
                         entity.setXRot((float)(net.minecraft.util.Mth.atan2(velocityVec.y, d0) * (180F / Math.PI)));
