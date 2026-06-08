@@ -7,12 +7,12 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 public class SpaceShellProxy {
-    // 记录刚出生时的绝对状态
-    public Vec3 startPosition;
-    public Quaternionf startRotation;
+    public Vec3 startPosition = Vec3.ZERO;
+    public Quaternionf startRotation = new Quaternionf();
 
-    public Vector3f velocity;
-    public Vector3f angularVelocity;
+    // 极其重要：赋初值！防止如果 TACZ 没获取到速度时变成 Null，导致渲染线程悄悄崩溃！
+    public Vector3f velocity = new Vector3f();
+    public Vector3f angularVelocity = new Vector3f();
 
     public BedrockAmmoModel model;
     public ResourceLocation texture;

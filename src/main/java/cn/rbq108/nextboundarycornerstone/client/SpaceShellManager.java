@@ -4,7 +4,7 @@ import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource; // 新增导入
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.Vec3;
@@ -18,16 +18,24 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@Mod.EventBusSubscriber(modid = "nextboundarycornerstone", value = Dist.CLIENT)
+// 确保这里的 modid 和你项目 resources/META-INF/mods.toml 里的绝对一致！
+@Mod.EventBusSubscriber(modid = "next_boundary_cornerstone", value = Dist.CLIENT)
 public class SpaceShellManager {
 
     public static final List<SpaceShellProxy> SHELLS = new CopyOnWriteArrayList<>();
+    private static int tickCounter = 0; // 用来控制日志频率，防止刷屏卡死
 
     @SubscribeEvent
     public static void onRenderWorld(RenderLevelStageEvent event) {
-        // 确保只在实体渲染阶段之后渲染
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+        // 换一个更不容易被跳过的渲染阶段
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
         if (SHELLS.isEmpty() || !GlobalVariables.B_LowGravity) return;
+
+        tickCounter++;
+        // 每 60 帧（大约 1 秒）打印一次，证明渲染器真的在干活
+        if (tickCounter % 60 == 0) {
+            System.out.println("[NextBoundary Render] 渲染引擎正在工作！当前绘制弹壳数: " + SHELLS.size());
+        }
 
         Minecraft mc = Minecraft.getInstance();
         Camera camera = mc.gameRenderer.getMainCamera();
@@ -35,7 +43,6 @@ public class SpaceShellManager {
         PoseStack poseStack = event.getPoseStack();
         long currentTime = System.currentTimeMillis();
 
-        // 获取 Minecraft 的全局渲染缓冲区
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
 
         Iterator<SpaceShellProxy> iterator = SHELLS.iterator();
@@ -48,38 +55,37 @@ public class SpaceShellManager {
                 continue;
             }
 
-            // 计算世界绝对坐标
             double currentX = proxy.startPosition.x + proxy.velocity.x * timeLived;
             double currentY = proxy.startPosition.y + proxy.velocity.y * timeLived;
             double currentZ = proxy.startPosition.z + proxy.velocity.z * timeLived;
 
-            // 计算当前绝对旋转姿态
             Quaternionf currentRot = new Quaternionf(proxy.startRotation);
             currentRot.rotateLocalX((float) (proxy.angularVelocity.x * timeLived));
             currentRot.rotateLocalY((float) (proxy.angularVelocity.y * timeLived));
             currentRot.rotateLocalZ((float) (proxy.angularVelocity.z * timeLived));
 
             poseStack.pushPose();
-
-            // 核心世界坐标投影
             poseStack.translate(currentX - camPos.x, currentY - camPos.y, currentZ - camPos.z);
             poseStack.mulPose(currentRot);
 
-            // 因为脱离了枪械的相对比例，这里加一个基础缩放防止太小看不见 (TACZ枪模通常自带缩放)
-            // 如果觉得太大/太小可以调整这里的值
-            poseStack.scale(0.6f, 0.6f, 0.6f);
+            // 恢复原版缩放比例
+            poseStack.scale(1.0f, 1.0f, 1.0f);
             poseStack.translate(0, -1.5, 0);
 
             try {
-                // 强制设置为全亮，确保在任何环境下都能刺眼地看到它
                 int fullBright = 15728880;
-                proxy.model.render(poseStack, ItemDisplayContext.NONE, RenderType.entityCutout(proxy.texture), fullBright, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
-            } catch (Exception ignored) {}
+                RenderType renderType = RenderType.entityCutout(proxy.texture);
+                proxy.model.render(poseStack, ItemDisplayContext.NONE, renderType, fullBright, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+                bufferSource.endBatch(renderType);
+            } catch (Exception e) {
+                // 如果是模型渲染抛出了异常，立刻抓捕归案！
+                if (tickCounter % 60 == 0) {
+                    System.out.println("[NextBoundary Render 致命错误] 弹壳渲染失败！");
+                    e.printStackTrace();
+                }
+            }
 
             poseStack.popPose();
         }
-
-        // 终极咒语：强制把我们刚刚画的所有弹壳，立刻推送到显卡显示！
-        bufferSource.endBatch();
     }
 }
