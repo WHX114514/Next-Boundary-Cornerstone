@@ -46,7 +46,9 @@ public class MixinShellRender {
                 SpaceShellProxy proxy = new SpaceShellProxy();
                 proxy.model = model;
                 proxy.texture = texture;
-                proxy.spawnTime = System.currentTimeMillis();
+                proxy.spawnTime = System.nanoTime();//换成纳秒时钟喵
+                //proxy.spawnTime = System.currentTimeMillis();
+
 
                 // 当前 6DoF 绝对四元数
                 Quaternionf bodyQuat = new Quaternionf(GlobalVariables.currentQuat);
@@ -117,12 +119,12 @@ public class MixinShellRender {
                 });
 
                 // ================== 防双重生成补丁 ==================
-                long currentTime = System.currentTimeMillis();
+                long currentTime = System.nanoTime();
                 boolean isDuplicate = false;
                 for (int i = SpaceShellManager.SHELLS.size() - 1; i >= 0; i--) {
                     SpaceShellProxy existing = SpaceShellManager.SHELLS.get(i);
                     // 如果 20 毫秒内已经生成过弹壳，则判定为双黄蛋
-                    if (currentTime - existing.spawnTime < 20) {
+                    if (currentTime - existing.spawnTime < 20_000_000L) {
                         isDuplicate = true;
                         break;
                     }

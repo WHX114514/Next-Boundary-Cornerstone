@@ -33,7 +33,9 @@ public class SpaceShellManager {
         Camera camera = mc.gameRenderer.getMainCamera();
         Vec3 camPos = camera.getPosition();
         PoseStack poseStack = event.getPoseStack();
-        long currentTime = System.currentTimeMillis();
+        long currentTime = System.nanoTime();
+
+
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
 
@@ -41,7 +43,8 @@ public class SpaceShellManager {
         while (iterator.hasNext()) {
             SpaceShellProxy proxy = iterator.next();
 
-            double timeLived = (System.currentTimeMillis() - proxy.spawnTime) / 1000.0;
+//            double timeLived = (System.currentTimeMillis() - proxy.spawnTime) / 1000.0;
+            double timeLived = (currentTime - proxy.spawnTime) / 1_000_000_000.0;
             if (timeLived > 30.0) {
                 SHELLS.remove(proxy);
                 continue;
@@ -88,7 +91,22 @@ public class SpaceShellManager {
                     if (dot < 0) {
                         // 【反弹核心数学】：反转垂直于这个面的轴的速度并且将其乘以 0.5
                         // 向量反射衰减公式: V_new = V - (1 + Bounce) * (V · N) * N, 这里 Bounce 设为 0.5，所以是 1.5
-                        Vec3 vNew = v.subtract(normal.scale(1.5 * dot));
+//                        Vec3 vNew = v.subtract(normal.scale(1.5 * dot));
+//                        proxy.velocity = new Vector3f((float)vNew.x, (float)vNew.y, (float)vNew.z);
+
+
+
+                        //这是是算上表面摩擦力的
+                        // 【反弹核心数学：分离法向与切向】
+                        Vec3 vNormal = normal.scale(dot);        // 1. 算出垂直于墙面的速度 (撞墙分量)
+                        Vec3 vTangent = v.subtract(vNormal);     // 2. 算出平行于墙面的速度 (滑动分量，即另外两个轴)
+
+                        // 分别处理弹力与摩擦力
+                        Vec3 newNormal = vNormal.scale(-0.5);    // 撞墙分量反弹，并衰减到 50%
+                        Vec3 newTangent = vTangent.scale(0.8);   // 【新增】：滑动分量摩擦，衰减到 80%
+
+                        // 将两个处理后的分量重新合成新速度
+                        Vec3 vNew = newNormal.add(newTangent);
                         proxy.velocity = new Vector3f((float)vNew.x, (float)vNew.y, (float)vNew.z);
 
                         // 【夹角判定】：计算总速度方向与平面的夹角
