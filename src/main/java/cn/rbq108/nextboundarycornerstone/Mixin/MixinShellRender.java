@@ -75,13 +75,27 @@ public class MixinShellRender {
 
                 TimelessAPI.getGunDisplay(mainHandItem).ifPresent(display -> {
                     if (display.getShellEjection() != null) {
+
+                        float B_rand1 = (float) (Math.random() - 0.5);
+                        float B_rand2 = (float) (Math.random() - 0.5);
+                        float B_rand3 = (float) (Math.random() - 0.5);
+                        float PositiveNegative = (float) Math.random()-0.5f;
+                        float PN =0f;
+                        if(PositiveNegative >= 0){
+                            PN =1f;
+                        }else{
+                            PN =-1f;
+
+                        }
+
+
                         // ================== 1. 恢复被误删的直线速度 ==================
                         Vector3f initialVel = display.getShellEjection().getInitialVelocity();
                         Vector3f localVel = new Vector3f(
-                                -(initialVel.x() + randomVelocity.x()),
-                                -(initialVel.y() + randomVelocity.y()),
-                                (initialVel.z() + randomVelocity.z())
-                        ).mul(0.3f);
+                                -(initialVel.x() + randomVelocity.x()/*+ B_rand * 0.2f*/),
+                                -(initialVel.y() + randomVelocity.y()+ B_rand1 * 1f),
+                                (initialVel.z() + randomVelocity.z() + B_rand2 * 1f)
+                        ).mul(0.35f);
                         // 直线速度转入世界坐标系
                         new Quaternionf(bodyQuat).transform(localVel);
                         proxy.velocity = localVel;
@@ -90,7 +104,7 @@ public class MixinShellRender {
                         Vector3f originalAngularVel = new Vector3f(display.getShellEjection().getAngularVelocity());
                         bodyQuat.transform(originalAngularVel);
 
-                        float slowDownFactor = 0.0019f;
+                        float slowDownFactor = ((0.005f)*(1+B_rand3*1f)*PN);//转速喵,前面的0.005是基准转速，后面这一坨计算机负责随机用的
                         proxy.angularVelocity = new Vector3f(
                                 originalAngularVel.x() * slowDownFactor,
                                 originalAngularVel.y() * slowDownFactor,
