@@ -27,59 +27,61 @@ public class MixinShellRender {
         if (!GlobalVariables.B_LowGravity) return;
 
         ci.cancel();
-        System.out.println("========== 抛壳拦截测试 ==========");
-        System.out.println("1. 成功阻断 TACZ 原版抛壳！");
 
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) {
-            System.out.println("失败：玩家实体为空！");
-            return;
-        }
+        if (mc.player == null) return;
 
         ItemStack mainHandItem = mc.player.getMainHandItem();
         IGun iGun = IGun.getIGunOrNull(mainHandItem);
-        if (iGun == null) {
-            System.out.println("失败：玩家手里拿的不是 TACZ 枪械！");
-            return;
-        }
+        if (iGun == null) return;
 
         ResourceLocation gunId = iGun.getGunId(mainHandItem);
-        System.out.println("2. 成功获取枪械 ID: " + gunId);
-
-        TimelessAPI.getClientGunIndex(gunId).ifPresentOrElse(gunIndex -> {
+        TimelessAPI.getClientGunIndex(gunId).ifPresent(gunIndex -> {
             GunData gunData = gunIndex.getGunData();
-            System.out.println("3. 成功获取子弹 ID: " + gunData.getAmmoId());
-
-            TimelessAPI.getClientAmmoIndex(gunData.getAmmoId()).ifPresentOrElse(ammoIndex -> {
+            TimelessAPI.getClientAmmoIndex(gunData.getAmmoId()).ifPresent(ammoIndex -> {
                 BedrockAmmoModel model = ammoIndex.getShellModel();
                 ResourceLocation texture = ammoIndex.getShellTextureLocation();
 
-                if (model == null) {
-                    System.out.println("失败：这颗子弹没有抛壳模型！");
-                    return;
-                }
-                if (texture == null) {
-                    System.out.println("失败：这颗子弹没有抛壳贴图！");
-                    return;
-                }
-
-                System.out.println("4. 成功获取模型与贴图，准备生成！");
+                // 终极防御：少一个都不行
+                if (model == null || texture == null) return;
 
                 SpaceShellProxy proxy = new SpaceShellProxy();
+
+                // 【绝不能省的两行】这就是为什么你上一版会爆空指针！
                 proxy.model = model;
                 proxy.texture = texture;
                 proxy.spawnTime = System.currentTimeMillis();
 
-                Vec3 eyePos = mc.player.getEyePosition();
-                Vec3 lookVec = mc.player.getLookAngle();
-                Vec3 rightVec = lookVec.cross(new Vec3(0, 1, 0)).normalize();
+                // === 核心修复：在这里一次性算死绝对起始坐标 ===
+                if (mc.options.getCameraType().isFirstPerson()) {
+                    Vec3 eyePos = mc.player.getEyePosition();
+                    Vec3 lookVec = mc.player.getLookAngle();
+                    Vec3 rightVec = lookVec.cross(new Vec3(0, 1, 0)).normalize();
+                    proxy.startPosition = eyePos.add(lookVec.scale(0.5)).add(rightVec.scale(0.3)).add(0, -0.2, 0);
+                } else {
+                    // 第三人称：用玩家逻辑朝向算世界绝对偏移，彻底解决“不转”问题
+                    float yaw = mc.player.getYRot() * (float) (Math.PI / 180.0);
 
-                proxy.startPosition = eyePos.add(lookVec.scale(0.5)).add(rightVec.scale(0.3)).add(0, -0.2, 0);
+                    //原本这里是填写固定死的位置，但是为了修复位置不随玩家旋转改变，固定数值改成了CartridgeCaseStartingPoint事先计算好的
+                    Vector3f offsetInBodySpace = cn.rbq108.nextboundarycornerstone.client.CartridgeCaseStartingPoint.getThirdPersonOffset(mc.player);
+
+//                    Vector3f offsetInBodySpace = new Vector3f(0.3f, 1f, 0.5f); // 微调旋钮：右, 下, 前
+
+                    Quaternionf bodyRot = new Quaternionf().rotateY(-yaw);
+                    bodyRot.transform(offsetInBodySpace);
+
+                    Vec3 playerPos = mc.player.position();
+                    proxy.startPosition = new Vec3(
+                            playerPos.x + offsetInBodySpace.x,
+                            playerPos.y + 1.4 + offsetInBodySpace.y, // 1.4 是胸口高度
+                            playerPos.z + offsetInBodySpace.z
+                    );
+                }
 
                 Quaternionf camQuat = new Quaternionf(GlobalVariables.currentQuat);
                 proxy.startRotation = new Quaternionf(camQuat);
 
-                TimelessAPI.getGunDisplay(mainHandItem).ifPresentOrElse(display -> {
+                TimelessAPI.getGunDisplay(mainHandItem).ifPresent(display -> {
                     if (display.getShellEjection() != null) {
                         Vector3f initialVel = display.getShellEjection().getInitialVelocity();
                         Vector3f localVel = new Vector3f(
@@ -91,18 +93,12 @@ public class MixinShellRender {
                         camQuat.transform(localVel);
                         proxy.velocity = localVel;
                         proxy.angularVelocity = display.getShellEjection().getAngularVelocity();
-                        System.out.println("5. 物理参数计算完毕！");
-                    } else {
-                        System.out.println("警告：枪械没有配置抛壳速度，将使用默认零速度！");
                     }
-                }, () -> System.out.println("警告：获取不到 Display！"));
+                });
 
+                // 【唯一的一次添加】
                 SpaceShellManager.SHELLS.add(proxy);
-                System.out.println("6. 大功告成！已成功将弹壳推入渲染池！当前池内弹壳数量: " + SpaceShellManager.SHELLS.size());
-
-            }, () -> System.out.println("失败：获取不到 Ammo Index (客户端子弹数据未加载)！"));
-        }, () -> System.out.println("失败：获取不到 Gun Index (客户端枪械数据未加载)！"));
-
-        System.out.println("==================================");
+            });
+        });
     }
 }

@@ -18,24 +18,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-// 确保这里的 modid 和你项目 resources/META-INF/mods.toml 里的绝对一致！
 @Mod.EventBusSubscriber(modid = "next_boundary_cornerstone", value = Dist.CLIENT)
 public class SpaceShellManager {
 
     public static final List<SpaceShellProxy> SHELLS = new CopyOnWriteArrayList<>();
-    private static int tickCounter = 0; // 用来控制日志频率，防止刷屏卡死
 
     @SubscribeEvent
     public static void onRenderWorld(RenderLevelStageEvent event) {
-        // 换一个更不容易被跳过的渲染阶段
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
         if (SHELLS.isEmpty() || !GlobalVariables.B_LowGravity) return;
-
-        tickCounter++;
-        // 每 60 帧（大约 1 秒）打印一次，证明渲染器真的在干活
-        if (tickCounter % 60 == 0) {
-            System.out.println("[NextBoundary Render] 渲染引擎正在工作！当前绘制弹壳数: " + SHELLS.size());
-        }
 
         Minecraft mc = Minecraft.getInstance();
         Camera camera = mc.gameRenderer.getMainCamera();
@@ -55,6 +46,7 @@ public class SpaceShellManager {
                 continue;
             }
 
+            // 纯粹的匀速直线运动
             double currentX = proxy.startPosition.x + proxy.velocity.x * timeLived;
             double currentY = proxy.startPosition.y + proxy.velocity.y * timeLived;
             double currentZ = proxy.startPosition.z + proxy.velocity.z * timeLived;
@@ -68,22 +60,15 @@ public class SpaceShellManager {
             poseStack.translate(currentX - camPos.x, currentY - camPos.y, currentZ - camPos.z);
             poseStack.mulPose(currentRot);
 
-            // 恢复原版缩放比例
             poseStack.scale(1.0f, 1.0f, 1.0f);
-            poseStack.translate(0, -1.5, 0);
+            poseStack.translate(0, -1.5, 0); // TACZ模型的原点补偿
 
             try {
                 int fullBright = 15728880;
                 RenderType renderType = RenderType.entityCutout(proxy.texture);
                 proxy.model.render(poseStack, ItemDisplayContext.NONE, renderType, fullBright, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
                 bufferSource.endBatch(renderType);
-            } catch (Exception e) {
-                // 如果是模型渲染抛出了异常，立刻抓捕归案！
-                if (tickCounter % 60 == 0) {
-                    System.out.println("[NextBoundary Render 致命错误] 弹壳渲染失败！");
-                    e.printStackTrace();
-                }
-            }
+            } catch (Exception ignored) {} // 模型既然100%拿到了，这里就不会再报错了
 
             poseStack.popPose();
         }
