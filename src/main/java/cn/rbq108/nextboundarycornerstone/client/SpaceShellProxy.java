@@ -3,18 +3,18 @@ package cn.rbq108.nextboundarycornerstone.client;
 import com.tacz.guns.client.model.BedrockAmmoModel;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Vector3f;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 public class SpaceShellProxy {
-    public Vec3 worldPosition;       // 绝对世界坐标
-    public Vector3f velocity;        // 飞行速度
-    public Vector3f angularVelocity; // 翻滚角速度
-    public Quaternionf rotation;     // 当前的三维旋转姿态
+    // 记录刚出生时的绝对状态
+    public Vec3 startPosition;
+    public Quaternionf startRotation;
 
-    public BedrockAmmoModel model;   // TACZ 的现成模型
-    public ResourceLocation texture; // TACZ 的现成贴图
+    public Vector3f velocity;
+    public Vector3f angularVelocity;
 
-    public long spawnTime;           // 出生时间
-    public float livingTime;         // 存活寿命
+    public BedrockAmmoModel model;
+    public ResourceLocation texture;
+    public long spawnTime;
 }

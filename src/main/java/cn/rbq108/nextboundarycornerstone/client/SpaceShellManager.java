@@ -4,6 +4,7 @@ import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource; // 新增导入
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.Vec3;
@@ -17,82 +18,68 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-// 注册到 Forge 的事件总线，确保能监听到渲染事件
 @Mod.EventBusSubscriber(modid = "nextboundarycornerstone", value = Dist.CLIENT)
 public class SpaceShellManager {
 
-    // 线程安全的列表，用来存放所有正在飞行的弹壳
     public static final List<SpaceShellProxy> SHELLS = new CopyOnWriteArrayList<>();
 
-    // 每一帧世界渲染完毕后，我们把弹壳画上去
     @SubscribeEvent
     public static void onRenderWorld(RenderLevelStageEvent event) {
-        // 确保只在实体渲染之后画，避免被方块遮挡逻辑出错
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
-            return;
-        }
-
-        if (SHELLS.isEmpty() || !GlobalVariables.B_LowGravity) {
-            return;
-        }
+        // 确保只在实体渲染阶段之后渲染
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+        if (SHELLS.isEmpty() || !GlobalVariables.B_LowGravity) return;
 
         Minecraft mc = Minecraft.getInstance();
         Camera camera = mc.gameRenderer.getMainCamera();
         Vec3 camPos = camera.getPosition();
         PoseStack poseStack = event.getPoseStack();
-
         long currentTime = System.currentTimeMillis();
+
+        // 获取 Minecraft 的全局渲染缓冲区
+        MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
 
         Iterator<SpaceShellProxy> iterator = SHELLS.iterator();
         while (iterator.hasNext()) {
             SpaceShellProxy proxy = iterator.next();
 
-            // 1. 生命周期检查 (30秒)
-            float livedSeconds = (currentTime - proxy.spawnTime) / 1000.0f;
-            if (livedSeconds > proxy.livingTime) {
+            double timeLived = (currentTime - proxy.spawnTime) / 1000.0;
+            if (timeLived > 30.0) {
                 SHELLS.remove(proxy);
                 continue;
             }
 
-            // 2. 物理更新 (匀速直线运动)
-            // 你后续想加碰撞变速，就在这里写 level.clip 逻辑！
-            double deltaSeconds = mc.getFrameTime() / 20.0; // 粗略的每帧时间
-            proxy.worldPosition = proxy.worldPosition.add(
-                    proxy.velocity.x * deltaSeconds,
-                    proxy.velocity.y * deltaSeconds,
-                    proxy.velocity.z * deltaSeconds
-            );
+            // 计算世界绝对坐标
+            double currentX = proxy.startPosition.x + proxy.velocity.x * timeLived;
+            double currentY = proxy.startPosition.y + proxy.velocity.y * timeLived;
+            double currentZ = proxy.startPosition.z + proxy.velocity.z * timeLived;
 
-            // 更新翻滚姿态
-            proxy.rotation.rotateX((float) (proxy.angularVelocity.x * deltaSeconds));
-            proxy.rotation.rotateY((float) (proxy.angularVelocity.y * deltaSeconds));
-            proxy.rotation.rotateZ((float) (proxy.angularVelocity.z * deltaSeconds));
+            // 计算当前绝对旋转姿态
+            Quaternionf currentRot = new Quaternionf(proxy.startRotation);
+            currentRot.rotateLocalX((float) (proxy.angularVelocity.x * timeLived));
+            currentRot.rotateLocalY((float) (proxy.angularVelocity.y * timeLived));
+            currentRot.rotateLocalZ((float) (proxy.angularVelocity.z * timeLived));
 
-            // 3. 渲染绘制
             poseStack.pushPose();
 
-            // 核心：把世界绝对坐标，转换为相对于相机的渲染坐标
-            poseStack.translate(
-                    proxy.worldPosition.x - camPos.x,
-                    proxy.worldPosition.y - camPos.y,
-                    proxy.worldPosition.z - camPos.z
-            );
+            // 核心世界坐标投影
+            poseStack.translate(currentX - camPos.x, currentY - camPos.y, currentZ - camPos.z);
+            poseStack.mulPose(currentRot);
 
-            // 应用它自己的旋转姿态
-            poseStack.mulPose(proxy.rotation);
-
-            // 微调 TACZ 模型自带的下沉偏移
+            // 因为脱离了枪械的相对比例，这里加一个基础缩放防止太小看不见 (TACZ枪模通常自带缩放)
+            // 如果觉得太大/太小可以调整这里的值
+            poseStack.scale(0.6f, 0.6f, 0.6f);
             poseStack.translate(0, -1.5, 0);
 
-            // 白嫖 TACZ 的渲染逻辑，直接把图画出来！
             try {
-                int light = mc.level.getLightEngine().getRawBrightness(
-                        net.minecraft.core.BlockPos.containing(proxy.worldPosition), 0
-                );
-                proxy.model.render(poseStack, ItemDisplayContext.NONE, RenderType.entityCutout(proxy.texture), light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
-            } catch (Exception ignored) { }
+                // 强制设置为全亮，确保在任何环境下都能刺眼地看到它
+                int fullBright = 15728880;
+                proxy.model.render(poseStack, ItemDisplayContext.NONE, RenderType.entityCutout(proxy.texture), fullBright, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+            } catch (Exception ignored) {}
 
             poseStack.popPose();
         }
+
+        // 终极咒语：强制把我们刚刚画的所有弹壳，立刻推送到显卡显示！
+        bufferSource.endBatch();
     }
 }
