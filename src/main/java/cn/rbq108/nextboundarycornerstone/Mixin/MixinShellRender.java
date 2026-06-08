@@ -48,90 +48,74 @@ public class MixinShellRender {
                 proxy.texture = texture;
                 proxy.spawnTime = System.currentTimeMillis();
 
-                // 当前四元数
+                // 当前 6DoF 绝对四元数
                 Quaternionf bodyQuat = new Quaternionf(GlobalVariables.currentQuat);
 
                 if (mc.options.getCameraType().isFirstPerson()) {
-                    // 这是第一人称喵（原点应该是眼睛）
+                    // 第一人称（原点是眼睛）
                     Vector3f localOffset = new Vector3f(-0.3f, -0.2f, 0.5f);
                     bodyQuat.transform(localOffset);
-
                     Vec3 eyePos = mc.player.getEyePosition();
                     proxy.startPosition = eyePos.add(localOffset.x, localOffset.y, localOffset.z);
 
                 } else {
-                    // 第三人称喵（原点玩家脚底，然后本地偏移经过 currentQuat 旋转到世界空间）
-                    // LOCAL_RIGHT, LOCAL_UP, LOCAL_FORWARD 是相对于玩家身体坐标系的偏移
-                    final float PIVOT_HEIGHT = 0.7f; // 弹壳高度微调
-
-                    Vector3f localOffset = new Vector3f(
-                            CartridgeCaseStartingPoint.LOCAL_RIGHT,
-                            CartridgeCaseStartingPoint.LOCAL_UP,
-                            CartridgeCaseStartingPoint.LOCAL_FORWARD
-                    );
-                    bodyQuat.transform(localOffset);
+                    // 第三人称：调用外部类的完美方法，括号里填你想要的身体中心高度 (比如 0.7)
+                    // 它会自动把这个高度加进四元数旋转，解决你平躺时弹壳乱飞的 Bug！
+                    Vector3f worldOffset = CartridgeCaseStartingPoint.getWorldSpaceOffset(0.7f);
 
                     Vec3 playerPos = mc.player.position();
                     proxy.startPosition = new Vec3(
-                            playerPos.x + localOffset.x,
-                            playerPos.y + PIVOT_HEIGHT + localOffset.y, // PIVOT_HEIGHT 是旋转中心的世界高度
-                            playerPos.z + localOffset.z
+                            playerPos.x + worldOffset.x,
+                            playerPos.y + worldOffset.y, // 注意：不需要再硬加 PIVOT_HEIGHT 了
+                            playerPos.z + worldOffset.z
                     );
                 }
 
                 proxy.startRotation = new Quaternionf(bodyQuat);
 
-                // 计算速度
                 TimelessAPI.getGunDisplay(mainHandItem).ifPresent(display -> {
                     if (display.getShellEjection() != null) {
+                        // ================== 1. 恢复被误删的直线速度 ==================
                         Vector3f initialVel = display.getShellEjection().getInitialVelocity();
-
-                        // 本地速度向量（枪械定义的抛出方向，在枪的本地空间）
                         Vector3f localVel = new Vector3f(
                                 -(initialVel.x() + randomVelocity.x()),
                                 -(initialVel.y() + randomVelocity.y()),
                                 (initialVel.z() + randomVelocity.z())
                         ).mul(0.3f);
-
-                        // 把速度向量旋转到世界空间
-                        new Quaternionf(bodyQuat).transform(localVel);//
+                        // 直线速度转入世界坐标系
+                        new Quaternionf(bodyQuat).transform(localVel);
                         proxy.velocity = localVel;
 
-
-
-
-                        // 1. 获取枪械原始的角速度
-                        Vector3f originalAngularVel = display.getShellEjection().getAngularVelocity();
-
-                        // 2. 关键点：将角速度也旋转到世界空间，这样弹壳旋转轴才会跟随飞船姿态
-                        // 不然在飞船翻滚时，它会按错误的局部轴旋转，导致“死锁”视觉效果
+                        // ================== 2. 角速度深拷贝防污染 ==================
+                        Vector3f originalAngularVel = new Vector3f(display.getShellEjection().getAngularVelocity());
                         bodyQuat.transform(originalAngularVel);
 
-                        // 3. 应用减速系数 (原来的 0.0019f 如果觉得慢了，可以微调)
                         float slowDownFactor = 0.0019f;
                         proxy.angularVelocity = new Vector3f(
                                 originalAngularVel.x() * slowDownFactor,
                                 originalAngularVel.y() * slowDownFactor,
                                 originalAngularVel.z() * slowDownFactor
                         );
-
-
-//                        proxy.angularVelocity = display.getShellEjection().getAngularVelocity();
-//
-//                        Vector3f originalAngularVel = display.getShellEjection().getAngularVelocity();
-//                        // 这里乘一个系数，比如 0.2f 就是原速度的 20%，你可以根据喜好调整！
-//                        float slowDownFactor = 0.0019f;
-//                        proxy.angularVelocity = new Vector3f(
-//                                originalAngularVel.x() * slowDownFactor,
-//                                originalAngularVel.y() * slowDownFactor,
-//                                originalAngularVel.z() * slowDownFactor
-//                        );
-
                     }
                 });
 
-                SpaceShellManager.SHELLS.add(proxy);
-            });
-        });
+                // ================== 防双重生成补丁 ==================
+                long currentTime = System.currentTimeMillis();
+                boolean isDuplicate = false;
+                for (int i = SpaceShellManager.SHELLS.size() - 1; i >= 0; i--) {
+                    SpaceShellProxy existing = SpaceShellManager.SHELLS.get(i);
+                    // 如果 20 毫秒内已经生成过弹壳，则判定为双黄蛋
+                    if (currentTime - existing.spawnTime < 20) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+
+                // 【修正括号】：原来你这底下的多余括号和缺失括号都在这里修复了
+                if (!isDuplicate) {
+                    SpaceShellManager.SHELLS.add(proxy);
+                }
+            }); // 结束 ammoIndex 寻找
+        }); // 结束 gunIndex 寻找
     }
 }

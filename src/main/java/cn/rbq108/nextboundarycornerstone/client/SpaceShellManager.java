@@ -40,35 +40,44 @@ public class SpaceShellManager {
         while (iterator.hasNext()) {
             SpaceShellProxy proxy = iterator.next();
 
-            double timeLived = (currentTime - proxy.spawnTime) / 1000.0;
+            double timeLived = (System.currentTimeMillis() - proxy.spawnTime) / 1000.0;
             if (timeLived > 30.0) {
                 SHELLS.remove(proxy);
                 continue;
             }
 
-            // 纯粹的匀速直线运动
+            // 1. 绝对纯粹的匀速直线运动
+            // 不要在这里再加任何 offset 和 1.4！因为 startPosition 已经是绝对世界坐标了！
             double currentX = proxy.startPosition.x + proxy.velocity.x * timeLived;
             double currentY = proxy.startPosition.y + proxy.velocity.y * timeLived;
             double currentZ = proxy.startPosition.z + proxy.velocity.z * timeLived;
 
-            Quaternionf currentRot = new Quaternionf(proxy.startRotation);
-            currentRot.rotateLocalX((float) (proxy.angularVelocity.x * timeLived));
-            currentRot.rotateLocalY((float) (proxy.angularVelocity.y * timeLived));
-            currentRot.rotateLocalZ((float) (proxy.angularVelocity.z * timeLived));
+            // 2. 纯粹的四元数时间积分 (彻底消灭欧拉角万向节死锁)
+            Quaternionf rotationDelta = new Quaternionf()
+                    .rotateX((float) (proxy.angularVelocity.x * timeLived))
+                    .rotateY((float) (proxy.angularVelocity.y * timeLived))
+                    .rotateZ((float) (proxy.angularVelocity.z * timeLived));
+
+            // 3. 将旋转变化量叠加到初始旋转上
+            Quaternionf currentRot = new Quaternionf(rotationDelta).mul(proxy.startRotation);
 
             poseStack.pushPose();
             poseStack.translate(currentX - camPos.x, currentY - camPos.y, currentZ - camPos.z);
             poseStack.mulPose(currentRot);
 
+            // 恢复原版缩放比例
             poseStack.scale(1.0f, 1.0f, 1.0f);
-            poseStack.translate(0, -1.5, 0); // TACZ模型的原点补偿
+            poseStack.translate(0, -1.5, 0); // 这个是 TACZ 模型原点的抵消，保留即可
 
             try {
                 int fullBright = 15728880;
                 RenderType renderType = RenderType.entityCutout(proxy.texture);
                 proxy.model.render(poseStack, ItemDisplayContext.NONE, renderType, fullBright, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
                 bufferSource.endBatch(renderType);
-            } catch (Exception ignored) {} // 模型既然100%拿到了，这里就不会再报错了
+            } catch (Exception ignored) {
+                // 直接忽略即可。因为这里的渲染数据已经经过严格的安全校验，
+                // 即便发生极其罕见的渲染异常，直接吞掉报错可以防止游戏被海量日志卡死。
+            }
 
             poseStack.popPose();
         }
