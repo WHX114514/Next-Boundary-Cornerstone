@@ -94,9 +94,39 @@ public class MixinShellRender {
                         ).mul(0.3f);
 
                         // 把速度向量旋转到世界空间
-                        new Quaternionf(bodyQuat).transform(localVel);
+                        new Quaternionf(bodyQuat).transform(localVel);//
                         proxy.velocity = localVel;
-                        proxy.angularVelocity = display.getShellEjection().getAngularVelocity();
+
+
+
+
+                        // 1. 获取枪械原始的角速度
+                        Vector3f originalAngularVel = display.getShellEjection().getAngularVelocity();
+
+                        // 2. 关键点：将角速度也旋转到世界空间，这样弹壳旋转轴才会跟随飞船姿态
+                        // 不然在飞船翻滚时，它会按错误的局部轴旋转，导致“死锁”视觉效果
+                        bodyQuat.transform(originalAngularVel);
+
+                        // 3. 应用减速系数 (原来的 0.0019f 如果觉得慢了，可以微调)
+                        float slowDownFactor = 0.0019f;
+                        proxy.angularVelocity = new Vector3f(
+                                originalAngularVel.x() * slowDownFactor,
+                                originalAngularVel.y() * slowDownFactor,
+                                originalAngularVel.z() * slowDownFactor
+                        );
+
+
+//                        proxy.angularVelocity = display.getShellEjection().getAngularVelocity();
+//
+//                        Vector3f originalAngularVel = display.getShellEjection().getAngularVelocity();
+//                        // 这里乘一个系数，比如 0.2f 就是原速度的 20%，你可以根据喜好调整！
+//                        float slowDownFactor = 0.0019f;
+//                        proxy.angularVelocity = new Vector3f(
+//                                originalAngularVel.x() * slowDownFactor,
+//                                originalAngularVel.y() * slowDownFactor,
+//                                originalAngularVel.z() * slowDownFactor
+//                        );
+
                     }
                 });
 
