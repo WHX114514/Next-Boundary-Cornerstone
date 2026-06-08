@@ -9,8 +9,8 @@ public class CartridgeCaseStartingPoint {
     // 抛壳口相对于玩家【本地坐标系】的偏移
     // X = 向左, Y = 向上, Z = 向前
     public static final float LOCAL_RIGHT   =  -0.3f;  // 枪在玩家右侧
-    public static final float LOCAL_UP      =  0.1f;  // 略高于玩家中心
-    public static final float LOCAL_FORWARD =  0.0f;  // 与玩家持枪深度对齐
+    public static final float LOCAL_UP      =  0.4f;  // 略高于玩家中心
+    public static final float LOCAL_FORWARD =  0.8f;  // 与玩家持枪深度对齐
 
     /**
      * 将本地偏移量通过 currentQuat 旋转到世界空间，返回世界空间的偏移向量。

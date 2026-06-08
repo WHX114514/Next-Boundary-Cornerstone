@@ -62,7 +62,7 @@ public class MixinShellRender {
                 } else {
                     // 第三人称喵（原点玩家脚底，然后本地偏移经过 currentQuat 旋转到世界空间）
                     // LOCAL_RIGHT, LOCAL_UP, LOCAL_FORWARD 是相对于玩家身体坐标系的偏移
-                    final float PIVOT_HEIGHT = 0.9f; // 弹壳高度微调
+                    final float PIVOT_HEIGHT = 0.7f; // 弹壳高度微调
 
                     Vector3f localOffset = new Vector3f(
                             CartridgeCaseStartingPoint.LOCAL_RIGHT,
