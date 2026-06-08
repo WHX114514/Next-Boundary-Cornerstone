@@ -1,57 +1,80 @@
-package cn.rbq108.nextboundarycornerstone.Mixin;
-
-import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
-import org.joml.Vector3f;
-import com.tacz.guns.client.resource.pojo.display.gun.ShellEjection;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-// 直接拦截抛壳数据的 POJO 类，避开所有渲染层的复杂逻辑和混淆
-@Mixin(value = ShellEjection.class)
-public class MixinShellRender {
-
-    // 1. 拦截加速度（重力）—— 斩断抛物线！
-    @Inject(method = "getAcceleration", at = @At("HEAD"), cancellable = true, remap = false)
-    private void nextboundary$removeGravity(CallbackInfoReturnable<Vector3f> cir) {
-        if (GlobalVariables.B_LowGravity) {
-            // 返回绝对的 0 加速度，让抛物线变成直线
-            cir.setReturnValue(new Vector3f(0f, 0f, 0f));
-        }
-    }
-
-    // 2. 拦截初速度 —— 营造太空缓慢漂浮感
-    @Inject(method = "getInitialVelocity", at = @At("RETURN"), cancellable = true, remap = false)
-    private void nextboundary$slowVelocity(CallbackInfoReturnable<Vector3f> cir) {
-        if (GlobalVariables.B_LowGravity) {
-            Vector3f original = cir.getReturnValue();
-            if (original != null) {
-                // 把弹出的力度降为原来的 30%
-                cir.setReturnValue(new Vector3f(original).mul(0.3f));
-            }
-        }
-    }
-
-    // 3. 拦截角速度 —— 让弹壳自转也慢下来
-    @Inject(method = "getAngularVelocity", at = @At("RETURN"), cancellable = true, remap = false)
-    private void nextboundary$slowAngular(CallbackInfoReturnable<Vector3f> cir) {
-        if (GlobalVariables.B_LowGravity) {
-            Vector3f original = cir.getReturnValue();
-            if (original != null) {
-                // 自转速度降为 20%
-                cir.setReturnValue(new Vector3f(original).mul(0.2f));
-            }
-        }
-    }
-
-    // 4. 拦截存活时间 —— 强行续命到 30 秒！
-    @Inject(method = "getLivingTime", at = @At("RETURN"), cancellable = true, remap = false)
-    private void nextboundary$extendLifetime(CallbackInfoReturnable<Float> cir) {
-        if (GlobalVariables.B_LowGravity) {
-            // 原版通常只有 1~2 秒，这里直接强行赋值为 30.0f 秒
-            // 只要没到 30 秒，渲染器就不会把它从队列里踢出去
-            cir.setReturnValue(30.0f);
-        }
-    }
-}
+//package cn.rbq108.nextboundarycornerstone.Mixin;
+//
+//import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
+//import cn.rbq108.nextboundarycornerstone.client.SpaceShellManager;
+//import cn.rbq108.nextboundarycornerstone.client.SpaceShellProxy;
+//import com.tacz.guns.client.model.BedrockAmmoModel;
+//import com.tacz.guns.client.model.functional.ShellRender;
+//import com.tacz.guns.client.resource.GunDisplayInstance;
+//import net.minecraft.client.Minecraft;
+//import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.world.phys.Vec3;
+//import org.joml.Quaternionf;
+//import org.joml.Vector3f;
+//import org.spongepowered.asm.mixin.Mixin;
+//import org.spongepowered.asm.mixin.injection.At;
+//import org.spongepowered.asm.mixin.injection.Inject;
+//import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+//
+//@Mixin(value = ShellRender.class)
+//public class MixinShellRender {
+//
+//    // 核心修改：请注意看这里的参数列表！
+//    // 之前你发给我的旧版代码里，renderSingleShell 是有 BedrockAmmoModel 和 ResourceLocation 的
+//    // 说明这两个参数必然是在添加时被传入或者在渲染时被调用的。
+//    // 根据 TACZ 源码，addShell 方法的真实参数大概率是这样：
+//    @Inject(method = "addShell", at = @At("HEAD"), cancellable = true, remap = false)
+//    private void nextboundary$stealAndConvert(
+//            GunDisplayInstance display,
+//            BedrockAmmoModel model,
+//            ResourceLocation location,
+//            ShellRender.Data data,
+//            CallbackInfo ci
+//    ) {
+//        if (!GlobalVariables.B_LowGravity) {
+//            return;
+//        }
+//
+//        ci.cancel();
+//
+//        if (data == null || data.normal == null || data.pose == null) return;
+//
+//        Minecraft mc = Minecraft.getInstance();
+//        if (mc.player == null) return;
+//
+//        SpaceShellProxy proxy = new SpaceShellProxy();
+//
+//        // 终于拿到它们了！
+//        proxy.model = model;
+//        proxy.texture = location;
+//
+//        proxy.spawnTime = System.currentTimeMillis();
+//        proxy.livingTime = 30.0f;
+//
+//        // 后面的坐标计算逻辑保持不变
+//        Vector3f localOffset = data.pose.getTranslation(new Vector3f());
+//        Quaternionf camQuat = new Quaternionf(GlobalVariables.currentQuat);
+//        camQuat.transform(localOffset);
+//
+//        Vec3 eyePos = mc.player.getEyePosition();
+//        proxy.worldPosition = eyePos.add(localOffset.x, localOffset.y, localOffset.z);
+//
+//        Quaternionf localRot = data.pose.getNormalizedRotation(new Quaternionf());
+//        proxy.rotation = new Quaternionf(camQuat).mul(localRot);
+//
+//        Vector3f initialVel = display.getShellEjection().getInitialVelocity();
+//        Vector3f randomOffset = data.randomOffset;
+//        Vector3f localVel = new Vector3f(
+//                -(initialVel.x() + randomOffset.x()),
+//                -(initialVel.y() + randomOffset.y()),
+//                initialVel.z() + randomOffset.z()
+//        ).mul(0.3f);
+//
+//        camQuat.transform(localVel);
+//        proxy.velocity = localVel;
+//
+//        proxy.angularVelocity = display.getShellEjection().getAngularVelocity();
+//
+//        SpaceShellManager.SHELLS.add(proxy);
+//    }
+//}
