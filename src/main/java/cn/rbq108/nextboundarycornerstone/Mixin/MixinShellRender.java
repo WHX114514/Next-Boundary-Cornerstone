@@ -1,6 +1,7 @@
 package cn.rbq108.nextboundarycornerstone.Mixin;
 
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
+import cn.rbq108.nextboundarycornerstone.client.CartridgeCaseStartingPoint;
 import cn.rbq108.nextboundarycornerstone.client.SpaceShellManager;
 import cn.rbq108.nextboundarycornerstone.client.SpaceShellProxy;
 import com.tacz.guns.api.TimelessAPI;
@@ -25,7 +26,6 @@ public class MixinShellRender {
     @Inject(method = "addShell", at = @At("HEAD"), cancellable = true, remap = false)
     private void nextboundary$interceptShell(Vector3f randomVelocity, CallbackInfo ci) {
         if (!GlobalVariables.B_LowGravity) return;
-
         ci.cancel();
 
         Minecraft mc = Minecraft.getInstance();
@@ -41,62 +41,65 @@ public class MixinShellRender {
             TimelessAPI.getClientAmmoIndex(gunData.getAmmoId()).ifPresent(ammoIndex -> {
                 BedrockAmmoModel model = ammoIndex.getShellModel();
                 ResourceLocation texture = ammoIndex.getShellTextureLocation();
-
-                // 终极防御：少一个都不行
                 if (model == null || texture == null) return;
 
                 SpaceShellProxy proxy = new SpaceShellProxy();
-
-                // 【绝不能省的两行】这就是为什么你上一版会爆空指针！
                 proxy.model = model;
                 proxy.texture = texture;
                 proxy.spawnTime = System.currentTimeMillis();
 
-                // === 核心修复：在这里一次性算死绝对起始坐标 ===
+                // 当前四元数
+                Quaternionf bodyQuat = new Quaternionf(GlobalVariables.currentQuat);
+
                 if (mc.options.getCameraType().isFirstPerson()) {
+                    // 这是第一人称喵（原点应该是眼睛）
+                    Vector3f localOffset = new Vector3f(-0.3f, -0.2f, 0.5f);
+                    bodyQuat.transform(localOffset);
+
                     Vec3 eyePos = mc.player.getEyePosition();
-                    Vec3 lookVec = mc.player.getLookAngle();
-                    Vec3 rightVec = lookVec.cross(new Vec3(0, 1, 0)).normalize();
-                    proxy.startPosition = eyePos.add(lookVec.scale(0.5)).add(rightVec.scale(0.3)).add(0, -0.2, 0);
+                    proxy.startPosition = eyePos.add(localOffset.x, localOffset.y, localOffset.z);
+
                 } else {
-                    // 第三人称：用玩家逻辑朝向算世界绝对偏移，彻底解决“不转”问题
-                    float yaw = mc.player.getYRot() * (float) (Math.PI / 180.0);
+                    // 第三人称喵（原点玩家脚底，然后本地偏移经过 currentQuat 旋转到世界空间）
+                    // LOCAL_RIGHT, LOCAL_UP, LOCAL_FORWARD 是相对于玩家身体坐标系的偏移
+                    final float PIVOT_HEIGHT = 0.9f; // 弹壳高度微调
 
-                    //原本这里是填写固定死的位置，但是为了修复位置不随玩家旋转改变，固定数值改成了CartridgeCaseStartingPoint事先计算好的
-                    Vector3f offsetInBodySpace = cn.rbq108.nextboundarycornerstone.client.CartridgeCaseStartingPoint.getThirdPersonOffset(mc.player);
-
-//                    Vector3f offsetInBodySpace = new Vector3f(0.3f, 1f, 0.5f); // 微调旋钮：右, 下, 前
-
-                    Quaternionf bodyRot = new Quaternionf().rotateY(-yaw);
-                    bodyRot.transform(offsetInBodySpace);
+                    Vector3f localOffset = new Vector3f(
+                            CartridgeCaseStartingPoint.LOCAL_RIGHT,
+                            CartridgeCaseStartingPoint.LOCAL_UP,
+                            CartridgeCaseStartingPoint.LOCAL_FORWARD
+                    );
+                    bodyQuat.transform(localOffset);
 
                     Vec3 playerPos = mc.player.position();
                     proxy.startPosition = new Vec3(
-                            playerPos.x + offsetInBodySpace.x,
-                            playerPos.y + 1.4 + offsetInBodySpace.y, // 1.4 是胸口高度
-                            playerPos.z + offsetInBodySpace.z
+                            playerPos.x + localOffset.x,
+                            playerPos.y + PIVOT_HEIGHT + localOffset.y, // PIVOT_HEIGHT 是旋转中心的世界高度
+                            playerPos.z + localOffset.z
                     );
                 }
 
-                Quaternionf camQuat = new Quaternionf(GlobalVariables.currentQuat);
-                proxy.startRotation = new Quaternionf(camQuat);
+                proxy.startRotation = new Quaternionf(bodyQuat);
 
+                // 计算速度
                 TimelessAPI.getGunDisplay(mainHandItem).ifPresent(display -> {
                     if (display.getShellEjection() != null) {
                         Vector3f initialVel = display.getShellEjection().getInitialVelocity();
+
+                        // 本地速度向量（枪械定义的抛出方向，在枪的本地空间）
                         Vector3f localVel = new Vector3f(
                                 -(initialVel.x() + randomVelocity.x()),
                                 -(initialVel.y() + randomVelocity.y()),
-                                initialVel.z() + randomVelocity.z()
+                                (initialVel.z() + randomVelocity.z())
                         ).mul(0.3f);
 
-                        camQuat.transform(localVel);
+                        // 把速度向量旋转到世界空间
+                        new Quaternionf(bodyQuat).transform(localVel);
                         proxy.velocity = localVel;
                         proxy.angularVelocity = display.getShellEjection().getAngularVelocity();
                     }
                 });
 
-                // 【唯一的一次添加】
                 SpaceShellManager.SHELLS.add(proxy);
             });
         });
