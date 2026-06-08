@@ -11,7 +11,7 @@ public class SpaceShellProxy {
     public Vec3 startPosition;
     public Vec3 lastPos; // 【新增】用于连续碰撞检测的上一帧位置
 
-    public Vec3 startPosition;
+
     public Quaternionf startRotation;
 
     public Vector3f velocity = new Vector3f();

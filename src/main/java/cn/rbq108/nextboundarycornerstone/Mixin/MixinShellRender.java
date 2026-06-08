@@ -71,6 +71,9 @@ public class MixinShellRender {
                     );
                 }
 
+                // 【新增这一行】：初始化碰撞检测点
+                proxy.lastPos = proxy.startPosition;
+
                 proxy.startRotation = new Quaternionf(bodyQuat);
 
                 TimelessAPI.getGunDisplay(mainHandItem).ifPresent(display -> {
