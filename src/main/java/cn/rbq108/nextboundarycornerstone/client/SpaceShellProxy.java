@@ -1,5 +1,6 @@
 package cn.rbq108.nextboundarycornerstone.client;
 
+//import com.tacz.guns.client.model.BedrockAmmoModel;
 import com.tacz.guns.client.model.BedrockAmmoModel;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
@@ -18,6 +19,7 @@ public class SpaceShellProxy {
     public Vector3f angularVelocity = new Vector3f();
 
     public BedrockAmmoModel model;
+    //public com.tacz.guns.client.model.BedrockAmmoModel model;
     public ResourceLocation texture;
     public long spawnTime;
 }

@@ -61,3 +61,10 @@ mandatory = true
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
+# 在文件末尾添加这一段
+[[dependencies."${mod_id}"]]
+modId = "tacz"
+mandatory = false        # 设为 false，确保没装 TACZ 时你的模组也能正常启动
+versionRange = "[1.1.7-hotfix2,)"
+ordering = "NONE"
+side = "BOTH"

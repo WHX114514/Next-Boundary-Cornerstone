@@ -1,3 +1,4 @@
+//这个类好像不会被执行，可以先不理会
 package cn.rbq108.nextboundarycornerstone.Mixin;
 
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;

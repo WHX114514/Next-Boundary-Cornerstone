@@ -83,4 +83,8 @@ public class GlobalVariables {
     //在（？）
     public static boolean prevLowGravity = false; // 用来记录上一帧是不是低重力喵
 
+
+    //负责存储是否安装tacz的变量喵
+    public static int B_TACZ = 0;
+
 }
