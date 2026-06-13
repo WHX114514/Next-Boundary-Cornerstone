@@ -87,4 +87,9 @@ public class GlobalVariables {
     //负责存储是否安装tacz的变量喵
     public static int B_TACZ = 0;
 
+    public static float B_Vx5 = 0.0f;//x轴后坐力
+    public static float B_Vy5 = 0.0f;
+    public static float B_Vz5 = 0.0f;
+
+
 }

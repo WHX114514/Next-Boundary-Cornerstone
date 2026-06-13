@@ -67,18 +67,39 @@ public class calculate {
 
         Vector3f currentVel = new Vector3f(GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1);
 
+
+//        // ===============唯一的后坐力注入点============
+//        if (GlobalVariables.B_Vx5 != 0 || GlobalVariables.B_Vy5 != 0 || GlobalVariables.B_Vz5 != 0) {
+//            currentVel.add(new Vector3f(GlobalVariables.B_Vx5, GlobalVariables.B_Vy5, GlobalVariables.B_Vz5));
+//            mc.player.hurtMarked = true;
+//
+//            // 用完就擦除喵
+//            GlobalVariables.B_Vx5 = 0; GlobalVariables.B_Vy5 = 0; GlobalVariables.B_Vz5 = 0;
+//        }
+//        // =================================================================================================================================================
+
         if (!hasInput && !shouldBrake) {
+
+            currentVel.x += GlobalVariables.B_Vx5;
+            currentVel.y += GlobalVariables.B_Vy5;
+            currentVel.z += GlobalVariables.B_Vz5;
+
+            GlobalVariables.B_Vx1 = currentVel.x;
+            GlobalVariables.B_Vy1 = currentVel.y;
+            GlobalVariables.B_Vz1 = currentVel.z;
+
+            GlobalVariables.B_Vx5 = 0; GlobalVariables.B_Vy5 = 0; GlobalVariables.B_Vz5 = 0;
             return; // 自由滑行
         }
 
-        if (!hasInput && shouldBrake) {
+        if (!hasInput && shouldBrake) {//这里记得加入vx5的判断，不然后面的后坐力不生效
 
             float damping = Math.min(cfgBrake * 0.1f, 0.95f);
             currentVel.lerp(new Vector3f(0, 0, 0), damping);
             if (currentVel.length() < 0.005f) currentVel.set(0, 0, 0);
         } else {
 
-            Vector3f targetVel = new Vector3f(GlobalVariables.B_Vx4, GlobalVariables.B_Vy4, GlobalVariables.B_Vz4);
+            Vector3f targetVel = new Vector3f(GlobalVariables.B_Vx4, GlobalVariables.B_Vy4, GlobalVariables.B_Vz4);//这里是目标速度的计算，记得加入vx5
             float maxA = cfgAmax * cfgAfterburner;
             Vector3f accel = new Vector3f();
             targetVel.sub(currentVel, accel);
@@ -86,16 +107,27 @@ public class calculate {
             currentVel.add(accel);
         }
 
-        GlobalVariables.B_Vx1 = currentVel.x;
+        currentVel.x += GlobalVariables.B_Vx5;
+        currentVel.y += GlobalVariables.B_Vy5;
+        currentVel.z += GlobalVariables.B_Vz5;
+
+        GlobalVariables.B_Vx5 = 0; GlobalVariables.B_Vy5 = 0; GlobalVariables.B_Vz5 = 0;
+
+        GlobalVariables.B_Vx1 = currentVel.x;//这里是实际赋予速度的地方，记得也要加上vx5
         GlobalVariables.B_Vy1 = currentVel.y;
         GlobalVariables.B_Vz1 = currentVel.z;
 
 
+        //总共有三处改动地点喵，分别是if，目标速度还有最终的瞬间速度，通技课时间来不及了，回去后记得改
+        //总共有三处改动地点喵，分别是if，目标速度还有最终的瞬间速度，通技课时间来不及了，回去后记得改
+        //总共有三处改动地点喵，分别是if，目标速度还有最终的瞬间速度，通技课时间来不及了，回去后记得改
+        //好像不需要三处，最顶上一个注入，最后再直接赋值一趟就行
+
     }
 
     private static void printDebugInfo(String status) {
-        System.out.printf("[这里写啥都没用了，反正idea不显示中文 - %s] 输入[Z:%d] | 真实惯性[Vx:%.3f, Vy:%.3f, Vz:%.3f]\n",
-                status, GlobalVariables.B_INz, GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1);
+//        System.out.printf("[这里写啥都没用了，反正idea不显示中文 - %s] 输入[Z:%d] | 真实惯性[Vx:%.3f, Vy:%.3f, Vz:%.3f]\n",
+//                status, GlobalVariables.B_INz, GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1);
     }
 }
 
