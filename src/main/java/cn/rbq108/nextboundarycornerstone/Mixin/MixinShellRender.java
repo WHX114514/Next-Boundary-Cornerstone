@@ -73,7 +73,7 @@ public class MixinShellRender {
                     );
                 }
 
-                // 【新增这一行】：初始化碰撞检测点
+                // 新增：初始化碰撞检测点
                 proxy.lastPos = proxy.startPosition;
 
                 proxy.startRotation = new Quaternionf(bodyQuat);
@@ -94,7 +94,8 @@ public class MixinShellRender {
                         }
 
 
-                        // ================== 1. 恢复被误删的直线速度 ==================
+                        // ================恢复被误删的直线速度 ==================
+                        //一长串等号分隔代码太好用了你知道吗
                         Vector3f initialVel = display.getShellEjection().getInitialVelocity();
                         Vector3f localVel = new Vector3f(
                                 -(initialVel.x() + randomVelocity.x()/*+ B_rand * 0.2f*/),
@@ -105,7 +106,7 @@ public class MixinShellRender {
                         new Quaternionf(bodyQuat).transform(localVel);
                         proxy.velocity = localVel;
 
-                        // ================== 2. 角速度深拷贝防污染 ==================
+                        // ==============角速度深拷贝防污染 ==================
                         Vector3f originalAngularVel = new Vector3f(display.getShellEjection().getAngularVelocity());
                         bodyQuat.transform(originalAngularVel);
 
@@ -118,7 +119,7 @@ public class MixinShellRender {
                     }
                 });
 
-                // ================== 防双重生成补丁 ==================
+                // ================== 防双重生成补丁 ============================
                 long currentTime = System.nanoTime();
                 boolean isDuplicate = false;
                 for (int i = SpaceShellManager.SHELLS.size() - 1; i >= 0; i--) {
@@ -130,7 +131,7 @@ public class MixinShellRender {
                     }
                 }
 
-                // 【修正括号】：原来你这底下的多余括号和缺失括号都在这里修复了
+                // ？
                 if (!isDuplicate) {
                     SpaceShellManager.SHELLS.add(proxy);
                     cn.rbq108.nextboundarycornerstone.TACZ.recoil.applyWeaponBlowback();//这个负责触发后坐力啥啥啥的

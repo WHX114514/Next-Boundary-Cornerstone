@@ -93,7 +93,7 @@ public abstract class MixinRemotePlayerModel<T extends LivingEntity> {
                     float pitch = (float) Math.asin(-nose.y);
 
                     //
-                    // 这里您继续用您刚才自己摸索出来的正负号！(如果上下左右反了，加个负号就行)
+                    // 这里继续用刚才自己摸索出来的正负号！(如果上下左右反了，加个负号就行)
                     model.head.xRot = pitch;   // 比如您之前如果用了 -pitch 就继续用
                     model.head.yRot = yaw;     // 同上
 

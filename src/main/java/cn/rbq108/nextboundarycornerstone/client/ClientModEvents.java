@@ -6,7 +6,7 @@ import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-// 注意这里的 modid 必须和你主类声明的 MODID 完全一致
+// 注意这里的 modid 必须和主类声明的 MODID 完全一致     你猜这行注释为什么会添加到这里
 // value = Dist.CLIENT 确保了这个类绝不会在独立服务端端运行
 @Mod.EventBusSubscriber(modid = "next_boundary_cornerstone", bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class ClientModEvents {

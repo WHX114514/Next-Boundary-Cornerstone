@@ -65,7 +65,7 @@ public abstract class CameraContral implements RollCamera {
         }
     }
 
-    // --- 修改 Yaw (index = 0) ---
+    // --- 修改 Yaw (index = 0) -----
     // 1.20.1 修复: 目标描述符从 (FFF)V 改为 (FF)V
     @ModifyArg(
             method = "setup",

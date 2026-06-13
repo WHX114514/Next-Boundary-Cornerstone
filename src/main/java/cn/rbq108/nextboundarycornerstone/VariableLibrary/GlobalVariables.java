@@ -62,7 +62,7 @@ public class GlobalVariables {
     public static float currentFovModifier = 0.0f; // 当前逻辑帧的新值
 
 
-    // 🩺 飞船机身独立控制变量
+    // 控制变量
 
     public static float B_bodyx = 0.0f; // 身体的 Pitch (俯仰)
     public static float B_bodyy = 0.0f; // 身体的 Yaw (偏航)

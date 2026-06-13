@@ -54,7 +54,7 @@ public class SpaceShellManager {
 
 
 
-            // 1. 预测这一帧的绝对坐标和绝对旋转
+            //预测这一帧的绝对坐标和绝对旋转
             double currentX = proxy.startPosition.x + proxy.velocity.x * timeLived;
             double currentY = proxy.startPosition.y + proxy.velocity.y * timeLived;
             double currentZ = proxy.startPosition.z + proxy.velocity.z * timeLived;
@@ -66,7 +66,7 @@ public class SpaceShellManager {
                     .rotateZ((float) (proxy.angularVelocity.z * timeLived));
             Quaternionf currentRot = new Quaternionf(rotationDelta).mul(proxy.startRotation);
 
-            // 2. 连续碰撞检测 (RayTracing)：从上一帧的位置连线到预测位置
+            // 连续碰撞检测 (RayTracing？)：从上一帧的位置连线到预测位置
             if (proxy.lastPos != null && mc.level != null) {
                 net.minecraft.world.phys.BlockHitResult hitResult = mc.level.clip(
                         new net.minecraft.world.level.ClipContext(
@@ -97,7 +97,7 @@ public class SpaceShellManager {
 
 
                         //这是是算上表面摩擦力的
-                        // 【反弹核心数学：分离法向与切向】
+                        // 反弹逻辑！
                         Vec3 vNormal = normal.scale(dot);        // 1. 算出垂直于墙面的速度 (撞墙分量)
                         Vec3 vTangent = v.subtract(vNormal);     // 2. 算出平行于墙面的速度 (滑动分量，即另外两个轴)
 
@@ -109,7 +109,7 @@ public class SpaceShellManager {
                         Vec3 vNew = newNormal.add(newTangent);
                         proxy.velocity = new Vector3f((float)vNew.x, (float)vNew.y, (float)vNew.z);
 
-                        // 【夹角判定】：计算总速度方向与平面的夹角
+                        // 夹角判定   计算总速度方向与平面的夹角
                         double speed = v.length();
                         if (speed > 0.0001) {
                             // 计算入射角余弦值 (相对于法线)
@@ -122,7 +122,7 @@ public class SpaceShellManager {
                             }
                         }
 
-                        // 【时空重置】：更新物理积分起点，让接下来的运动从撞击点重新开始计算！
+                        // 重置方便下次算：更新物理积分起点，让接下来的运动从撞击点重新开始计算！
                         proxy.startPosition = hitResult.getLocation(); // 起点重置为墙面撞击点
                         proxy.spawnTime = currentTime;                 // 时间重置为当前
                         proxy.startRotation = currentRot;              // 锁定反弹瞬间的旋转姿态
@@ -134,19 +134,19 @@ public class SpaceShellManager {
 
             // 更新“上一帧”的轨迹点
             proxy.lastPos = nextPos;
-//            // 1. 绝对纯粹的匀速直线运动
+//            //绝对纯粹的匀速直线运动
 //            // 不要在这里再加任何 offset 和 1.4！因为 startPosition 已经是绝对世界坐标了！
 //            double currentX = proxy.startPosition.x + proxy.velocity.x * timeLived;
 //            double currentY = proxy.startPosition.y + proxy.velocity.y * timeLived;
 //            double currentZ = proxy.startPosition.z + proxy.velocity.z * timeLived;
 //
-//            // 2. 纯粹的四元数时间积分 (彻底消灭欧拉角万向节死锁)
+//            // 纯粹的四元数时间积分 (彻底消灭欧拉角万向节死锁)
 //            Quaternionf rotationDelta = new Quaternionf()
 //                    .rotateX((float) (proxy.angularVelocity.x * timeLived))
 //                    .rotateY((float) (proxy.angularVelocity.y * timeLived))
 //                    .rotateZ((float) (proxy.angularVelocity.z * timeLived));
 //
-//            // 3. 将旋转变化量叠加到初始旋转上
+//            // 将旋转变化量叠加到初始旋转上
 //            Quaternionf currentRot = new Quaternionf(rotationDelta).mul(proxy.startRotation);
 
 
@@ -167,7 +167,7 @@ public class SpaceShellManager {
                 bufferSource.endBatch(renderType);
             } catch (Exception ignored) {
                 // 直接忽略。因为这里的渲染数据已经经过严格的安全校验，
-                // 即便发生极其罕见的渲染异常，直接吞掉报错可以防止游戏被海量日志卡死。
+                // 即便发生极其罕见的渲染异常，直接吞掉报错可以防止游戏被海量日志卡死
             }
 
             poseStack.popPose();

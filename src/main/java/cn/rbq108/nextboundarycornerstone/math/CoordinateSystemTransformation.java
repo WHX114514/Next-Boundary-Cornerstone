@@ -9,7 +9,7 @@ import org.joml.Vector3f;
 public class CoordinateSystemTransformation {
 
     public static void transformVelocityToWorld() {
-        // 1. 获取吃满所有倍率的“本地期望推力”
+        // 获取吃满所有倍率的“本地期望推力”
         float localX = GlobalVariables.B_Vx3_1; // 右
         float localY = GlobalVariables.B_Vy3_1; // 上
         float localZ = GlobalVariables.B_Vz3_1; // 前
