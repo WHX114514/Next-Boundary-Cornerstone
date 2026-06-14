@@ -1,5 +1,6 @@
 package cn.rbq108.nextboundarycornerstone.ServeMiao.communication;
 
+import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.capability.PlayerRotationProvider;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -9,12 +10,14 @@ import java.util.function.Supplier;
 
 public class PacketSyncPlayerQuaternion {
     private final float x, y, z, w;
+    private final boolean lowGravity;
 
     public PacketSyncPlayerQuaternion(Quaternionf quat) {
         this.x = quat.x;
         this.y = quat.y;
         this.z = quat.z;
         this.w = quat.w;
+        this.lowGravity = GlobalVariables.B_LowGravity;
     }
 
     public PacketSyncPlayerQuaternion(FriendlyByteBuf buf) {
@@ -22,6 +25,7 @@ public class PacketSyncPlayerQuaternion {
         this.y = buf.readFloat();
         this.z = buf.readFloat();
         this.w = buf.readFloat();
+        this.lowGravity = buf.readBoolean();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -29,6 +33,7 @@ public class PacketSyncPlayerQuaternion {
         buf.writeFloat(y);
         buf.writeFloat(z);
         buf.writeFloat(w);
+        buf.writeBoolean(lowGravity);
     }
 
     // 处理收到四元数变更
@@ -39,6 +44,7 @@ public class PacketSyncPlayerQuaternion {
             if (player != null) {
                 player.getCapability(PlayerRotationProvider.PLAYER_ROTATION).ifPresent(cap -> {
                     cap.setQuaternion(new Quaternionf(x, y, z, w));
+                    cap.setLowGravity(lowGravity);
                 });
             }
         });
