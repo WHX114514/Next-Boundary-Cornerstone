@@ -1,5 +1,6 @@
 package cn.rbq108.nextboundarycornerstone.event;
 
+import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.capability.PlayerRotationProvider;
 import cn.rbq108.nextboundarycornerstone.main;
 import net.minecraft.world.entity.Entity;
@@ -22,6 +23,7 @@ public class ServerBulletHandler {
         if (!entity.getClass().getName().equals("com.tacz.guns.entity.EntityKineticBullet")) return;
 
         try {
+            if(GlobalVariables.B_LowGravity){
             Entity owner = null;
             if (entity instanceof net.minecraft.world.entity.projectile.Projectile projectile) {
                 owner = projectile.getOwner();
@@ -54,9 +56,9 @@ public class ServerBulletHandler {
             double pVy = player.onGround() ? 0.0D : playerVel.y;
 
             Vector3f velocityVec = new Vector3f(
-                    (float)(currentMovement.x - playerVel.x),
-                    (float)(currentMovement.y - pVy),
-                    (float)(currentMovement.z - playerVel.z)
+                    (float) (currentMovement.x - playerVel.x),
+                    (float) (currentMovement.y - pVy),
+                    (float) (currentMovement.z - playerVel.z)
             );
             wrongRotation.transform(velocityVec);
             bulletQuat.transform(velocityVec);
@@ -66,9 +68,9 @@ public class ServerBulletHandler {
             Vec3 eyePos = player.getEyePosition();
             Vec3 currentPos = entity.position();
             Vector3f posOffset = new Vector3f(
-                    (float)(currentPos.x - eyePos.x),
-                    (float)(currentPos.y - eyePos.y),
-                    (float)(currentPos.z - eyePos.z)
+                    (float) (currentPos.x - eyePos.x),
+                    (float) (currentPos.y - eyePos.y),
+                    (float) (currentPos.z - eyePos.z)
             );
             wrongRotation.transform(posOffset);
             bulletQuat.transform(posOffset);
@@ -76,10 +78,11 @@ public class ServerBulletHandler {
 
             // 修正视觉朝向
             double d0 = Math.sqrt(velocityVec.x * velocityVec.x + velocityVec.z * velocityVec.z);
-            entity.setYRot((float)(Math.atan2(velocityVec.x, velocityVec.z) * (180F / Math.PI)));
-            entity.setXRot((float)(Math.atan2(velocityVec.y, d0) * (180F / Math.PI)));
+            entity.setYRot((float) (Math.atan2(velocityVec.x, velocityVec.z) * (180F / Math.PI)));
+            entity.setXRot((float) (Math.atan2(velocityVec.y, d0) * (180F / Math.PI)));
             entity.yRotO = entity.getYRot();
             entity.xRotO = entity.getXRot();
+        }
 
         } catch (Exception e) {
             e.printStackTrace();
