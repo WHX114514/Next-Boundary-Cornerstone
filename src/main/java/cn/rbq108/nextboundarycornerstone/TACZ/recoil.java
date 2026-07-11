@@ -18,52 +18,55 @@ public class recoil {
      * 基于飞船/玩家当前的四元数姿态，将局部坐标系的后坐力精准投影至世界坐标系。
      */
     public static void applyWeaponBlowback() {
-        var mc = Minecraft.getInstance();
-        if (mc.player == null) return;
+        try {
+            var mc = Minecraft.getInstance();
+            if (mc.player == null) return;
 
+            //获取玩家主手持有的物品
+            ItemStack mainHandItem = mc.player.getMainHandItem();
 
-        //获取玩家主手持有的物品
-        ItemStack mainHandItem = mc.player.getMainHandItem();
+            //检查手上拿的是不是 TACZ 的枪
+            if (mainHandItem.getItem() instanceof IGun iGun) {
+                ResourceLocation gunId = iGun.getGunId(mainHandItem);
 
-        //检查手上拿的是不是 TACZ 的枪
-        if (mainHandItem.getItem() instanceof IGun iGun) {
-            ResourceLocation gunId = iGun.getGunId(mainHandItem);
+                //从 TACZ 抓取静态数据
+                TimelessAPI.getClientGunIndex(gunId).ifPresent(gunIndex -> {
+                    GunData gunData = gunIndex.getGunData();
+                    if (gunData == null || gunData.getRecoil() == null) return;
 
-            //从 TACZ 抓取静态数据
-            TimelessAPI.getClientGunIndex(gunId).ifPresent(gunIndex -> {
-                GunData gunData = gunIndex.getGunData();
-                if (gunData == null || gunData.getRecoil() == null) return;
+                    GunRecoilKeyFrame[] pitchFrames = gunData.getRecoil().getPitch();
 
-                GunRecoilKeyFrame[] pitchFrames = gunData.getRecoil().getPitch();
+                    if (pitchFrames != null && pitchFrames.length > 0) {
+                        //提取第一帧基础垂直后座力
+                        float[] values = pitchFrames[0].getValue();
+                        float baseRecoilForce = (values[0] + values[1]) / 2.0f;
 
-                if (pitchFrames != null && pitchFrames.length > 0) {
-                    //提取第一帧基础垂直后座力
-                    float[] values = pitchFrames[0].getValue();
-                    float baseRecoilForce = (values[0] + values[1]) / 2.0f;
+                        //四元数！
+                        // 设定核心缩放系数
+                        float scaleFactor = 0.05f;
+                        float finalForce = baseRecoilForce * scaleFactor;
 
-                    //四元数！
-                    // 设定核心缩放系数
-                    float scaleFactor = 0.05f;
-                    float finalForce = baseRecoilForce * scaleFactor;
+                        // 定义局部坐标系下的后坐力向量。
 
-                    // 定义局部坐标系下的后坐力向量。
+                        Vector3f localRecoil = new Vector3f(0.0f, 0.0f, -finalForce);
 
-                    Vector3f localRecoil = new Vector3f(0.0f, 0.0f, -finalForce);
+                        // 获取当前飞船/玩家的四元数姿态
+                        // 从全局变量读取你算好的、包含 Roll（滚转）在内的完美四元数
+                        Quaternionf shipOrientation = new Quaternionf(GlobalVariables.currentQuat);
 
-                    // 获取当前飞船/玩家的四元数姿态
-                    // 从全局变量读取你算好的、包含 Roll（滚转）在内的完美四元数
-                    Quaternionf shipOrientation = new Quaternionf(GlobalVariables.currentQuat);
+                        // 让四元数转转转~局部向量
+                        Vector3f worldRecoil = shipOrientation.transform(localRecoil);
 
-                    // 让四元数转转转~局部向量
-                    Vector3f worldRecoil = shipOrientation.transform(localRecoil);
-
-                    // 抛给最终账本
-                    GlobalVariables.B_Vx5 = worldRecoil.x;
-                    GlobalVariables.B_Vy5 = worldRecoil.y;
-                    GlobalVariables.B_Vz5 = worldRecoil.z;
-                    System.out.println(GlobalVariables.B_Vx5+ " " +GlobalVariables.B_Vy5+ " "+GlobalVariables.B_Vz5);
-                }
-            });
+                        // 抛给最终账本
+                        GlobalVariables.B_Vx5 = worldRecoil.x;
+                        GlobalVariables.B_Vy5 = worldRecoil.y;
+                        GlobalVariables.B_Vz5 = worldRecoil.z;
+                        System.out.println(GlobalVariables.B_Vx5+ " " +GlobalVariables.B_Vy5+ " "+GlobalVariables.B_Vz5);
+                    }
+                });
+            }
+        } catch (NoClassDefFoundError ignored) {
+            // TACZ 没装
         }
     }
 }

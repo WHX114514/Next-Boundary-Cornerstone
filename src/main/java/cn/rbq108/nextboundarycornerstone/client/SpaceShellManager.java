@@ -163,7 +163,13 @@ public class SpaceShellManager {
             try {
                 int fullBright = 15728880;
                 RenderType renderType = RenderType.entityCutout(proxy.texture);
-                proxy.model.render(poseStack, ItemDisplayContext.NONE, renderType, fullBright, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+                // 反射调用 proxy.model.render()
+                if (proxy.model != null) {
+                    java.lang.reflect.Method renderMethod = proxy.model.getClass().getMethod("render",
+                            PoseStack.class, ItemDisplayContext.class, RenderType.class, int.class, int.class);
+                    renderMethod.invoke(proxy.model, poseStack, ItemDisplayContext.NONE, renderType, fullBright,
+                            net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+                }
                 bufferSource.endBatch(renderType);
             } catch (Exception ignored) {
                 // 直接忽略。因为这里的渲染数据已经经过严格的安全校验，

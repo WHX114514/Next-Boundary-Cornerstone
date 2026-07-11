@@ -4,6 +4,7 @@
   "package": "cn.rbq108.nextboundarycornerstone.Mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "next_boundary_cornerstone.refmap.json",
+  "plugin": "cn.rbq108.nextboundarycornerstone.MixinPlugin",
   "mixins": [
   ],
   "client": [

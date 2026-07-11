@@ -2,6 +2,7 @@
 
 package cn.rbq108.nextboundarycornerstone;
 
+import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.item.equipment.BasicBackpack;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
@@ -149,6 +150,14 @@ public class main
     {
         // Some common setup code
         LOGGER.info("HELLO FROM COMMON SETUP");
+
+        // 检测 TACZ 模组是否已安装
+        if (net.minecraftforge.fml.ModList.get().isLoaded("tacz")) {
+            GlobalVariables.B_TACZ = 1;
+            LOGGER.info("[NextBoundaryCornerstone] 检测到 TACZ 模组已安装，正在注入相关依赖···");
+        } else {
+            GlobalVariables.B_TACZ = 0;
+        }
 
         event.enqueueWork(() -> {
             cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler.register();
