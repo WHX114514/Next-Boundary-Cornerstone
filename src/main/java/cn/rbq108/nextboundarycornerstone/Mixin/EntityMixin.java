@@ -59,15 +59,19 @@ public abstract class EntityMixin implements RollEntity {
             cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
             cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));
 
-            //提取欧拉角时
-            org.joml.Vector3f euler = cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.getEulerAnglesYXZ(new org.joml.Vector3f());
-
-            // euler.y 对应 Yaw，euler.x 对应 Pitch
-            float newYaw = (float) Math.toDegrees(-euler.y);
-            float newPitch = (float) Math.toDegrees(euler.x);
-
+            // 防止万向节死锁(Gimbal Lock)导致的180度翻转，改用前向向量提取平滑的 Yaw 和 Pitch
+            org.joml.Vector3f forward = new org.joml.Vector3f(0, 0, 1).rotate(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat);
+            
             float currentYaw = player.getYRot();
             float currentPitch = player.getXRot();
+            
+            double horizontalDistance = Math.sqrt(forward.x * forward.x + forward.z * forward.z);
+            float newYaw = currentYaw; // 默认使用旧的Yaw，防止在正上/正下方时视角乱转
+            if (horizontalDistance > 0.001) {
+                newYaw = (float) Math.toDegrees(-Math.atan2(forward.x, forward.z));
+            }
+            float newPitch = (float) Math.toDegrees(Math.asin(Math.max(-1.0, Math.min(1.0, -forward.y))));
+
             player.setYRot(currentYaw + net.minecraft.util.Mth.wrapDegrees(newYaw - currentYaw));
             player.setXRot(currentPitch + net.minecraft.util.Mth.wrapDegrees(newPitch - currentPitch));
         }
