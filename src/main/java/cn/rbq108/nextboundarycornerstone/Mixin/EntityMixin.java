@@ -55,25 +55,25 @@ public abstract class EntityMixin implements RollEntity {
             float dy = (float) yRot * 0.15f; // 鼠标横向移动 (控制 Yaw)
             float dx = (float) xRot * 0.15f; // 鼠标纵向移动 (控制 Pitch)
 
+            // 记录原始鼠标增量，供 GameRenderer.bobView 的 Mixin 使用
+            // 这样手臂摆动就能用干净的鼠标输入驱动，而不是有死锁隐患的欧拉角差值
+            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.mouseDeltaX = dx; // 纵向（俯仰）
+            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.mouseDeltaY = dy; // 横向（偏航）
+
             // 绕x轴是俯仰(dx)，绕Y是偏航(dy)
             cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
             cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));
 
-            // 防止万向节死锁(Gimbal Lock)导致的180度翻转，改用前向向量提取平滑的 Yaw 和 Pitch
-            org.joml.Vector3f forward = new org.joml.Vector3f(0, 0, 1).rotate(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat);
-            
-            float currentYaw = player.getYRot();
-            float currentPitch = player.getXRot();
-            
-            double horizontalDistance = Math.sqrt(forward.x * forward.x + forward.z * forward.z);
-            float newYaw = currentYaw; // 默认使用旧的Yaw，防止在正上/正下方时视角乱转
-            if (horizontalDistance > 0.001) {
-                newYaw = (float) Math.toDegrees(-Math.atan2(forward.x, forward.z));
-            }
-            float newPitch = (float) Math.toDegrees(Math.asin(Math.max(-1.0, Math.min(1.0, -forward.y))));
-
-            player.setYRot(currentYaw + net.minecraft.util.Mth.wrapDegrees(newYaw - currentYaw));
-            player.setXRot(currentPitch + net.minecraft.util.Mth.wrapDegrees(newPitch - currentPitch));
+            // === Yaw & Pitch ===
+            // 绝对不能用四元数反推(asin/atan2)来设置 player 的 XRot 和 YRot！
+            // 因为在倒立(roll=180°)或跨越±90°俯仰角时，四元数在世界坐标系下的分量会反转/停滞，
+            // 导致原版手部摆动(ItemInHandRenderer)接收到反向或为零的视角增量。
+            //
+            // 正确做法：直接将屏幕坐标系的鼠标原始增量 (dx, dy) 累加到 XRot 和 YRot 上。
+            // 这样手部摆动增量就永远与玩家当前屏幕的鼠标操作方向保持一致，
+            // 无论角色处于何种 roll 角度(0°, 90°, 180°)，手部上下左右摆动都完全正常。
+            player.setYRot(player.getYRot() + dy);
+            player.setXRot(player.getXRot() + dx);
         }
     }
 }

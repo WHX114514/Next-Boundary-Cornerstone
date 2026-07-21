@@ -83,4 +83,9 @@ public class GlobalVariables {
     //在（？）
     public static boolean prevLowGravity = false; // 用来记录上一帧是不是低重力喵
 
+    // 鼠标原始输入量（每 tick 更新，由 EntityMixin 的 turn() 拦截写入）
+    // 用于在失重模式下驱动手臂摆动，取代有万向节死锁隐患的欧拉角差值法
+    public static float mouseDeltaX = 0.0f; // 鼠标纵向增量（控制 Pitch，正数=往下看）
+    public static float mouseDeltaY = 0.0f; // 鼠标横向增量（控制 Yaw，正数=往右转）
+
 }
