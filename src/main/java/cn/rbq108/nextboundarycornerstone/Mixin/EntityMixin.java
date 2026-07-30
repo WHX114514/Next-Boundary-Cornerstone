@@ -4,6 +4,7 @@ import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import cn.rbq108.nextboundarycornerstone.api.RollEntity;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -11,6 +12,36 @@ import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin implements RollEntity {
+
+    @Unique
+    private static Class<?> localPlayerClass_testMod = null;
+    @Unique
+    private static boolean localPlayerClassChecked_testMod = false;
+
+    @Unique
+    private static boolean isLocalPlayerClass_testMod(Player player) {
+        if (!localPlayerClassChecked_testMod) {
+            try {
+                localPlayerClass_testMod = Class.forName("net.minecraft.client.player.LocalPlayer");
+            } catch (ClassNotFoundException e) {
+                localPlayerClass_testMod = null;
+            }
+            localPlayerClassChecked_testMod = true;
+        }
+        return localPlayerClass_testMod != null && localPlayerClass_testMod.isInstance(player);
+    }
+
+    @Inject(method = "getViewVector(F)Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
+    private void doABarrelRoll$overrideGetViewVector(float partialTicks, CallbackInfoReturnable<net.minecraft.world.phys.Vec3> cir) {
+        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && (Object)this instanceof Player player) {
+            if (isLocalPlayerClass_testMod(player)) {
+                org.joml.Quaternionf smoothedQuat = new org.joml.Quaternionf(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.prevQuat)
+                        .slerp(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat, partialTicks);
+                org.joml.Vector3f fwd = new org.joml.Vector3f(0, 0, 1).rotate(smoothedQuat);
+                cir.setReturnValue(new net.minecraft.world.phys.Vec3(fwd.x, fwd.y, fwd.z));
+            }
+        }
+    }
 
     @Unique
     private boolean isRolling_testMod;

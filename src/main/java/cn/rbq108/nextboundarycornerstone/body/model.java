@@ -19,9 +19,26 @@ public class model {
     private static float oldXRot, oldYBodyRot, oldYHeadRot;
     private static float oldXRotO, oldYBodyRotO, oldYHeadRotO;
 
+    private static boolean isRenderingInInventory() {
+        if (net.minecraft.client.Minecraft.getInstance().screen != null) {
+            for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+                if (element.getClassName().contains("InventoryScreen")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @SubscribeEvent
     public static void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
         if (event.getEntity() instanceof LocalPlayer player && GlobalVariables.B_LowGravity) {
+            if (isRenderingInInventory()) {
+                PoseStack poseStack = event.getPoseStack();
+                poseStack.pushPose();
+                poseStack.translate(0, -0.3f, 0); // 补偿失重状态下碰撞箱缩短导致的人物偏高
+                return;
+            }
 
 
 
@@ -81,6 +98,10 @@ public class model {
     @SubscribeEvent
     public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
         if (event.getEntity() instanceof LocalPlayer player && GlobalVariables.B_LowGravity) {
+            if (isRenderingInInventory()) {
+                event.getPoseStack().popPose();
+                return;
+            }
 
             // 弹出矩阵
             event.getPoseStack().popPose();
