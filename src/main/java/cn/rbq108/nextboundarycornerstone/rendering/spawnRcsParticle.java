@@ -51,6 +51,12 @@ public class spawnRcsParticle {
      * 核心飞控侦测逻辑：在 onClientTick 里每帧调用喵！
      */
     public static void processRcs(Player player) {
+        // 如果玩家穿着下一边界工业的宇航服，跳过前置模组的喷气效果渲染，转由工业模组自己渲染并支持热重载微调！
+        net.minecraft.world.item.ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+        if (!chest.isEmpty() && chest.getItem().getClass().getName().contains("ExtravehicularSpacesuit")) {
+            return;
+        }
+
         Vec3 currentVelocity = player.getDeltaMovement();
 
         // 1. 算世界坐标系下的加速度 (A_world = V_current - V_prev)
