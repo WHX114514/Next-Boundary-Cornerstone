@@ -20,15 +20,7 @@ public abstract class EntityMixin implements RollEntity {
 
     @Unique
     private static boolean isLocalPlayerClass_testMod(Player player) {
-        if (!localPlayerClassChecked_testMod) {
-            try {
-                localPlayerClass_testMod = Class.forName("net.minecraft.client.player.LocalPlayer");
-            } catch (ClassNotFoundException e) {
-                localPlayerClass_testMod = null;
-            }
-            localPlayerClassChecked_testMod = true;
-        }
-        return localPlayerClass_testMod != null && localPlayerClass_testMod.isInstance(player);
+        return player.getClass().getName().equals("net.minecraft.client.player.LocalPlayer");
     }
 
     @Inject(method = "getViewVector(F)Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
@@ -80,6 +72,9 @@ public abstract class EntityMixin implements RollEntity {
     @Inject(method = "turn(DD)V", at = @At("HEAD"), cancellable = true)
     private void doABarrelRoll$quaternionTurn(double yRot, double xRot, CallbackInfo ci) {
         if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && (Object)this instanceof Player player) {
+            if (!isLocalPlayerClass_testMod(player)) {
+                return;
+            }
             ci.cancel();
 
             // 提取鼠标输入的增量
