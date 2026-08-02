@@ -67,6 +67,33 @@ public class Keybinds {
             KEY_CATEGORY
     );
 
+    // 固定自由旋转视角
+    public static final KeyMapping B_FIXED_CAMERA = new KeyMapping(
+            "key.test.fixed_camera",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_LEFT_SHIFT,
+            KEY_CATEGORY
+    );
+
+    // 固定自由视角左桶滚 (滚轮向上)
+    public static final KeyMapping B_FIXED_CAMERA_LEFT = new KeyMapping(
+            "key.test.fixed_camera_left",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.MOUSE,
+            InputConstants.UNKNOWN.getValue(),
+            KEY_CATEGORY
+    );
+
+    // 固定自由视角右桶滚 (滚轮向下)
+    public static final KeyMapping B_FIXED_CAMERA_ROLL = new KeyMapping(
+            "key.test.fixed_camera_roll",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.MOUSE,
+            InputConstants.UNKNOWN.getValue(),
+            KEY_CATEGORY
+    );
+
     @SubscribeEvent
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(B_UP);
@@ -81,5 +108,8 @@ public class Keybinds {
         event.register(B_MANUAL_BRAKE);
         event.register(B_RUSH_BUTTON); //确认登记
         event.register(B_FREE_CAMERA);
+        event.register(B_FIXED_CAMERA);
+        event.register(B_FIXED_CAMERA_LEFT);
+        event.register(B_FIXED_CAMERA_ROLL);
     }
 }

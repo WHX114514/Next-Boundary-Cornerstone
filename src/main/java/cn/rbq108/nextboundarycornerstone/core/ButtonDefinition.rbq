@@ -20,3 +20,6 @@ ButtonDefinition.rbq
 制动                  B_BREAK             H
 疾跑                  B_RushButton        ctrl
 自由旋转视角            B_FreeCamera        C
+固定自由旋转视角         B_FixedCamera       shift
+固定自由视角左桶滚       B_FixedCameraleft   滚轮向上
+固定自由视角右桶滚       B_FixedCameraroll   滚轮向下

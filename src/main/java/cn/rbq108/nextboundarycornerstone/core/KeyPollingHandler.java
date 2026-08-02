@@ -40,6 +40,12 @@ public class KeyPollingHandler {
         if (InputConstants.isKeyDown(window, keyUp)) inY += 1;
         if (InputConstants.isKeyDown(window, keyDown)) inY -= 1;
 
+        if (GlobalVariables.blockMovementUntilRelease) {
+            inX = 0;
+            inY = 0;
+            inZ = 0;
+        }
+
         // 乖乖存进你的记事本里
         GlobalVariables.B_INx = inX;
         GlobalVariables.B_INy = inY;

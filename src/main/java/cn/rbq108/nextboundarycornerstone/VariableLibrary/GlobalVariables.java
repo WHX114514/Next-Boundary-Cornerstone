@@ -79,6 +79,16 @@ public class GlobalVariables {
     // 自由视角 (Free Look) 状态位
     public static boolean B_FreeCameraActive = false;
     public static boolean wasFreeCamera = false;
+    
+    // 锁定自由视角 (Toggle/Lock) 状态位
+    public static boolean B_FreeCameraToggle = false;
+    public static boolean B_HeadRotationLocked = false;
+    public static Quaternionf lockedHeadRelQuat = new Quaternionf();
+    public static boolean blockMovementUntilRelease = false;
+    
+    // 按键上一帧状态记录 (用以检测 keyTapped)
+    public static boolean prevFreeCameraKeyDown = false;
+    public static boolean prevFixedCameraKeyDown = false;
 
     // 自由视角下头部的平滑相对旋转四元数
     public static Quaternionf headRelQuat = new Quaternionf();

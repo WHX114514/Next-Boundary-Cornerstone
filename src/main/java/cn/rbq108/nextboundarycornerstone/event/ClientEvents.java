@@ -8,12 +8,15 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.world.level.GameType;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 /*
 
@@ -69,8 +72,6 @@ public class ClientEvents {
         var mc = Minecraft.getInstance();
         if (mc.player == null || !GlobalVariables.B_LowGravity) return;
 
-
-
         //屏蔽原版按键动作
         while (mc.options.keyShift.consumeClick()) {}
         while (mc.options.keySprint.consumeClick()) {}
@@ -82,6 +83,58 @@ public class ClientEvents {
 
         mc.player.input.shiftKeyDown = false;
         mc.player.input.jumping = false;
+
+        // 自由视角与锁定逻辑按键状态更新 (在 Pre-tick 运行以完全消除竞态条件)
+        boolean freeCameraKeyDown = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FREE_CAMERA.isDown();
+        boolean fixedCameraKeyDown = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FIXED_CAMERA.isDown();
+
+        boolean freeCameraKeyTapped = freeCameraKeyDown && !GlobalVariables.prevFreeCameraKeyDown;
+        boolean fixedCameraKeyTapped = fixedCameraKeyDown && !GlobalVariables.prevFixedCameraKeyDown;
+
+        GlobalVariables.prevFreeCameraKeyDown = freeCameraKeyDown;
+        GlobalVariables.prevFixedCameraKeyDown = fixedCameraKeyDown;
+
+        if (freeCameraKeyTapped && !GlobalVariables.B_FreeCameraToggle) {
+            mc.player.displayClientMessage(Component.literal("自由视角").withStyle(ChatFormatting.GREEN), true);
+        }
+
+        if (GlobalVariables.B_FreeCameraToggle) {
+            // 如果处于锁定自由视角状态，按下 C 键退出
+            if (freeCameraKeyTapped) {
+                GlobalVariables.B_FreeCameraToggle = false;
+                GlobalVariables.B_HeadRotationLocked = false;
+            }
+        } else {
+            // 正常持有模式下，如果处于自由视角并且按下了固定视角键 (Shift)
+            if (GlobalVariables.B_FreeCameraActive && fixedCameraKeyTapped) {
+                GlobalVariables.B_FreeCameraToggle = true;
+                GlobalVariables.B_HeadRotationLocked = true;
+                // 保存当前头部的相对位置作为固定角
+                GlobalVariables.lockedHeadRelQuat.set(GlobalVariables.headRelQuat);
+
+                // 开启持续拦截所有移动动作，直到本次 Shift 被松开
+                GlobalVariables.blockMovementUntilRelease = true;
+                GlobalVariables.B_INx = 0;
+                GlobalVariables.B_INy = 0;
+                GlobalVariables.B_INz = 0;
+
+                mc.player.displayClientMessage(Component.literal("固定头部自由视角").withStyle(ChatFormatting.GOLD), true);
+            }
+        }
+
+        // 更新 B_FreeCameraActive：按住 C 或者处于 Toggle 锁定状态
+        GlobalVariables.B_FreeCameraActive = freeCameraKeyDown || GlobalVariables.B_FreeCameraToggle;
+
+        if (GlobalVariables.blockMovementUntilRelease) {
+            // 如果用户仍未松开固定视角键 (Shift)，则继续屏蔽所有移动指令
+            if (!cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FIXED_CAMERA.isDown()) {
+                GlobalVariables.blockMovementUntilRelease = false;
+            } else {
+                GlobalVariables.B_INx = 0;
+                GlobalVariables.B_INy = 0;
+                GlobalVariables.B_INz = 0;
+            }
+        }
     }
 
     @SubscribeEvent
@@ -203,6 +256,17 @@ public class ClientEvents {
             else if (mc.options.keyShift.isDown()) GlobalVariables.B_INy = -1;
             else GlobalVariables.B_INy = 0;
 
+            if (GlobalVariables.blockMovementUntilRelease) {
+                // 如果用户仍未松开固定视角键 (Shift)，则继续屏蔽所有移动指令
+                if (!cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FIXED_CAMERA.isDown()) {
+                    GlobalVariables.blockMovementUntilRelease = false;
+                } else {
+                    GlobalVariables.B_INx = 0;
+                    GlobalVariables.B_INy = 0;
+                    GlobalVariables.B_INz = 0;
+                }
+            }
+
             //roll轴旋转逻辑
             long window = mc.getWindow().getWindow();
             boolean isShift = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);
@@ -224,11 +288,10 @@ public class ClientEvents {
             GlobalVariables.currentRollVelocity += (targetVelocity - GlobalVariables.currentRollVelocity) * currentRollSmoothing;
 
             if (Math.abs(GlobalVariables.currentRollVelocity) < 0.01f) GlobalVariables.currentRollVelocity = 0.0f;
-            // 自由视角按键状态更新
-            GlobalVariables.B_FreeCameraActive = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FREE_CAMERA.isDown();
+
 
             if (GlobalVariables.currentRollVelocity != 0.0f) {
-                if (GlobalVariables.B_FreeCameraActive) {
+                if (GlobalVariables.B_FreeCameraActive && !GlobalVariables.B_HeadRotationLocked) {
                     GlobalVariables.B_freeLookRoll += GlobalVariables.currentRollVelocity;
                     GlobalVariables.B_freeLookRoll = net.minecraft.util.Mth.wrapDegrees(GlobalVariables.B_freeLookRoll);
                 } else {
@@ -256,28 +319,33 @@ public class ClientEvents {
                     GlobalVariables.B_freeLookRoll = 0.0f;
                 }
 
-                // 限制 Yaw/Pitch 在左右/上下 90 度内，Roll 在 60 度内
-                float limit = 90.0f;
-                float clampedYaw = Math.max(-limit, Math.min(limit, GlobalVariables.B_freeLookYaw));
-                float clampedPitch = Math.max(-limit, Math.min(limit, GlobalVariables.B_freeLookPitch));
+                if (GlobalVariables.B_HeadRotationLocked) {
+                    // 如果头部旋转被锁死，视角如同原版那样自由转动，头部固定为锁死瞬间的角度
+                    targetRelQuat.set(GlobalVariables.lockedHeadRelQuat);
+                } else {
+                    // 限制 Yaw/Pitch 在左右/上下 90 度内，Roll 在 60 度内
+                    float limit = 90.0f;
+                    float clampedYaw = Math.max(-limit, Math.min(limit, GlobalVariables.B_freeLookYaw));
+                    float clampedPitch = Math.max(-limit, Math.min(limit, GlobalVariables.B_freeLookPitch));
 
-                float rollLimit = 60.0f;
-                float clampedRoll = Math.max(-rollLimit, Math.min(rollLimit, GlobalVariables.B_freeLookRoll));
+                    float rollLimit = 60.0f;
+                    float clampedRoll = Math.max(-rollLimit, Math.min(rollLimit, GlobalVariables.B_freeLookRoll));
 
-                // 重建目标相对旋转四元数供头部渲染使用
-                targetRelQuat.rotationYXZ(
-                        (float) Math.toRadians(-clampedYaw),
-                        (float) Math.toRadians(clampedPitch),
-                        (float) Math.toRadians(clampedRoll)
-                );
+                    // 重建目标相对旋转四元数供头部渲染使用
+                    targetRelQuat.rotationYXZ(
+                            (float) Math.toRadians(-clampedYaw),
+                            (float) Math.toRadians(clampedPitch),
+                            (float) Math.toRadians(clampedRoll)
+                    );
 
-                // 更新当前视角的绝对四元数 (不受限位)
-                Quaternionf freeLookRelQuat = new Quaternionf().rotationYXZ(
-                        (float) Math.toRadians(-GlobalVariables.B_freeLookYaw),
-                        (float) Math.toRadians(GlobalVariables.B_freeLookPitch),
-                        (float) Math.toRadians(GlobalVariables.B_freeLookRoll)
-                );
-                GlobalVariables.currentQuat.set(bodyQuat).mul(freeLookRelQuat);
+                    // 更新当前视角的绝对四元数 (不受限位)
+                    Quaternionf freeLookRelQuat = new Quaternionf().rotationYXZ(
+                            (float) Math.toRadians(-GlobalVariables.B_freeLookYaw),
+                            (float) Math.toRadians(GlobalVariables.B_freeLookPitch),
+                            (float) Math.toRadians(GlobalVariables.B_freeLookRoll)
+                    );
+                    GlobalVariables.currentQuat.set(bodyQuat).mul(freeLookRelQuat);
+                }
             } else {
                 // 如果刚刚从自由视角松开，将视角瞬间对准身体朝向
                 if (GlobalVariables.wasFreeCamera) {
@@ -293,6 +361,8 @@ public class ClientEvents {
                     player.setXRot((float) GlobalVariables.B_Dx);
                     player.yRotO = player.getYRot();
                     player.xRotO = player.getXRot();
+
+                    mc.player.displayClientMessage(Component.literal("恢复视角").withStyle(ChatFormatting.GRAY), true);
                 }
 
                 // 正常状态下，身体角度同步跟随视角四元数
@@ -304,6 +374,16 @@ public class ClientEvents {
                 targetRelQuat.set(relQuat);
             }
             GlobalVariables.wasFreeCamera = GlobalVariables.B_FreeCameraActive;
+
+            if (GlobalVariables.B_HeadRotationLocked) {
+                float keyboardRollSpeed = 2.0f;
+                if (cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FIXED_CAMERA_LEFT.isDown()) {
+                    GlobalVariables.currentQuat.rotateZ((float) Math.toRadians(-keyboardRollSpeed));
+                }
+                if (cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FIXED_CAMERA_ROLL.isDown()) {
+                    GlobalVariables.currentQuat.rotateZ((float) Math.toRadians(keyboardRollSpeed));
+                }
+            }
 
             // 备份上一帧头部相对旋转
             GlobalVariables.prevHeadRelQuat.set(GlobalVariables.headRelQuat);
@@ -385,6 +465,23 @@ public class ClientEvents {
                     (GlobalVariables.currentFovModifier - GlobalVariables.prevFovModifier) * partialTick;
 
             event.setFOV(event.getFOV() + smoothedFov);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (GlobalVariables.B_LowGravity && GlobalVariables.B_HeadRotationLocked) {
+            double deltaY = event.getScrollDeltaY();
+            if (deltaY != 0) {
+                // 滚轮向上 (deltaY > 0) -> 左滚转 (B_FIXED_CAMERA_LEFT)
+                // 滚轮向下 (deltaY < 0) -> 右滚转 (B_FIXED_CAMERA_ROLL)
+                float rollSpeed = 5.0f; // 滚轮滚转灵敏度
+                float rollAmount = (float) (-deltaY * rollSpeed);
+                GlobalVariables.currentQuat.rotateZ((float) Math.toRadians(rollAmount));
+
+                // 取消事件以阻止原版快捷栏切换槽位
+                event.setCanceled(true);
+            }
         }
     }
 }

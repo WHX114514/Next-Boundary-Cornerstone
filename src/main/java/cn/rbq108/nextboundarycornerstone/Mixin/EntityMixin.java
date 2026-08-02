@@ -87,15 +87,21 @@ public abstract class EntityMixin implements RollEntity {
             cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.mouseDeltaY = dy; // 横向（偏航）
 
             if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_FreeCameraActive) {
-                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw += dy;
-                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch += dx;
+                if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_HeadRotationLocked) {
+                    // 如果头部已被锁定，视角自由随意转动（不受身体基准和限位束缚，绕自身相机轴）
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));
+                } else {
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw += dy;
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch += dx;
 
-                // Keep yaw in [-180, 180] range
-                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw = 
-                    net.minecraft.util.Mth.wrapDegrees(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw);
-                // Clamp pitch in [-90, 90]
-                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch = 
-                    Math.max(-90.0f, Math.min(90.0f, cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch));
+                    // Keep yaw in [-180, 180] range
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw = 
+                        net.minecraft.util.Mth.wrapDegrees(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw);
+                    // Clamp pitch in [-90, 90]
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch = 
+                        Math.max(-90.0f, Math.min(90.0f, cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch));
+                }
             } else {
                 // 绕x轴是俯仰(dx)，绕Y是偏航(dy)
                 cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
