@@ -11,6 +11,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import com.mojang.blaze3d.vertex.PoseStack;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 @EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class model {
@@ -79,12 +80,24 @@ public class model {
 
             // 计算头身隔离矩阵
             Quaternionf camQuat = new Quaternionf(GlobalVariables.prevQuat).slerp(GlobalVariables.currentQuat, pt);
+            Quaternionf relQuat;
+
+            // 检查头部相对旋转是否仍在平滑过渡/回正中
+            boolean isHeadReturning = GlobalVariables.headRelQuat.angle() > 0.001f;
+
+            if (GlobalVariables.B_FreeCameraActive || isHeadReturning) {
+                // 自由视角或回弹归位期间，使用每 tick 进行 Slerp 平滑插值后的头部相对四元数（消除突变）
+                relQuat = new Quaternionf(GlobalVariables.prevHeadRelQuat).slerp(GlobalVariables.headRelQuat, pt);
+            } else {
+                // 正常状态下，直接使用身体与镜头的实时旋转差，保留原版微弱的头部转向惯性延迟效果
+                relQuat = new Quaternionf(bodyQuat).invert().mul(camQuat);
+            }
+
             Quaternionf y180 = new Quaternionf().rotateY((float) Math.PI);
             Quaternionf z180 = new Quaternionf().rotateZ((float) Math.PI);
             GlobalVariables.headFixQuat = new Quaternionf(z180).invert()
                     .mul(new Quaternionf(y180).invert())
-                    .mul(new Quaternionf(bodyQuat).invert())
-                    .mul(camQuat).mul(y180).mul(z180);
+                    .mul(relQuat).mul(y180).mul(z180);
 
             // 应用渲染 (身箱合一逻辑)
             PoseStack poseStack = event.getPoseStack();

@@ -121,6 +121,9 @@ public class ClientEvents {
             // 强制同步上一帧四元数，防止第一帧画面闪烁喵
             GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
 
+            GlobalVariables.headRelQuat.identity();
+            GlobalVariables.prevHeadRelQuat.identity();
+
             //调试断点
             // System.out.println("111111111111111111111");
         }
@@ -225,10 +228,81 @@ public class ClientEvents {
                 GlobalVariables.currentQuat.rotateZ((float) Math.toRadians(GlobalVariables.currentRollVelocity));
             }
 
-            Vector3f euler = GlobalVariables.currentQuat.getEulerAnglesYXZ(new Vector3f());
-            GlobalVariables.B_Dz = Math.toDegrees(euler.z);
-            GlobalVariables.B_Dx = Math.toDegrees(euler.x);
-            GlobalVariables.B_Dy = Math.toDegrees(-euler.y);
+            // 自由视角按键状态更新
+            GlobalVariables.B_FreeCameraActive = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FREE_CAMERA.isDown();
+
+            // 计算当前相对于身体的相对旋转量，用来推导头部朝向
+            Quaternionf bodyQuat = new Quaternionf().rotationYXZ(
+                    (float) Math.toRadians(-GlobalVariables.B_Dy),
+                    (float) Math.toRadians(GlobalVariables.B_Dx),
+                    (float) Math.toRadians(GlobalVariables.B_Dz)
+            );
+            Quaternionf relQuat = new Quaternionf(bodyQuat).invert().mul(GlobalVariables.currentQuat);
+
+            Quaternionf targetRelQuat = new Quaternionf();
+
+            if (GlobalVariables.B_FreeCameraActive) {
+                // 自由视角激活时：身体朝向 (B_Dx, B_Dy, B_Dz) 保持冻结，不从 currentQuat 更新
+                
+                // 1. 提取相对视线向量
+                Vector3f relLook = new Vector3f(0, 0, 1).rotate(relQuat);
+                double horiz = Math.sqrt(relLook.x * relLook.x + relLook.z * relLook.z);
+                float yaw = (horiz > 0.001) ? (float) Math.atan2(relLook.x, relLook.z) : 0.0f;
+                float pitch = (float) Math.asin(Math.max(-1.0f, Math.min(1.0f, -relLook.y)));
+
+                // 2. 限制 Yaw/Pitch 在左右/上下 90 度内
+                float limit = (float) Math.toRadians(90.0);
+                float clampedYaw = Math.max(-limit, Math.min(limit, yaw));
+                float clampedPitch = Math.max(-limit, Math.min(limit, pitch));
+
+                // 3. 提取并限制相对滚转 (Roll) 在 60 度内
+                Quaternionf qLookUnclamped = new Quaternionf().rotationYXZ(yaw, pitch, 0.0f);
+                Quaternionf qRoll = qLookUnclamped.conjugate().mul(relQuat);
+                float relRoll = (float) qRoll.getEulerAnglesYXZ(new Vector3f()).z;
+
+                float rollLimit = (float) Math.toRadians(60.0);
+                float clampedRoll = Math.max(-rollLimit, Math.min(rollLimit, relRoll));
+
+                // 4. 重建目标相对旋转四元数
+                targetRelQuat.rotationYXZ(clampedYaw, clampedPitch, 0.0f).rotateLocalZ(clampedRoll);
+            } else {
+                // 如果刚刚从自由视角松开，将视角瞬间对准身体朝向
+                if (GlobalVariables.wasFreeCamera) {
+                    GlobalVariables.currentQuat.rotationYXZ(
+                            (float) Math.toRadians(-GlobalVariables.B_Dy),
+                            (float) Math.toRadians(GlobalVariables.B_Dx),
+                            (float) Math.toRadians(GlobalVariables.B_Dz)
+                    );
+                    GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
+
+                    // 瞬间同步玩家逻辑朝向，防止手部渲染或视角变化抽搐
+                    player.setYRot((float) GlobalVariables.B_Dy);
+                    player.setXRot((float) GlobalVariables.B_Dx);
+                    player.yRotO = player.getYRot();
+                    player.xRotO = player.getXRot();
+                }
+
+                // 正常状态下，身体角度同步跟随视角四元数
+                Vector3f euler = GlobalVariables.currentQuat.getEulerAnglesYXZ(new Vector3f());
+                GlobalVariables.B_Dz = Math.toDegrees(euler.z);
+                GlobalVariables.B_Dx = Math.toDegrees(euler.x);
+                GlobalVariables.B_Dy = Math.toDegrees(-euler.y);
+
+                targetRelQuat.set(relQuat);
+            }
+            GlobalVariables.wasFreeCamera = GlobalVariables.B_FreeCameraActive;
+
+            // 备份上一帧头部相对旋转
+            GlobalVariables.prevHeadRelQuat.set(GlobalVariables.headRelQuat);
+
+            // 每 tick 线性/球面插值更新头部朝向
+            // 如果自由视角开启或者头部仍在归位过程中，用 Slerp 做平滑变化
+            if (GlobalVariables.B_FreeCameraActive || GlobalVariables.headRelQuat.angle() > 0.001f) {
+                float interpolationSpeed = 0.25f; // 平滑度系数，可以按需调节
+                GlobalVariables.headRelQuat.slerp(targetRelQuat, interpolationSpeed);
+            } else {
+                GlobalVariables.headRelQuat.set(targetRelQuat);
+            }
 
             //阻断与物理注入
             player.xxa = 0.0f; player.yya = 0.0f; player.zza = 0.0f;
@@ -276,6 +350,10 @@ public class ClientEvents {
             GlobalVariables.B_Dz *= 0.8f;
             GlobalVariables.B_Dx = player.getXRot();
             GlobalVariables.B_Dy = player.getYRot();
+            
+            // 落地时强制清除自由视角残留状态
+            GlobalVariables.B_FreeCameraActive = false;
+            GlobalVariables.wasFreeCamera = false;
             if (!player.isCreative()) {
                 //player.getAbilities().mayfly = false;
                 //player.getAbilities().flying = false;

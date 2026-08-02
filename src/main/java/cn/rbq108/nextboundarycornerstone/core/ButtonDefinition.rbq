@@ -19,3 +19,4 @@ ButtonDefinition.rbq
 背包(无重力操作时)      B_BAG                Shift+E
 制动                  B_BREAK             H
 疾跑                  B_RushButton        ctrl
+自由旋转视角            B_FreeCamera        C

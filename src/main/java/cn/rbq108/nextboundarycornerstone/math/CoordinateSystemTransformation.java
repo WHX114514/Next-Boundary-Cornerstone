@@ -23,7 +23,7 @@ public class CoordinateSystemTransformation {
         Vector3f localVel = new Vector3f(-localX, localY, localZ);
 
 
-        GlobalVariables.currentQuat.transform(localVel);
+        GlobalVariables.getBodyQuat().transform(localVel);
 
         // 把转换好的“地面世界速度”解包，存进这堆数据里
         GlobalVariables.B_Vx4 = localVel.x;

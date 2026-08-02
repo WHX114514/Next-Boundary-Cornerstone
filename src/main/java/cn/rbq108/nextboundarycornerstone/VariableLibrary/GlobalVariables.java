@@ -76,6 +76,30 @@ public class GlobalVariables {
     public static Object playerHat = null;           // 抓取原版的头盔对象
     public static org.joml.Quaternionf headFixQuat = new org.joml.Quaternionf(); // 抵消矩阵
 
+    // 自由视角 (Free Look) 状态位
+    public static boolean B_FreeCameraActive = false;
+    public static boolean wasFreeCamera = false;
+
+    // 自由视角下头部的平滑相对旋转四元数
+    public static Quaternionf headRelQuat = new Quaternionf();
+    public static Quaternionf prevHeadRelQuat = new Quaternionf();
+
+    /**
+     * 获取玩家机体物理朝向四元数。
+     * 当处于自由视角时，机体朝向与相机四元数分离，由已冻结的 B_Dx, B_Dy, B_Dz 计算生成；
+     * 正常状态下，直接使用视角的 currentQuat。
+     */
+    public static Quaternionf getBodyQuat() {
+        if (B_LowGravity) {
+            return new Quaternionf().rotationYXZ(
+                    (float) Math.toRadians(-B_Dy),
+                    (float) Math.toRadians(B_Dx),
+                    (float) Math.toRadians(B_Dz)
+            );
+        }
+        return currentQuat;
+    }
+
 
     public static boolean B_CanBackpackGrantGravity = true;//负责控制“重力切换”这个功能是由本模组负责还是其他依依妖妖的附属模组负责，等加入附属模组的时候要把这个量设为false
 

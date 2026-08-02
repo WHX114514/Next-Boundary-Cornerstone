@@ -73,7 +73,7 @@ public class spawnRcsParticle {
 
 
         // 把世界加速度“扭”回玩家的机体坐标系（Local Space）
-        Quaternionf inverseQuat = new Quaternionf(GlobalVariables.currentQuat).invert();
+        Quaternionf inverseQuat = new Quaternionf(GlobalVariables.getBodyQuat()).invert();
         Vector3f localAccel = worldAccel.rotate(inverseQuat);
 
         // 根据机体感受到的推力方向，点对应的喷口喵
@@ -96,7 +96,7 @@ public class spawnRcsParticle {
      * 粒子发射器：将局部喷口动态对齐到 3D 支架的当前旋转状态喵！
      */
     private static void fireNozzles(Player player, Vector3f[] nozzles, Vector3f localDirection) {
-        Quaternionf quat = GlobalVariables.currentQuat;
+        Quaternionf quat = GlobalVariables.getBodyQuat();
         // 拿到随机数生成器，让粒子别排成死板的一条线
         net.minecraft.util.RandomSource random = player.getRandom();
 
@@ -132,7 +132,7 @@ public class spawnRcsParticle {
         }
     }
     /*private static void fireNozzles(Player player, Vector3f[] nozzles, Vector3f localDirection) {
-        Quaternionf quat = GlobalVariables.currentQuat;
+        Quaternionf quat = GlobalVariables.getBodyQuat();
 
         for (Vector3f localOffset : nozzles) {
 
