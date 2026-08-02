@@ -84,6 +84,11 @@ public class GlobalVariables {
     public static Quaternionf headRelQuat = new Quaternionf();
     public static Quaternionf prevHeadRelQuat = new Quaternionf();
 
+    // 自由视角下累积的相对角度 (以机体为基准)
+    public static float B_freeLookYaw = 0.0f;
+    public static float B_freeLookPitch = 0.0f;
+    public static float B_freeLookRoll = 0.0f;
+
     /**
      * 获取玩家机体物理朝向四元数。
      * 当处于自由视角时，机体朝向与相机四元数分离，由已冻结的 B_Dx, B_Dy, B_Dz 计算生成；

@@ -224,12 +224,17 @@ public class ClientEvents {
             GlobalVariables.currentRollVelocity += (targetVelocity - GlobalVariables.currentRollVelocity) * currentRollSmoothing;
 
             if (Math.abs(GlobalVariables.currentRollVelocity) < 0.01f) GlobalVariables.currentRollVelocity = 0.0f;
-            if (GlobalVariables.currentRollVelocity != 0.0f) {
-                GlobalVariables.currentQuat.rotateZ((float) Math.toRadians(GlobalVariables.currentRollVelocity));
-            }
-
             // 自由视角按键状态更新
             GlobalVariables.B_FreeCameraActive = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FREE_CAMERA.isDown();
+
+            if (GlobalVariables.currentRollVelocity != 0.0f) {
+                if (GlobalVariables.B_FreeCameraActive) {
+                    GlobalVariables.B_freeLookRoll += GlobalVariables.currentRollVelocity;
+                    GlobalVariables.B_freeLookRoll = net.minecraft.util.Mth.wrapDegrees(GlobalVariables.B_freeLookRoll);
+                } else {
+                    GlobalVariables.currentQuat.rotateZ((float) Math.toRadians(GlobalVariables.currentRollVelocity));
+                }
+            }
 
             // 计算当前相对于身体的相对旋转量，用来推导头部朝向
             Quaternionf bodyQuat = new Quaternionf().rotationYXZ(
@@ -244,27 +249,35 @@ public class ClientEvents {
             if (GlobalVariables.B_FreeCameraActive) {
                 // 自由视角激活时：身体朝向 (B_Dx, B_Dy, B_Dz) 保持冻结，不从 currentQuat 更新
                 
-                // 1. 提取相对视线向量
-                Vector3f relLook = new Vector3f(0, 0, 1).rotate(relQuat);
-                double horiz = Math.sqrt(relLook.x * relLook.x + relLook.z * relLook.z);
-                float yaw = (horiz > 0.001) ? (float) Math.atan2(relLook.x, relLook.z) : 0.0f;
-                float pitch = (float) Math.asin(Math.max(-1.0f, Math.min(1.0f, -relLook.y)));
+                // 初始化自由视角变量
+                if (!GlobalVariables.wasFreeCamera) {
+                    GlobalVariables.B_freeLookYaw = 0.0f;
+                    GlobalVariables.B_freeLookPitch = 0.0f;
+                    GlobalVariables.B_freeLookRoll = 0.0f;
+                }
 
-                // 2. 限制 Yaw/Pitch 在左右/上下 90 度内
-                float limit = (float) Math.toRadians(90.0);
-                float clampedYaw = Math.max(-limit, Math.min(limit, yaw));
-                float clampedPitch = Math.max(-limit, Math.min(limit, pitch));
+                // 限制 Yaw/Pitch 在左右/上下 90 度内，Roll 在 60 度内
+                float limit = 90.0f;
+                float clampedYaw = Math.max(-limit, Math.min(limit, GlobalVariables.B_freeLookYaw));
+                float clampedPitch = Math.max(-limit, Math.min(limit, GlobalVariables.B_freeLookPitch));
 
-                // 3. 提取并限制相对滚转 (Roll) 在 60 度内
-                Quaternionf qLookUnclamped = new Quaternionf().rotationYXZ(yaw, pitch, 0.0f);
-                Quaternionf qRoll = qLookUnclamped.conjugate().mul(relQuat);
-                float relRoll = (float) qRoll.getEulerAnglesYXZ(new Vector3f()).z;
+                float rollLimit = 60.0f;
+                float clampedRoll = Math.max(-rollLimit, Math.min(rollLimit, GlobalVariables.B_freeLookRoll));
 
-                float rollLimit = (float) Math.toRadians(60.0);
-                float clampedRoll = Math.max(-rollLimit, Math.min(rollLimit, relRoll));
+                // 重建目标相对旋转四元数供头部渲染使用
+                targetRelQuat.rotationYXZ(
+                        (float) Math.toRadians(-clampedYaw),
+                        (float) Math.toRadians(clampedPitch),
+                        (float) Math.toRadians(clampedRoll)
+                );
 
-                // 4. 重建目标相对旋转四元数
-                targetRelQuat.rotationYXZ(clampedYaw, clampedPitch, 0.0f).rotateLocalZ(clampedRoll);
+                // 更新当前视角的绝对四元数 (不受限位)
+                Quaternionf freeLookRelQuat = new Quaternionf().rotationYXZ(
+                        (float) Math.toRadians(-GlobalVariables.B_freeLookYaw),
+                        (float) Math.toRadians(GlobalVariables.B_freeLookPitch),
+                        (float) Math.toRadians(GlobalVariables.B_freeLookRoll)
+                );
+                GlobalVariables.currentQuat.set(bodyQuat).mul(freeLookRelQuat);
             } else {
                 // 如果刚刚从自由视角松开，将视角瞬间对准身体朝向
                 if (GlobalVariables.wasFreeCamera) {

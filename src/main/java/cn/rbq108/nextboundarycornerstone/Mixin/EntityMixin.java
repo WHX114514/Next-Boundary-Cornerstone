@@ -86,9 +86,21 @@ public abstract class EntityMixin implements RollEntity {
             cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.mouseDeltaX = dx; // 纵向（俯仰）
             cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.mouseDeltaY = dy; // 横向（偏航）
 
-            // 绕x轴是俯仰(dx)，绕Y是偏航(dy)
-            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
-            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));
+            if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_FreeCameraActive) {
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw += dy;
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch += dx;
+
+                // Keep yaw in [-180, 180] range
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw = 
+                    net.minecraft.util.Mth.wrapDegrees(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw);
+                // Clamp pitch in [-90, 90]
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch = 
+                    Math.max(-90.0f, Math.min(90.0f, cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch));
+            } else {
+                // 绕x轴是俯仰(dx)，绕Y是偏航(dy)
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));
+            }
 
             // === Yaw & Pitch ===
             // 绝对不能用四元数反推(asin/atan2)来设置 player 的 XRot 和 YRot！
