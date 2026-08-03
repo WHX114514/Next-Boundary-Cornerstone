@@ -64,22 +64,18 @@ public class MixinGui {
                 // 3. 将世界空间前向向量转换到相机空间 (使用副本避免污染 cameraQuatInv)
                 Vector3f bodyFwdCam = new Quaternionf(cameraQuatInv).transform(new Vector3f(bodyFwdWorld));
 
-                // 4. 判断是否在镜头前半球 (z > 0.01f 表示在镜头前方，防止除零或反向渲染)
-                if (bodyFwdCam.z <= 0.01f) {
-                    // 如果在镜头后方，则将准星平移到视野外隐藏
-                    guiGraphics.pose().pushPose();
-                    guiGraphics.pose().translate(10000.0f, 10000.0f, 0.0f);
-                    return;
-                }
-
-                // 5. 使用 3D 透视投影公式精确计算准星在 GUI 视口下的偏移量 (并乘以配置文件的微调系数)
                 double fovRad = Math.toRadians(fovDegrees);
                 double scale = (guiHeight / 2.0) / Math.tan(fovRad / 2.0);
                 double scaleFactor = Config.PHYSICS.crosshairScaleFactor.get().doubleValue() * GlobalVariables.B_CrosshairScaleFactor;
 
-                double depth = bodyFwdCam.z;
-                double offsetX = -(bodyFwdCam.x / depth) * scale * scaleFactor;
-                double offsetY = -(bodyFwdCam.y / depth) * scale * scaleFactor;
+                // 4. 计算准星在 GUI 视口下的偏移量 (如果身体在镜头前半球，否则将准星平移到视野外隐藏)
+                double offsetX = 10000.0;
+                double offsetY = 10000.0;
+                if (bodyFwdCam.z > 0.01f) {
+                    double depth = bodyFwdCam.z;
+                    offsetX = -(bodyFwdCam.x / depth) * scale * scaleFactor;
+                    offsetY = -(bodyFwdCam.y / depth) * scale * scaleFactor;
+                }
 
                 // 6. 计算头部指示 UI (圆圈/角度/警告) 的偏移量
                 // 普通自由视角 (未锁定)：头部 = 相机前向，UI 固定在屏幕中心，偏移量为 0
@@ -105,8 +101,8 @@ public class MixinGui {
                 guiGraphics.pose().pushPose();
                 guiGraphics.pose().translate((float) headOffsetX, (float) headOffsetY, 0.0f);
 
-                // 渲染指示圆圈
-                drawHollowCircle(guiGraphics, centerX, centerY, 5, 0x80FFFFFF);
+                // 渲染指示圆圈 (左移1像素，上移1像素微调对齐)
+                drawHollowCircle(guiGraphics, centerX - 1, centerY - 1, 5, 0x80FFFFFF);
 
                 // 绘制相对偏航角 (Yaw) 与俯仰角 (Pitch) 数字指示
                 int yawVal = (int) Math.round(GlobalVariables.B_freeLookYaw);
