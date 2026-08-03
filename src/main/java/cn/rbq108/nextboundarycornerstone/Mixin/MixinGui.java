@@ -30,6 +30,20 @@ public class MixinGui {
             // 在屏幕中心渲染一个半透明白色指示圆圈 (HUD中心指示器)
             drawHollowCircle(guiGraphics, centerX, centerY, 5, 0x80FFFFFF);
 
+            // 绘制相对偏航角 (Yaw) 与俯仰角 (Pitch) 数字指示
+            int yawVal = (int) Math.round(GlobalVariables.B_freeLookYaw);
+            int pitchVal = (int) Math.round(-GlobalVariables.B_freeLookPitch);
+            String yawText = yawVal < 0 ? "L " + Math.abs(yawVal) + "°" : (yawVal > 0 ? "R " + yawVal + "°" : "0°");
+            String pitchText = pitchVal < 0 ? "D " + Math.abs(pitchVal) + "°" : (pitchVal > 0 ? "U " + pitchVal + "°" : "0°");
+
+            guiGraphics.drawCenteredString(mc.font, yawText, centerX, centerY - 16, 0x80FFFFFF);
+            guiGraphics.drawString(mc.font, pitchText, centerX + 10, centerY - 4, 0x80FFFFFF);
+
+            // 当扭头角度达到 110° 极限时，在圆圈下方显示带颜色的文本 "再转过去想要脖子扭成麻花嘛？杂鱼杂鱼~"
+            if (Math.abs(yawVal) >= 110) {
+                guiGraphics.drawCenteredString(mc.font, "再转过去想要脖子扭成麻花嘛？杂鱼杂鱼~", centerX, centerY + 10, 0xFFFF5555); // 红色警告色
+            }
+
             // 获取渲染帧部分 tick (0.0 到 1.0 之间的当前 tick 内插值位置)
             float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
 
