@@ -275,7 +275,7 @@ public class ClientEvents {
             long window = mc.getWindow().getWindow();
             boolean isShift = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);
 
-            if (!isShift) {
+            if (!isShift && !GlobalVariables.B_FreeCameraActive) {
                 int keyRollLeft = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_ROLL_LEFT.getKey().getValue();
                 int keyRollRight = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_ROLL_RIGHT.getKey().getValue();
                 if (InputConstants.isKeyDown(window, keyRollLeft)) control.B_INroll = -1;

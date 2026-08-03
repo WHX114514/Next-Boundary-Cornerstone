@@ -44,8 +44,10 @@ public class control {
 
         // Roll-axis: Left Roll (+1) and Right Roll (-1)
         B_INroll = 0;
-        if (Keybinds.B_ROLL_LEFT.isDown()) B_INroll += 1;
-        if (Keybinds.B_ROLL_RIGHT.isDown()) B_INroll -= 1;
+        if (!cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_FreeCameraActive) {
+            if (Keybinds.B_ROLL_LEFT.isDown()) B_INroll += 1;
+            if (Keybinds.B_ROLL_RIGHT.isDown()) B_INroll -= 1;
+        }
 
         // Bag shortcut detection
         // Note: Using consumeClick() instead of isDown() to prevent UI spamming every tick
