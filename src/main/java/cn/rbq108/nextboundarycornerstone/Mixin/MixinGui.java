@@ -97,9 +97,21 @@ public class MixinGui {
                     }
                 }
 
-                // 绘制头部的 UI 组件 (圆圈/角度/警告)，应用头部的偏移量
+                // 绘制头部的 UI 组件 (圆圈/角度/警告)，应用头部的偏移量和视角旋转 (Roll)
                 guiGraphics.pose().pushPose();
                 guiGraphics.pose().translate((float) headOffsetX, (float) headOffsetY, 0.0f);
+
+                // 如果处于锁定头部模式，且视角发生了 Roll 轴旋转，则对 HUD 进行对应的旋转，使其世界对齐
+                if (GlobalVariables.B_HeadRotationLocked) {
+                    Quaternionf headRelCamQuat = new Quaternionf(cameraQuatInv).mul(bodyQuat).mul(GlobalVariables.lockedHeadRelQuat);
+                    Vector3f euler = headRelCamQuat.getEulerAnglesYXZ(new Vector3f());
+                    float rollRad = euler.z; // 获取相对 Roll 角度 (弧度)
+
+                    // 绕圆圈中心进行旋转
+                    guiGraphics.pose().translate((float) centerX, (float) centerY, 0.0f);
+                    guiGraphics.pose().mulPose(new Quaternionf().rotationZ(rollRad));
+                    guiGraphics.pose().translate((float) -centerX, (float) -centerY, 0.0f);
+                }
 
                 // 渲染指示圆圈 (左移1像素，上移1像素微调对齐)
                 drawHollowCircle(guiGraphics, centerX - 1, centerY - 1, 5, 0x80FFFFFF);
@@ -115,7 +127,7 @@ public class MixinGui {
 
                 // 当扭头角度达到 110° 极限时，在圆圈下方显示警告文本
                 if (Math.abs(yawVal) >= 110) {
-                    guiGraphics.drawCenteredString(mc.font, "1277227", centerX, centerY + 10, 0xFFFF5555);
+                    guiGraphics.drawCenteredString(mc.font, "再转过去想要脖子扭成麻花嘛？杂鱼杂鱼~", centerX, centerY + 10, 0xFFFF5555);
                 }
 
                 guiGraphics.pose().popPose();
@@ -123,6 +135,15 @@ public class MixinGui {
                 // 移动准星矩阵，使准星绝对对齐身体前向的 3D 空间朝向 (由 renderCrosshair 绘制，在 RETURN 注入中由 popPose 清理)
                 guiGraphics.pose().pushPose();
                 guiGraphics.pose().translate((float) offsetX, (float) offsetY, 0.0f);
+
+                // 绕准星中心进行 Z 轴旋转 (Roll 旋转)，使准星本身跟随身体滚动而倾斜
+                Quaternionf bodyRelCamQuat = new Quaternionf(cameraQuatInv).mul(bodyQuat);
+                Vector3f bodyEuler = bodyRelCamQuat.getEulerAnglesYXZ(new Vector3f());
+                float bodyRollRad = bodyEuler.z;
+
+                guiGraphics.pose().translate((float) centerX, (float) centerY, 0.0f);
+                guiGraphics.pose().mulPose(new Quaternionf().rotationZ(bodyRollRad));
+                guiGraphics.pose().translate((float) -centerX, (float) -centerY, 0.0f);
             }
         }
     }
