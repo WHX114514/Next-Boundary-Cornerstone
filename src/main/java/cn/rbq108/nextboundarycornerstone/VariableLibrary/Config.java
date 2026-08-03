@@ -28,6 +28,7 @@ public class Config {
         public final ModConfigSpec.DoubleValue afterburnerRatio;
         public final ModConfigSpec.DoubleValue aMax;
         public final ModConfigSpec.DoubleValue brakeRatio;
+        public final ModConfigSpec.DoubleValue crosshairScaleFactor;
 
         public PhysicsSettings(ModConfigSpec.Builder builder) {
             builder.push("Flight_Dynamics");
@@ -63,6 +64,10 @@ public class Config {
             brakeRatio = builder
                     .comment("自动制动/减速倍率 - 默认: 1.2")
                     .defineInRange("BrakeRatio", 1.2, 0.0, 20.0);
+
+            crosshairScaleFactor = builder
+                    .comment("第一人称自由视角准星物理投影微调系数 - 默认: 1.0 (如果觉得转头时准星有点过头或没到位，可微调此值，如 0.95 或 1.05)")
+                    .defineInRange("CrosshairScaleFactor", 1.0, 0.1, 10.0);
 
             builder.pop();
         }

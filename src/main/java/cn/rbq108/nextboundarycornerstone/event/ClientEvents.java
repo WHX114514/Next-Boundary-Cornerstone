@@ -143,6 +143,10 @@ public class ClientEvents {
         var player = mc.player;
         if (player == null) return;
 
+        // 备份上一帧的相对旋转角，供第一人称准星渲染时做线性插值消除延迟
+        GlobalVariables.prevFreeLookYaw = GlobalVariables.B_freeLookYaw;
+        GlobalVariables.prevFreeLookPitch = GlobalVariables.B_freeLookPitch;
+
         //这一帧自己实时感应背包状态
         boolean isWearingBackpack = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST)
                 .is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get());
@@ -456,16 +460,16 @@ public class ClientEvents {
 
     @SubscribeEvent
     public static void onComputeFov(ViewportEvent.ComputeFov event) {
+        float partialTick = (float) event.getPartialTick();
+        double finalFov = event.getFOV();
         if (GlobalVariables.B_LowGravity) {
-
-            // 渲染帧线性插值 (消除卡顿
-
-            float partialTick = (float) event.getPartialTick();
+            // 渲染帧线性插值 (消除卡顿)
             float smoothedFov = GlobalVariables.prevFovModifier +
                     (GlobalVariables.currentFovModifier - GlobalVariables.prevFovModifier) * partialTick;
-
-            event.setFOV(event.getFOV() + smoothedFov);
+            finalFov += smoothedFov;
+            event.setFOV(finalFov);
         }
+        GlobalVariables.lastComputedFov = (float) finalFov;
     }
 
     @SubscribeEvent

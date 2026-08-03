@@ -60,6 +60,8 @@ public class GlobalVariables {
 
     public static float prevFovModifier = 0.0f;    // 上一逻辑帧的旧值
     public static float currentFovModifier = 0.0f; // 当前逻辑帧的新值
+    public static float lastComputedFov = 70.0f;    // 最终计算出的渲染帧实时 FOV 度数
+    public static float B_CrosshairScaleFactor = 0.87f; //自由视角准星移动比例调整 (默认 1.0f)
 
 
     // 🩺 飞船机身独立控制变量
@@ -98,6 +100,10 @@ public class GlobalVariables {
     public static float B_freeLookYaw = 0.0f;
     public static float B_freeLookPitch = 0.0f;
     public static float B_freeLookRoll = 0.0f;
+
+    // 上一帧的相对角度备份，用于在第一人称渲染帧执行线性插值，消除画面延迟
+    public static float prevFreeLookYaw = 0.0f;
+    public static float prevFreeLookPitch = 0.0f;
 
     /**
      * 获取玩家机体物理朝向四元数。

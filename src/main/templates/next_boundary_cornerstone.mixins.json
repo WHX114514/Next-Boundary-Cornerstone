@@ -10,7 +10,9 @@
     "EntityMixin",
     "KeyboardHandlerMixin",
     "MixinModelPart",
-    "MixinRemotePlayerModel"
+    "MixinRemotePlayerModel",
+    "MixinItemInHandRenderer",
+    "MixinGui"
 
   ],
   "injectors": {

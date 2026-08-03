@@ -95,9 +95,16 @@ public abstract class EntityMixin implements RollEntity {
                     cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw += dy;
                     cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch += dx;
 
-                    // Keep yaw in [-180, 180] range
-                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw = 
-                        net.minecraft.util.Mth.wrapDegrees(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw);
+                    // 第一人称视角限位：左右各自限制 110 度，上下各自限制 90 度
+                    if (net.minecraft.client.Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw = 
+                            Math.max(-110.0f, Math.min(110.0f, cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw));
+                    } else {
+                        // 第三人称下可以 360° 循环看
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw = 
+                            net.minecraft.util.Mth.wrapDegrees(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw);
+                    }
+                    
                     // Clamp pitch in [-90, 90]
                     cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch = 
                         Math.max(-90.0f, Math.min(90.0f, cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch));
