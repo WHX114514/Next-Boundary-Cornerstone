@@ -12,8 +12,8 @@
     "MixinModelPart",
     "MixinRemotePlayerModel",
     "MixinItemInHandRenderer",
-    "MixinGui"
-
+    "MixinGui",
+    "ParticleAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
