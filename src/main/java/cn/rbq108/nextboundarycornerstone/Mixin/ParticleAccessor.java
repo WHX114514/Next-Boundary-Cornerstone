@@ -23,4 +23,10 @@ public interface ParticleAccessor {
 
     @Accessor("zd")
     double getZd();
+
+    @Accessor("alpha")
+    void setAlphaValue(float alpha);
+
+    @Accessor("alpha")
+    float getAlphaValue();
 }
