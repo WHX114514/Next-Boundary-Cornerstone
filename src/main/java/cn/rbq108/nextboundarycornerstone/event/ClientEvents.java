@@ -488,6 +488,19 @@ public class ClientEvents {
             }
         }
     }
+
+    @SubscribeEvent
+    public static void onMouseButton(InputEvent.MouseButton.Pre event) {
+        if (GlobalVariables.B_LowGravity && GlobalVariables.B_HeadRotationLocked) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.screen == null) {
+                int button = event.getButton();
+                if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT || button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+                    event.setCanceled(true);
+                }
+            }
+        }
+    }
 }
 
 
