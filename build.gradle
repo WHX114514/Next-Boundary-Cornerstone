@@ -15,7 +15,7 @@ repositories {
 }
 
 base {
-    archivesName = 'next-boundary-cornerstone'
+    archivesName = "next-boundary-cornerstone-neoforge${project.minecraft_version}"
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
