@@ -6,7 +6,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.9.22'
 }
 
-version = '0.0.1'
+version = project.mod_version
 group = 'cn.rbq108.nextboundary.cornerstone'
 
 repositories {
