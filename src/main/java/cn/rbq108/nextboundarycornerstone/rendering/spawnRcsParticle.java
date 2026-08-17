@@ -51,6 +51,13 @@ public class spawnRcsParticle {
      * 核心飞控侦测逻辑：在 onClientTick 里每帧调用喵！
      */
     public static void processRcs(Player player) {
+        // 【新增兼容】：如果玩家正在被外部物理设施（如铁把手）拉扯，说明加速度并非来自宇航服，跳过喷气渲染
+        if (cn.rbq108.nextboundarycornerstone.ModCompatible.isGrabbingAeronauticsHandle(player)) {
+            // 静默同步当前速度，防止松手瞬间由于积累的差值爆出一大团粒子
+            prevVelocity = player.getDeltaMovement();
+            return;
+        }
+
         // 如果玩家穿着下一边界工业的宇航服，跳过前置模组的喷气效果渲染，转由工业模组自己渲染并支持热重载微调！
         net.minecraft.world.item.ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
         if (!chest.isEmpty() && chest.getItem().getClass().getName().contains("ExtravehicularSpacesuit")) {

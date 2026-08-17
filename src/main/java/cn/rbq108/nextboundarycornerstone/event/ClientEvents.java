@@ -409,8 +409,14 @@ public class ClientEvents {
 
             player.setShiftKeyDown(false);
             player.setSprinting(false);
-            player.getAbilities().mayfly = true;
-            player.getAbilities().flying = true;
+            
+            // 接入兼容逻辑：如果玩家正在抓取航空学铁把手，临时撤销飞行状态以允许物理位移
+            if (cn.rbq108.nextboundarycornerstone.ModCompatible.isGrabbingAeronauticsHandle(player)) {
+                player.getAbilities().flying = false;
+            } else {
+                player.getAbilities().mayfly = true;
+                player.getAbilities().flying = true;
+            }
 
             player.setDeltaMovement(
                     GlobalVariables.B_Vx1 / 0.91f,

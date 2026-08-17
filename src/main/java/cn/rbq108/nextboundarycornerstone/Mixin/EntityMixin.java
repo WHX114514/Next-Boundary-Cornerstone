@@ -13,6 +13,46 @@ import org.spongepowered.asm.mixin.Unique;
 @Mixin(Entity.class)
 public abstract class EntityMixin implements RollEntity {
 
+    @Inject(method = "setDeltaMovement(DDD)V", at = @At("HEAD"))
+    private void doABarrelRoll$interceptExternalVelocity3D(double x, double y, double z, CallbackInfo ci) {
+        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && (Object)this instanceof Player player) {
+            if (isLocalPlayerClass_testMod(player)) {
+                StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+                if (stack.length > 3) {
+                    String caller = stack[3].getClassName();
+                    if (!caller.startsWith("net.minecraft.") && 
+                        !caller.startsWith("net.neoforged.") && 
+                        !caller.startsWith("cn.rbq108.nextboundarycornerstone.")) {
+                        // 捕获到第三方模组（例如航空学）强制施加的速度！将其吸收到惯性系统中！
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vx1 = (float) x * 0.91f;
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vy1 = (float) y * 0.80f;
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vz1 = (float) z * 0.91f;
+                    }
+                }
+            }
+        }
+    }
+
+    @Inject(method = "setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V", at = @At("HEAD"))
+    private void doABarrelRoll$interceptExternalVelocityVec(net.minecraft.world.phys.Vec3 vec, CallbackInfo ci) {
+        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && (Object)this instanceof Player player) {
+            if (isLocalPlayerClass_testMod(player)) {
+                StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+                if (stack.length > 3) {
+                    String caller = stack[3].getClassName();
+                    if (!caller.startsWith("net.minecraft.") && 
+                        !caller.startsWith("net.neoforged.") && 
+                        !caller.startsWith("cn.rbq108.nextboundarycornerstone.")) {
+                        // 捕获到第三方模组（例如航空学）强制施加的速度！将其吸收到惯性系统中！
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vx1 = (float) vec.x * 0.91f;
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vy1 = (float) vec.y * 0.80f;
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vz1 = (float) vec.z * 0.91f;
+                    }
+                }
+            }
+        }
+    }
+
     @Unique
     private static Class<?> localPlayerClass_testMod = null;
     @Unique
@@ -123,6 +163,10 @@ public abstract class EntityMixin implements RollEntity {
             // 正确做法：直接将屏幕坐标系的鼠标原始增量 (dx, dy) 累加到 XRot 和 YRot 上。
             // 这样手部摆动增量就永远与玩家当前屏幕的鼠标操作方向保持一致，
             // 无论角色处于何种 roll 角度(0°, 90°, 180°)，手部上下左右摆动都完全正常。
+            player.xRotO += dx;
+            player.yRotO += dy;
+            player.xRotO = net.minecraft.util.Mth.clamp(player.xRotO, -90.0F, 90.0F);
+
             player.setYRot(player.getYRot() + dy);
             player.setXRot(player.getXRot() + dx);
         }
