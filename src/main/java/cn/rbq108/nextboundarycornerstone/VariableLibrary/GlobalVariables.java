@@ -17,6 +17,7 @@ public class GlobalVariables {
     // 操纵相关 (核心状态位，千万别移走喵！)
     public static boolean B_LowGravity = false; // 当前是否处于无重力操作状态
     public static float B_HitboxSize = 1.2f;//碰撞箱尺寸！
+    public static boolean B_SpaceHelmet = false; // 玩家当前是否佩戴了宇航服头盔
 
     // 矩阵转换代码
     public static Quaternionf currentQuat = new Quaternionf();

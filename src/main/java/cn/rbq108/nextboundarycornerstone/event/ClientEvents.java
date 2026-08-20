@@ -147,6 +147,12 @@ public class ClientEvents {
         GlobalVariables.prevFreeLookYaw = GlobalVariables.B_freeLookYaw;
         GlobalVariables.prevFreeLookPitch = GlobalVariables.B_freeLookPitch;
 
+        // 感应宇航服头盔状态 (避免直接引用类以防止循环依赖)
+        net.minecraft.world.item.ItemStack headStack = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD);
+        GlobalVariables.B_SpaceHelmet = !headStack.isEmpty() && 
+            net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(headStack.getItem())
+            .equals(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("next_boundary_industry", "extravehicular_spacesuit_helmet"));
+
         //这一帧自己实时感应背包状态
         boolean isWearingBackpack = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST)
                 .is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get());
