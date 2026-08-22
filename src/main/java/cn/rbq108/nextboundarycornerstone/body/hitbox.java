@@ -42,9 +42,9 @@ public class hitbox {
         if (GlobalVariables.B_LowGravity) {
             net.minecraft.world.item.ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
             boolean isWearingBaseBackpack = chest.is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get());
-            boolean isWearingIndustrySuit = chest.getItem().getClass().getName().contains("ExtravehicularSpacesuit");
+            boolean isWearingIndustryBackpack = !GlobalVariables.B_CanBackpackGrantGravity;
             
-            if (!isWearingBaseBackpack && !isWearingIndustrySuit) {
+            if (!isWearingBaseBackpack && !isWearingIndustryBackpack) {
                 // 无背包推进器时，展示水平悬浮/游泳姿态
                 player.setPose(Pose.SWIMMING);
             } else {
