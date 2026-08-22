@@ -449,6 +449,7 @@ public class ClientEvents {
             } else {
                 player.getAbilities().mayfly = true;
                 player.getAbilities().flying = true;
+                player.getAbilities().setFlyingSpeed(0.0f);
             }
 
             player.setDeltaMovement(
@@ -463,6 +464,7 @@ public class ClientEvents {
             }
 
         } else {
+            player.getAbilities().setFlyingSpeed(0.05f);
             //player.getAbilities().mayfly = false;
             //player.getAbilities().flying = false;
             GameType gameMode = null;
