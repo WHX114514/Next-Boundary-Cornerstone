@@ -58,9 +58,11 @@ public class spawnRcsParticle {
             return;
         }
 
-        // 如果玩家穿着下一边界工业的宇航服，跳过前置模组的喷气效果渲染，转由工业模组自己渲染并支持热重载微调！
+        // 只有玩家穿着前置模组的“基础背包”时，才允许生成前置模组的喷气粒子！
         net.minecraft.world.item.ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
-        if (!chest.isEmpty() && chest.getItem().getClass().getName().contains("ExtravehicularSpacesuit")) {
+        if (chest.isEmpty() || !chest.is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get())) {
+            // 静默同步当前速度，防止下次穿上背包时爆出一大团粒子
+            prevVelocity = player.getDeltaMovement();
             return;
         }
 
