@@ -158,8 +158,9 @@ public class ClientEvents {
                 .is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get());
         boolean currentRealState;
         if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_CanBackpackGrantGravity) {
-            // 控制权在主模组手里时，才去认 BASIC_BACKPACK
-            currentRealState = cn.rbq108.nextboundarycornerstone.VariableLibrary.debug.FORCE_LOW_GRAVITY || isWearingBackpack;
+            // 控制权在主模组手里时，才去认 BASIC_BACKPACK 或者 身处太空维度
+            boolean isInSpace = player.level().dimension().location().getPath().equals("space");
+            currentRealState = cn.rbq108.nextboundarycornerstone.VariableLibrary.debug.FORCE_LOW_GRAVITY || isWearingBackpack || isInSpace;
         } else {
             // 控制权被附属模组抢走时，绝对信任附属模组写入的重力状态！
             currentRealState = cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity;
