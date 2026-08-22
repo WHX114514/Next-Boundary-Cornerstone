@@ -40,9 +40,17 @@ public class hitbox {
         Player player = event.getEntity();
 
         if (GlobalVariables.B_LowGravity) {
-            // qiangzhizhanli!!!!
-            player.setPose(Pose.STANDING);
-            //player.setPose(Pose.SWIMMING);
+            net.minecraft.world.item.ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+            boolean isWearingBaseBackpack = chest.is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get());
+            boolean isWearingIndustrySuit = chest.getItem().getClass().getName().contains("ExtravehicularSpacesuit");
+            
+            if (!isWearingBaseBackpack && !isWearingIndustrySuit) {
+                // 无背包推进器时，展示水平悬浮/游泳姿态
+                player.setPose(Pose.SWIMMING);
+            } else {
+                // qiangzhizhanli!!!! (穿戴背包时保持直立)
+                player.setPose(Pose.STANDING);
+            }
 
             // 如果服务端碰撞箱还没改，强制刷新
             if (Math.abs(player.getBbHeight() - GlobalVariables.B_HitboxSize) > 0.01f) {

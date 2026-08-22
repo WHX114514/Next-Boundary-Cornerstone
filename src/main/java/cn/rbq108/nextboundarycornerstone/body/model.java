@@ -107,7 +107,12 @@ public class model {
             poseStack.translate(0, centerY, 0);
             poseStack.mulPose(bodyQuat);
             // 补偿：让原版 1.8 高的模型中心（0.9）对齐支点
-            poseStack.translate(0, -0.9f, 0);
+            if (player.hasPose(net.minecraft.world.entity.Pose.SWIMMING)) {
+                // 在游泳状态（漂浮）下，根据玩家局部参考系向上补偿半个当前碰撞箱的高度
+                poseStack.translate(0, -0.9f + centerY, 0);
+            } else {
+                poseStack.translate(0, -0.9f, 0);
+            }
         }
     }
 
