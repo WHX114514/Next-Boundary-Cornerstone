@@ -278,6 +278,32 @@ public class ClientEvents {
                 }
             }
 
+            // 真实物理硬核限制：如果在失重下且没有穿推进背包，且身体四周1格没有方块可供借力，清空所有推力！
+            if (GlobalVariables.B_LowGravity && GlobalVariables.B_CanBackpackGrantGravity) {
+                net.minecraft.world.item.ItemStack chest = mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+                if (chest.isEmpty() || !chest.is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get())) {
+                    // 没有穿任何推进背包（如果穿了新工业模组背包，B_CanBackpackGrantGravity 就是 false）
+                    // 开始对方块进行碰撞盒外扩探测
+                    net.minecraft.world.phys.AABB reachBox = mc.player.getBoundingBox().inflate(1.0D);
+                    boolean canPushOff = false;
+                    for (net.minecraft.core.BlockPos bp : net.minecraft.core.BlockPos.betweenClosed(
+                            net.minecraft.util.Mth.floor(reachBox.minX), net.minecraft.util.Mth.floor(reachBox.minY), net.minecraft.util.Mth.floor(reachBox.minZ),
+                            net.minecraft.util.Mth.floor(reachBox.maxX), net.minecraft.util.Mth.floor(reachBox.maxY), net.minecraft.util.Mth.floor(reachBox.maxZ))) {
+                        net.minecraft.world.level.block.state.BlockState bs = mc.player.level().getBlockState(bp);
+                        if (!bs.isAir() && !bs.getCollisionShape(mc.player.level(), bp).isEmpty()) {
+                            canPushOff = true;
+                            break;
+                        }
+                    }
+                    // 若周围无方块可供借力，则无法产生加速度
+                    if (!canPushOff) {
+                        GlobalVariables.B_INx = 0;
+                        GlobalVariables.B_INy = 0;
+                        GlobalVariables.B_INz = 0;
+                    }
+                }
+            }
+
             //roll轴旋转逻辑
             long window = mc.getWindow().getWindow();
             boolean isShift = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);

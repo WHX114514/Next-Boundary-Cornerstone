@@ -46,6 +46,29 @@ public class KeyPollingHandler {
             inZ = 0;
         }
 
+        // 真实物理硬核限制：失重无背包，且身体四周1格没有方块可供借力时，清空推力！
+        if (GlobalVariables.B_LowGravity && GlobalVariables.B_CanBackpackGrantGravity) {
+            net.minecraft.world.item.ItemStack chest = mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+            if (chest.isEmpty() || !chest.is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get())) {
+                net.minecraft.world.phys.AABB reachBox = mc.player.getBoundingBox().inflate(1.0D);
+                boolean canPushOff = false;
+                for (net.minecraft.core.BlockPos bp : net.minecraft.core.BlockPos.betweenClosed(
+                        net.minecraft.util.Mth.floor(reachBox.minX), net.minecraft.util.Mth.floor(reachBox.minY), net.minecraft.util.Mth.floor(reachBox.minZ),
+                        net.minecraft.util.Mth.floor(reachBox.maxX), net.minecraft.util.Mth.floor(reachBox.maxY), net.minecraft.util.Mth.floor(reachBox.maxZ))) {
+                    net.minecraft.world.level.block.state.BlockState bs = mc.player.level().getBlockState(bp);
+                    if (!bs.isAir() && !bs.getCollisionShape(mc.player.level(), bp).isEmpty()) {
+                        canPushOff = true;
+                        break;
+                    }
+                }
+                if (!canPushOff) {
+                    inX = 0;
+                    inY = 0;
+                    inZ = 0;
+                }
+            }
+        }
+
         // 乖乖存进你的记事本里
         GlobalVariables.B_INx = inX;
         GlobalVariables.B_INy = inY;
