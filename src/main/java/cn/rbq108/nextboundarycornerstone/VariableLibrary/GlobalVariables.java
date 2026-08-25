@@ -134,4 +134,11 @@ public class GlobalVariables {
     public static float mouseDeltaX = 0.0f; // 鼠标纵向增量（控制 Pitch，正数=往下看）
     public static float mouseDeltaY = 0.0f; // 鼠标横向增量（控制 Yaw，正数=往右转）
 
+    //负责存储是否安装tacz的变量喵
+    public static int B_TACZ = 0;
+
+    public static float B_Vx5 = 0.0f;//x轴后坐力
+    public static float B_Vy5 = 0.0f;
+    public static float B_Vz5 = 0.0f;
+
 }

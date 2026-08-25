@@ -46,9 +46,9 @@ config = "${mod_id}.mixins.json"
 # The coremods config file path is not configurable and is always loaded from META-INF/coremods.json
 
 # A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
-[[dependencies."${}"]] #optional
+[[dependencies."${mod_id}"]] #optional
 # the modid of the dependency
-modId = "next_boundary_cornerstone" #mandatory
+modId = "neoforge" #mandatory
 # The type of the dependency. Can be one of "required", "optional", "incompatible" or "discouraged" (case insensitive).
 # 'required' requires the mod to exist, 'optional' does not
 # 'incompatible' will prevent the game from loading when the mod exists, and 'discouraged' will show a warning
@@ -64,11 +64,19 @@ ordering = "NONE"
 # Side this dependency is applied on - BOTH, CLIENT, or SERVER
 side = "BOTH"
 # Here's another dependency
-[[dependencies."next-boundary-cornerstone"]]
+[[dependencies."${mod_id}"]]
 modId = "minecraft"
 type = "required"
 # This version range declares a minimum of the current minecraft version up to but not including the next major version
 versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+# 对 TACZ 模组的可选依赖
+[[dependencies."${mod_id}"]]
+modId = "tacz"
+type = "optional"
+versionRange = "[1.1.7-hotfix2,)"
 ordering = "NONE"
 side = "BOTH"
 

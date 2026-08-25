@@ -3,6 +3,7 @@
   "minVersion": "0.8",
   "package": "cn.rbq108.nextboundarycornerstone.Mixin",
   "compatibilityLevel": "JAVA_21",
+  "plugin": "cn.rbq108.nextboundarycornerstone.MixinPlugin",
   "mixins": [
   ],
   "client": [
@@ -13,7 +14,9 @@
     "MixinRemotePlayerModel",
     "MixinItemInHandRenderer",
     "MixinGui",
-    "ParticleAccessor"
+    "ParticleAccessor",
+    "FixTACZ",
+    "MixinShellRender"
   ],
   "injectors": {
     "defaultRequire": 1

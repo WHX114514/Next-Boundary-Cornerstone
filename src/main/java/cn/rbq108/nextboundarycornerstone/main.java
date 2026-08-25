@@ -33,6 +33,10 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.Config;
+import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
+import cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment;
+import net.neoforged.neoforge.attachment.AttachmentType;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 // NeoForge 1.21.1 网络核心组件
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -67,6 +71,17 @@ public class main
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
     // Create a Deferred Register to hold CreativeModeTabs which will all be registered under the "test" namespace
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
+
+    // 1.21.1 NeoForge 数据附加（Attachments）注册器和对象声明
+    public static final DeferredRegister<AttachmentType<?>> ATTACHMENT_TYPES = DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, MODID);
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<PlayerRotationAttachment>> PLAYER_ROTATION = ATTACHMENT_TYPES.register(
+            "player_rotation",
+            () -> AttachmentType.builder(() -> new PlayerRotationAttachment())
+                    .serialize(PlayerRotationAttachment.CODEC)
+                    .copyOnDeath()
+                    .build()
+    );
 
     // Creates a new Block with the id "test:example_block", combining the namespace and path
     public static final DeferredBlock<Block> EXAMPLE_BLOCK = BLOCKS.registerSimpleBlock("example_block", BlockBehaviour.Properties.of().mapColor(MapColor.STONE));
@@ -114,6 +129,8 @@ public class main
         ITEMS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
+        // 注册数据附加类型
+        ATTACHMENT_TYPES.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (main) to respond directly to events.
@@ -132,6 +149,14 @@ public class main
         // 这是旧代码ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC, "next-boundary.toml");
         // 用最新的modContainer注册
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC, "next-boundary.toml");
+
+        // 检测 TACZ 模组是否已安装
+        if (net.neoforged.fml.ModList.get().isLoaded("tacz")) {
+            GlobalVariables.B_TACZ = 1;
+            LOGGER.info("[NextBoundaryCornerstone] 检测到 TACZ 模组已安装，正在注入相关依赖···");
+        } else {
+            GlobalVariables.B_TACZ = 0;
+        }
 
         modEventBus.addListener(this::registerNetwork);//手动把registerNetwork 挂载到模组总线上
     }

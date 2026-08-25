@@ -66,6 +66,15 @@ public class calculate {
         Vector3f currentVel = new Vector3f(GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1);
 
         if (!hasInput && !shouldBrake) {
+            currentVel.x += GlobalVariables.B_Vx5;
+            currentVel.y += GlobalVariables.B_Vy5;
+            currentVel.z += GlobalVariables.B_Vz5;
+
+            GlobalVariables.B_Vx1 = currentVel.x;
+            GlobalVariables.B_Vy1 = currentVel.y;
+            GlobalVariables.B_Vz1 = currentVel.z;
+
+            GlobalVariables.B_Vx5 = 0; GlobalVariables.B_Vy5 = 0; GlobalVariables.B_Vz5 = 0;
             return; // 自由滑行
         }
 
@@ -83,6 +92,12 @@ public class calculate {
             if (accel.length() > maxA) accel.normalize().mul(maxA);
             currentVel.add(accel);
         }
+
+        currentVel.x += GlobalVariables.B_Vx5;
+        currentVel.y += GlobalVariables.B_Vy5;
+        currentVel.z += GlobalVariables.B_Vz5;
+
+        GlobalVariables.B_Vx5 = 0; GlobalVariables.B_Vy5 = 0; GlobalVariables.B_Vz5 = 0;
 
         GlobalVariables.B_Vx1 = currentVel.x;
         GlobalVariables.B_Vy1 = currentVel.y;

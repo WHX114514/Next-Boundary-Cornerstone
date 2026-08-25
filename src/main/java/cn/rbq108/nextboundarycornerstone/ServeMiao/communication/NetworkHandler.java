@@ -24,6 +24,12 @@ public class NetworkHandler {
     //服务端收到包后的动作（负责转发给所有人）
     public static void handleDataOnServer(final SyncRotationPayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {
+            net.minecraft.world.entity.player.Player player = context.player();
+            if (player != null) {
+                cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment attachment = player.getData(cn.rbq108.nextboundarycornerstone.main.PLAYER_ROTATION);
+                attachment.setQuaternion(payload.quat());
+                attachment.setLowGravity(payload.lowGravity());
+            }
             //context.broadcast(payload);这个不能用，会坏
             //要使用 PacketDistributor 广播给所有在线玩家
             // 这一行代码会把 A 玩家的姿态数据，再同步给服务器里的所有人
