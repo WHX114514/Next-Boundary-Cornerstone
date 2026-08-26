@@ -77,17 +77,20 @@ public class OtherPlayer {
                 Quaternionf currBody = SMOOTH_BODY_QUATS.getOrDefault(id, headQuatNet);
                 Quaternionf smoothBodyQuatRender = new Quaternionf(prevBody).slerp(currBody, frameTime);
 
+                float currentHitboxHeight = player.getBbHeight();
+                float centerY = currentHitboxHeight * 0.5f;
+
                 // 先把直立的存起来防止干扰到后面的计算
                 //
                 event.getPoseStack().pushPose();
 
                 // 更改旋转轴心
-                // 把旋转轴心从脚底 (0) 拔高到身体重心 (0.9 左右)
-                event.getPoseStack().translate(0.0D, 0.6D, 0.0D);
+                // 把旋转轴心从脚底 (0) 拔高到身体重心
+                event.getPoseStack().translate(0.0D, centerY, 0.0D);
                 //执行旋转
                 event.getPoseStack().mulPose(smoothBodyQuatRender);
                 // 旋转完后再把轴心降回脚底，居中
-                event.getPoseStack().translate(0.0D, -0.8D, 0.0D);
+                event.getPoseStack().translate(0.0D, -centerY, 0.0D);
 
 
 

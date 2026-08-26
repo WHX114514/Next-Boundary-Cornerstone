@@ -63,6 +63,9 @@ public abstract class MixinRemotePlayerModel<T extends LivingEntity> {
 
                     // 赋值！！！
                     model.head.xRot = euler.x;
+                    if (player.isSwimming()) {
+                        model.head.xRot -= (float) Math.toRadians(90.0f);
+                    }
                     model.head.yRot = -euler.y;
                     model.head.zRot = -euler.z;
 
@@ -73,7 +76,7 @@ public abstract class MixinRemotePlayerModel<T extends LivingEntity> {
                     // 躯干保持 0（因为外面 PoseStack 已经以四元数平滑旋转了）
                     model.body.yRot = 0;
 
-                    if (player.getPose() == net.minecraft.world.entity.Pose.SWIMMING) {
+                    if (player.isSwimming()) {
                         // 如果是游泳姿态，已经通过 setSwimming(true) 激活了原版划水/蹬腿动画，允许四肢自由偏航与摇摆，解决手臂卡死问题
                     } else {
                         model.leftArm.yRot = 0;

@@ -99,6 +99,11 @@ public class model {
                     .mul(new Quaternionf(y180).invert())
                     .mul(relQuat).mul(y180).mul(z180);
 
+            if (player.isSwimming()) {
+                // 游泳状态下，使头部相对于身体局部俯仰轴向上抬起 90 度（平视前方）
+                GlobalVariables.headFixQuat.rotateX((float) Math.toRadians(-90.0f));
+            }
+
             // 应用渲染 (身箱合一逻辑)
             PoseStack poseStack = event.getPoseStack();
             poseStack.pushPose();
