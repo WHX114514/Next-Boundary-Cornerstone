@@ -17,7 +17,7 @@ public class hitbox {
     // 尺寸定义
     @SubscribeEvent
     public static void onPlayerSize(EntityEvent.Size event) {
-        if (event.getEntity() instanceof Player && GlobalVariables.B_LowGravity) {
+        if (event.getEntity() instanceof Player player && player.isNoGravity()) {
             float size = GlobalVariables.B_HitboxSize;
             // 锁定眼高，防止视角卡进方块窒息
 
@@ -39,10 +39,10 @@ public class hitbox {
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
 
-        if (GlobalVariables.B_LowGravity) {
+        if (player.isNoGravity()) {
             net.minecraft.world.item.ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
             boolean isWearingBaseBackpack = chest.is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get());
-            boolean isWearingIndustryBackpack = !GlobalVariables.B_CanBackpackGrantGravity;
+            boolean isWearingIndustryBackpack = player.getPersistentData().getBoolean("next_boundary_industry.is_wearing_eva");
             
             if (!isWearingBaseBackpack && !isWearingIndustryBackpack) {
                 // 无背包推进器时，展示水平悬浮/游泳姿态
