@@ -18,8 +18,8 @@ public class MixinGui {
 
     @Inject(method = "renderCrosshair", at = @At("HEAD"))
     private void onRenderCrosshairHead(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (GlobalVariables.B_LowGravity) {
-            var mc = Minecraft.getInstance();
+        var mc = Minecraft.getInstance();
+        if (mc.player != null && mc.player.isNoGravity()) {
             double guiWidth = mc.getWindow().getGuiScaledWidth();
             double guiHeight = mc.getWindow().getGuiScaledHeight();
 
@@ -150,7 +150,8 @@ public class MixinGui {
 
     @Inject(method = "renderCrosshair", at = @At("RETURN"))
     private void onRenderCrosshairReturn(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (GlobalVariables.B_LowGravity && GlobalVariables.B_FreeCameraActive && Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
+        net.minecraft.client.player.LocalPlayer localPlayer = Minecraft.getInstance().player;
+        if (localPlayer != null && localPlayer.isNoGravity() && GlobalVariables.B_FreeCameraActive && Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
             guiGraphics.pose().popPose();
         }
     }

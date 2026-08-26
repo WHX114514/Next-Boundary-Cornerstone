@@ -15,8 +15,8 @@ public class FixTACZ {
     @Inject(method = "getFirstPersonRenderOffset", at = @At("RETURN"), cancellable = true, remap = false)
     private void nextboundary$fixFirstPersonRenderOffset(CallbackInfoReturnable<Vector3f> cir) {
         Vector3f originalOffset = cir.getReturnValue();
-
-        if (originalOffset == null || !GlobalVariables.B_LowGravity) {
+        net.minecraft.client.player.LocalPlayer localPlayer = net.minecraft.client.Minecraft.getInstance().player;
+        if (originalOffset == null || localPlayer == null || !localPlayer.isNoGravity()) {
             return;
         }
 

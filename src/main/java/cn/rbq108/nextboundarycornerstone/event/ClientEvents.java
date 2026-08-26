@@ -163,7 +163,7 @@ public class ClientEvents {
             currentRealState = cn.rbq108.nextboundarycornerstone.VariableLibrary.debug.FORCE_LOW_GRAVITY || isWearingBackpack || isInSpace;
         } else {
             // 控制权被附属模组抢走时，绝对信任附属模组写入的重力状态！
-            currentRealState = cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity;
+            currentRealState = player.isNoGravity();
         }
 
         //对比上一帧留下的记录，捕捉跳变瞬间

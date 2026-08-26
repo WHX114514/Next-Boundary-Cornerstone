@@ -15,7 +15,7 @@ public abstract class EntityMixin implements RollEntity {
 
     @Inject(method = "setDeltaMovement(DDD)V", at = @At("HEAD"))
     private void doABarrelRoll$interceptExternalVelocity3D(double x, double y, double z, CallbackInfo ci) {
-        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && (Object)this instanceof Player player) {
+        if ((Object)this instanceof Player player && player.isNoGravity()) {
             if (isLocalPlayerClass_testMod(player)) {
                 StackTraceElement[] stack = Thread.currentThread().getStackTrace();
                 if (stack.length > 3) {
@@ -35,7 +35,7 @@ public abstract class EntityMixin implements RollEntity {
 
     @Inject(method = "setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V", at = @At("HEAD"))
     private void doABarrelRoll$interceptExternalVelocityVec(net.minecraft.world.phys.Vec3 vec, CallbackInfo ci) {
-        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && (Object)this instanceof Player player) {
+        if ((Object)this instanceof Player player && player.isNoGravity()) {
             if (isLocalPlayerClass_testMod(player)) {
                 StackTraceElement[] stack = Thread.currentThread().getStackTrace();
                 if (stack.length > 3) {
@@ -65,7 +65,7 @@ public abstract class EntityMixin implements RollEntity {
 
     @Inject(method = "getViewVector(F)Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
     private void doABarrelRoll$overrideGetViewVector(float partialTicks, CallbackInfoReturnable<net.minecraft.world.phys.Vec3> cir) {
-        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && (Object)this instanceof Player player) {
+        if ((Object)this instanceof Player player && player.isNoGravity()) {
             if (isLocalPlayerClass_testMod(player)) {
                 org.joml.Quaternionf smoothedQuat = new org.joml.Quaternionf(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.prevQuat)
                         .slerp(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat, partialTicks);
@@ -111,7 +111,7 @@ public abstract class EntityMixin implements RollEntity {
 
     @Inject(method = "turn(DD)V", at = @At("HEAD"), cancellable = true)
     private void doABarrelRoll$quaternionTurn(double yRot, double xRot, CallbackInfo ci) {
-        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && (Object)this instanceof Player player) {
+        if ((Object)this instanceof Player player && player.isNoGravity()) {
             if (!isLocalPlayerClass_testMod(player)) {
                 return;
             }

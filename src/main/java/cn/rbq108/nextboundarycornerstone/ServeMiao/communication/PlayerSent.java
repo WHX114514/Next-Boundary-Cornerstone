@@ -25,14 +25,14 @@ public class PlayerSent {
         if (player.level().isClientSide() && player.isLocalPlayer()) {
 
             // 🩺 2. 检查失重状态开关
-            if (GlobalVariables.B_LowGravity) {
+            if (player.isNoGravity()) {
 
                 //将四元数、UUID 和开关状态打包扔给服务器
                 // 这里的 SyncRotationPayload 就是包
                 PacketDistributor.sendToServer(new SyncRotationPayload(
                         player.getUUID(),
                         GlobalVariables.currentQuat,
-                        GlobalVariables.B_LowGravity
+                        player.isNoGravity()
                 ));
             }
         }

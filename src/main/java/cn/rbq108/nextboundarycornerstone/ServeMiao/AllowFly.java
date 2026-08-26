@@ -37,6 +37,19 @@ public class AllowFly {
         */
         //我写的这是啥？
 
+        // 核心同步：如果当前是在服务端，且重力控制权在核心前置手中，主动通过 setNoGravity 维持玩家重力状态
+        if (!player.level().isClientSide) {
+            if (GlobalVariables.B_CanBackpackGrantGravity) {
+                boolean isWearingBackpack = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST)
+                        .is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get());
+                boolean isInSpace = player.level().dimension().location().getPath().equals("space");
+                boolean shouldBeZeroG = cn.rbq108.nextboundarycornerstone.VariableLibrary.debug.FORCE_LOW_GRAVITY || isWearingBackpack || isInSpace;
+                if (player.isNoGravity() != shouldBeZeroG) {
+                    player.setNoGravity(shouldBeZeroG);
+                }
+            }
+        }
+
         // 默认游戏模式
         GameType gameMode = GameType.SURVIVAL;
         boolean modDeterminedMayFly;
@@ -44,7 +57,7 @@ public class AllowFly {
         if (player.isCreative() || player.isSpectator()) {
             modDeterminedMayFly = true;
         } else {
-            modDeterminedMayFly = GlobalVariables.B_LowGravity;
+            modDeterminedMayFly = player.isNoGravity();
         }
         if (player.getAbilities().mayfly != modDeterminedMayFly) {
             player.getAbilities().mayfly = modDeterminedMayFly;

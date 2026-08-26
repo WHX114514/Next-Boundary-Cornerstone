@@ -17,7 +17,7 @@ public class KeyboardHandlerMixin {
         var mc = Minecraft.getInstance();
 
         // 只有无重力、没开菜单、且不是松开按键时拦截
-        if (GlobalVariables.B_LowGravity && mc.screen == null && action != GLFW.GLFW_RELEASE) {
+        if (mc.player != null && mc.player.isNoGravity() && mc.screen == null && action != GLFW.GLFW_RELEASE) {
 
             boolean isShiftDown = (mods & GLFW.GLFW_MOD_SHIFT) != 0;
 

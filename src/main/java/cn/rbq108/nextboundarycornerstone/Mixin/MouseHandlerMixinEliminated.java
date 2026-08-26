@@ -22,12 +22,10 @@ public class MouseHandlerMixinEliminated {
     )
     private void doABarrelRoll$rotateMouseInputs(Args args) {
         // 当启用无重力操作时，拦截并旋转鼠标输入
-        if (GlobalVariables.B_LowGravity) {
+        var player = Minecraft.getInstance().player;
+        if (player != null && player.isNoGravity()) {
             double originalYRot = args.get(0);
             double originalXRot = args.get(1);
-
-            var player = Minecraft.getInstance().player;
-            if (player != null) {
 
                 float pitch = player.getXRot() % 360.0f;
                 if (pitch > 180.0f) pitch -= 360.0f;
@@ -37,7 +35,6 @@ public class MouseHandlerMixinEliminated {
                 if (Math.abs(pitch) > 90.0f) {
                     originalYRot = -originalYRot;
                 }
-            }
 
 
             double rollRad = Math.toRadians(GlobalVariables.B_Dz);

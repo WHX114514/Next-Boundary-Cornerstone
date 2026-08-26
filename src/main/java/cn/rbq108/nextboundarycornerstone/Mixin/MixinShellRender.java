@@ -25,11 +25,9 @@ public class MixinShellRender {
 
     @Inject(method = "addShell", at = @At("HEAD"), cancellable = true, remap = false)
     private void nextboundary$interceptShell(Vector3f randomVelocity, CallbackInfo ci) {
-        if (!GlobalVariables.B_LowGravity) return;
-        ci.cancel();
-
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
+        if (mc.player == null || !mc.player.isNoGravity()) return;
+        ci.cancel();
 
         ItemStack mainHandItem = mc.player.getMainHandItem();
         IGun iGun = IGun.getIGunOrNull(mainHandItem);

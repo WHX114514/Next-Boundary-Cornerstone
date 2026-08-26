@@ -15,9 +15,9 @@ public class MiningSpeedEvents {
 
     @SubscribeEvent
     public static void onBreakSpeed(PlayerEvent.BreakSpeed event) {
+        var player = event.getEntity();
         // 只有当开启无重力操纵时才触发修正
-        if (GlobalVariables.B_LowGravity) {
-            var player = event.getEntity();
+        if (player.isNoGravity()) {
             
             // 处于太空悬浮状态下，player.onGround() 必然为 false
             // 原版会在此前将速度 / 5.0f，因此我们乘以 5.0f 抵消其惩罚

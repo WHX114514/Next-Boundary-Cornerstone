@@ -23,15 +23,14 @@ public class ServerBulletHandler {
         if (!entity.getClass().getName().equals("com.tacz.guns.entity.EntityKineticBullet")) return;
 
         try {
-            if (GlobalVariables.B_LowGravity) {
-                Entity owner = null;
-                if (entity instanceof net.minecraft.world.entity.projectile.Projectile projectile) {
-                    owner = projectile.getOwner();
-                }
-                if (!(owner instanceof Player player)) return;
+            Entity owner = null;
+            if (entity instanceof net.minecraft.world.entity.projectile.Projectile projectile) {
+                owner = projectile.getOwner();
+            }
+            if (!(owner instanceof Player player)) return;
 
-                PlayerRotationAttachment cap = player.getData(main.PLAYER_ROTATION);
-                if (!cap.isLowGravity()) return;
+            PlayerRotationAttachment cap = player.getData(main.PLAYER_ROTATION);
+            if (player.isNoGravity() || cap.isLowGravity()) {
 
                 final Quaternionf bulletQuat = new Quaternionf(cap.getQuaternion());
 
