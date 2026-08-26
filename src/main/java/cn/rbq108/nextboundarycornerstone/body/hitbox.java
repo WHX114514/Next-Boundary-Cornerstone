@@ -47,9 +47,11 @@ public class hitbox {
             if (!isWearingBaseBackpack && !isWearingIndustryBackpack) {
                 // 无背包推进器时，展示水平悬浮/游泳姿态
                 player.setPose(Pose.SWIMMING);
+                player.setSwimming(true);
             } else {
                 // qiangzhizhanli!!!! (穿戴背包时保持直立)
                 player.setPose(Pose.STANDING);
+                player.setSwimming(false);
             }
 
             // 如果服务端碰撞箱还没改，强制刷新

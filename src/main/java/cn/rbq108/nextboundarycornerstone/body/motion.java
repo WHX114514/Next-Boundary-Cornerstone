@@ -216,6 +216,11 @@ public class motion {
             var model = event.getRenderer().getModel();
             var player = event.getEntity();
 
+            // 如果当前玩家处于游泳/横躺悬浮姿态，跳过单手平举的骨架控制，避免污染姿态
+            if (player.getPose() == net.minecraft.world.entity.Pose.SWIMMING) {
+                return;
+            }
+
             // 左手前倾 25 度喵
             // -25度转换成弧度，负值是向前平举喵呜~
             model.leftArm.xRot = (float) Math.toRadians(-90.0f);

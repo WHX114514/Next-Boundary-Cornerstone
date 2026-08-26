@@ -70,10 +70,17 @@ public abstract class MixinRemotePlayerModel<T extends LivingEntity> {
                     model.hat.yRot = model.head.yRot;
                     model.hat.zRot = model.head.zRot;
 
-                    // 躯干和四肢依然保持 0（因为外面 PoseStack 已经完美平滑转过去了）
+                    // 躯干保持 0（因为外面 PoseStack 已经以四元数平滑旋转了）
                     model.body.yRot = 0;
-                    model.leftArm.yRot = 0; model.rightArm.yRot = 0;
-                    model.leftLeg.yRot = 0; model.rightLeg.yRot = 0;
+
+                    if (player.getPose() == net.minecraft.world.entity.Pose.SWIMMING) {
+                        // 如果是游泳姿态，已经通过 setSwimming(true) 激活了原版划水/蹬腿动画，允许四肢自由偏航与摇摆，解决手臂卡死问题
+                    } else {
+                        model.leftArm.yRot = 0;
+                        model.rightArm.yRot = 0;
+                        model.leftLeg.yRot = 0;
+                        model.rightLeg.yRot = 0;
+                    }
                 }
 
                 /*这坨角度过大时还会有问题
