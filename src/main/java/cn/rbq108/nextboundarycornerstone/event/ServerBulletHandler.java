@@ -88,7 +88,7 @@ public class ServerBulletHandler {
         Player player = event.getEntity();
         PlayerRotationAttachment cap = player.getData(main.PLAYER_ROTATION);
         if (cap.isLowGravity()) {
-            System.out.println("[GravityDebug] 正在压制玩家Y速度 player=" + player.getName().getString());
+            // System.out.println("[GravityDebug] 正在压制玩家Y速度 player=" + player.getName().getString());
             Vec3 vel = player.getDeltaMovement();
             // 清零 Y 速度
             player.setDeltaMovement(vel.x, 0, vel.z);
