@@ -30,7 +30,7 @@ public class ServerBulletHandler {
             if (!(owner instanceof Player player)) return;
 
             PlayerRotationAttachment cap = player.getData(main.PLAYER_ROTATION);
-            if (player.isNoGravity() || cap.isLowGravity()) {
+            if (player.isNoGravity()) {
 
                 final Quaternionf bulletQuat = new Quaternionf(cap.getQuaternion());
 
