@@ -43,6 +43,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.neoforged.neoforge.network.handling.DirectionalPayloadHandler;
 // 自己搓的通讯组件
 import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.SyncRotationPayload;
+import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.SyncConfigPayload;
 import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler;
 // 这里的 MODID 在类里已经定义好了
 
@@ -230,6 +231,16 @@ public class main
                 new DirectionalPayloadHandler<>(
                         NetworkHandler::handleDataOnClient, // 客户端收到了怎么处理
                         NetworkHandler::handleDataOnServer  // 服务端收到了怎么处理
+                )
+        );
+
+        // 注册配置同步包
+        registrar.playBidirectional(
+                SyncConfigPayload.TYPE,
+                SyncConfigPayload.STREAM_CODEC,
+                new DirectionalPayloadHandler<>(
+                        NetworkHandler::handleConfigOnClient, // 客户端收到了怎么处理
+                        (payload, context) -> {}             // 服务端不需要处理客户端发来的配置同步包
                 )
         );
     }

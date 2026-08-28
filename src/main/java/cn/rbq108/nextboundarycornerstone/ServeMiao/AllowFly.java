@@ -39,7 +39,8 @@ public class AllowFly {
 
         // 核心同步：如果当前是在服务端，且重力控制权在核心前置手中，主动通过 setNoGravity 维持玩家重力状态
         if (!player.level().isClientSide) {
-            if (GlobalVariables.B_CanBackpackGrantGravity) {
+            boolean isSpectatorAndRestored = cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler.isSpectatorAndRestored(player);
+            if (GlobalVariables.B_CanBackpackGrantGravity && !isSpectatorAndRestored) {
                 boolean isWearingBackpack = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST)
                         .is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get());
                 boolean isInSpace = player.level().dimension().location().getPath().equals("space");

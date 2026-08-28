@@ -157,5 +157,13 @@ public class BackpackAbilityEvents {
 //
 //
 //    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            boolean value = cn.rbq108.nextboundarycornerstone.VariableLibrary.Config.PHYSICS.restoreVanillaSpectator.get();
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer, new cn.rbq108.nextboundarycornerstone.ServeMiao.communication.SyncConfigPayload(value));
+        }
+    }
 }
 

@@ -12,6 +12,27 @@ public class NetworkHandler {
     //其他玩家的失重状态库
     public static final ConcurrentHashMap<UUID, Boolean> REMOTE_GRAVITY_STATES = new ConcurrentHashMap<>();
 
+    // 缓存服务器的“旁观者模式原版恢复”配置（默认关闭，联机连接时由服务器包更新）
+    public static boolean SERVER_RESTORE_VANILLA_SPECTATOR = false;
+
+    // 客户端收到服务器配置同步包时的处理
+    public static void handleConfigOnClient(final SyncConfigPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> {
+            SERVER_RESTORE_VANILLA_SPECTATOR = payload.restoreVanillaSpectator();
+        });
+    }
+
+    public static boolean isSpectatorAndRestored(net.minecraft.world.entity.player.Player player) {
+        if (player.isSpectator()) {
+            if (player.level().isClientSide()) {
+                return SERVER_RESTORE_VANILLA_SPECTATOR;
+            } else {
+                return cn.rbq108.nextboundarycornerstone.VariableLibrary.Config.PHYSICS.restoreVanillaSpectator.get();
+            }
+        }
+        return false;
+    }
+
     //客户端收到包后的动作（画别人的时候用）
     public static void handleDataOnClient(final SyncRotationPayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {

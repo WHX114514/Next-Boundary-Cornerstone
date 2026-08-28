@@ -171,4 +171,14 @@ public abstract class EntityMixin implements RollEntity {
             player.setXRot(player.getXRot() + dx);
         }
     }
+
+    @org.spongepowered.asm.mixin.injection.ModifyVariable(method = "setNoGravity(Z)V", at = @org.spongepowered.asm.mixin.injection.At("HEAD"), argsOnly = true)
+    private boolean nextboundary$modifyNoGravity(boolean noGravity) {
+        if ((Object)this instanceof Player player) {
+            if (cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler.isSpectatorAndRestored(player)) {
+                return false;
+            }
+        }
+        return noGravity;
+    }
 }

@@ -29,6 +29,7 @@ public class Config {
         public final ModConfigSpec.DoubleValue aMax;
         public final ModConfigSpec.DoubleValue brakeRatio;
         public final ModConfigSpec.DoubleValue crosshairScaleFactor;
+        public final ModConfigSpec.BooleanValue restoreVanillaSpectator;
 
         public PhysicsSettings(ModConfigSpec.Builder builder) {
             builder.push("Flight_Dynamics");
@@ -58,16 +59,20 @@ public class Config {
                     .defineInRange("AfterburnerRatio", 2.0, 0.0, 10.0);
 
             aMax = builder
-                    .comment("基础最大加速度 (Amax) - 默认: 0.028")
-                    .defineInRange("Amax", 0.028, 0.0, 1.0);
+                    .comment("基础最大加速度 (Amax) - 默认: 0.05")
+                    .defineInRange("Amax", 0.05, 0.0, 1.0);
 
             brakeRatio = builder
-                    .comment("自动制动/减速倍率 - 默认: 1.2")
-                    .defineInRange("BrakeRatio", 1.2, 0.0, 20.0);
+                    .comment("自动制动/减速倍率 - 默认: 0.9")
+                    .defineInRange("BrakeRatio", 0.9, 0.0, 20.0);
 
             crosshairScaleFactor = builder
                     .comment("第一人称自由视角准星物理投影微调系数 - 默认: 1.0 (如果觉得转头时准星有点过头或没到位，可微调此值，如 0.95 或 1.05)")
                     .defineInRange("CrosshairScaleFactor", 1.0, 0.1, 10.0);
+
+            restoreVanillaSpectator = builder
+                    .comment("旁观者模式是否恢复原版操作模式 - 默认: false (改为true后在旁观者模式下将恢复原版的常规操作)")
+                    .define("RestoreVanillaSpectator", false);
 
             builder.pop();
         }
