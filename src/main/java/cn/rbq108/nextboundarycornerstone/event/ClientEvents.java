@@ -30,6 +30,8 @@ import net.minecraft.ChatFormatting;
 @EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class ClientEvents {
 
+    private static boolean lastIsSpectator = false;
+
     @SubscribeEvent
     public static void onComputeCameraAngles(ViewportEvent.ComputeCameraAngles event) {
         float partialTicks = (float) event.getPartialTick();
@@ -142,6 +144,18 @@ public class ClientEvents {
         var mc = Minecraft.getInstance();
         var player = mc.player;
         if (player == null) return;
+
+        boolean isSpectator = player.isSpectator();
+        if (isSpectator && !lastIsSpectator) {
+            if (GlobalVariables.prevLowGravity) {
+                player.displayClientMessage(
+                        Component.literal("失重下观察者模式是否禁用自由度操作\n可在配置文件RestoreVanillaSpectator更改（服务器则请联系腐竹更改）")
+                                .withStyle(net.minecraft.ChatFormatting.YELLOW),
+                        false
+                );
+            }
+        }
+        lastIsSpectator = isSpectator;
 
         // 备份上一帧的相对旋转角，供第一人称准星渲染时做线性插值消除延迟
         GlobalVariables.prevFreeLookYaw = GlobalVariables.B_freeLookYaw;
