@@ -464,7 +464,7 @@ public class ClientEvents {
             if (cn.rbq108.nextboundarycornerstone.ModCompatible.isGrabbingAeronauticsHandle(player)) {
                 player.getAbilities().flying = false;
             } else {
-                player.getAbilities().mayfly = true;
+                cn.rbq108.nextboundarycornerstone.ServeMiao.AllowFly.updateFlightPermission(player, true);
                 player.getAbilities().flying = true;
                 player.getAbilities().setFlyingSpeed(0.0f);
             }

@@ -15,6 +15,29 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 @EventBusSubscriber(modid = main.MODID)
 public class AllowFly {
 
+    private static final net.minecraft.resources.ResourceLocation ZERO_GRAVITY_FLIGHT =
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(main.MODID, "zero_gravity_flight");
+
+    /** Update only our flight grant, preserving creative mode and other mods' attributes. */
+    public static void updateFlightPermission(Player player, boolean granted) {
+        var flight = player.getAttribute(net.neoforged.neoforge.common.NeoForgeMod.CREATIVE_FLIGHT);
+        if (flight == null) return;
+        boolean changed = flight.hasModifier(ZERO_GRAVITY_FLIGHT) != granted;
+        if (changed) {
+            if (granted) {
+                flight.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                        ZERO_GRAVITY_FLIGHT, 1, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE));
+            } else {
+                flight.removeModifier(ZERO_GRAVITY_FLIGHT);
+            }
+        }
+        if (!player.mayFly() && player.getAbilities().flying) {
+            player.getAbilities().flying = false;
+            changed = true;
+        }
+        if (changed) player.onUpdateAbilities();
+    }
+
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
@@ -51,25 +74,7 @@ public class AllowFly {
             }
         }
 
-        // 默认游戏模式
-        GameType gameMode = GameType.SURVIVAL;
-        boolean modDeterminedMayFly;
-
-        if (player.isCreative() || player.isSpectator()) {
-            modDeterminedMayFly = true;
-        } else {
-            modDeterminedMayFly = player.isNoGravity();
-        }
-        if (player.getAbilities().mayfly != modDeterminedMayFly) {
-            player.getAbilities().mayfly = modDeterminedMayFly;
-
-            if (!modDeterminedMayFly && !player.isCreative() && !player.isSpectator()) {
-                player.getAbilities().flying = false;
-            }
-
-            // 同步给客户端
-            player.onUpdateAbilities();
-        }
+        updateFlightPermission(player, player.isNoGravity());
         /*GameType gameMode = GameType.SURVIVAL;
         // 逻辑：(开启了低重力) 或者 (是创造模式) 或者 (是旁观者模式) → 这三种情况都必须能飞
         boolean targetMayFly = GlobalVariables.B_LowGravity || player.isCreative() || player.isSpectator();
