@@ -1,21 +1,15 @@
 package cn.rbq108.nextboundarycornerstone.item.equipment;
 
-import cn.rbq108.nextboundarycornerstone.client.model.BASIC_BACKPACK_Converted;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
-import net.minecraft.client.Minecraft;
 
 //何意味何意味何意味喵！🤤
 
@@ -38,26 +32,6 @@ public class BasicBackpack extends ArmorItem {
         super(BACKPACK_MATERIAL, ArmorItem.Type.CHESTPLATE, new Item.Properties().stacksTo(1));
     }
 
-    //neof原版3d盔甲的接口
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
-            @Override
-            public @NotNull net.minecraft.client.model.HumanoidModel<?> getHumanoidArmorModel(
-                    net.minecraft.world.entity.LivingEntity entity,
-                    ItemStack stack,
-                    net.minecraft.world.entity.EquipmentSlot slot,
-                    net.minecraft.client.model.HumanoidModel<?> _default
-            ) {
-                // 这里返回改好的那个模型
-                //return new BASIC_BACKPACK_Converted<>(_default.bakeLayer(BASIC_BACKPACK_Converted.LAYER_LOCATION));
-
-                return new BASIC_BACKPACK_Converted<>(
-                        Minecraft.getInstance().getEntityModels().bakeLayer(BASIC_BACKPACK_Converted.LAYER_LOCATION)
-                );
-            }
-        });
-    }
 }
 /*package cn.rbq108.test.item.equipment;
 
