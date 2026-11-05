@@ -33,6 +33,12 @@ public class ClientEvents {
     private static boolean lastIsSpectator = false;
 
     @SubscribeEvent
+    public static void onDisconnect(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event) {
+        cn.rbq108.nextboundarycornerstone.motion.SurfaceAdhesion.reset();
+        cn.rbq108.nextboundarycornerstone.motion.Rush.reset();
+    }
+
+    @SubscribeEvent
     public static void onComputeCameraAngles(ViewportEvent.ComputeCameraAngles event) {
         float partialTicks = (float) event.getPartialTick();
 
@@ -143,7 +149,12 @@ public class ClientEvents {
     public static void onClientTick(ClientTickEvent.Post event) {
         var mc = Minecraft.getInstance();
         var player = mc.player;
-        if (player == null) return;
+        if (player == null) {
+            cn.rbq108.nextboundarycornerstone.motion.SurfaceAdhesion.reset();
+            cn.rbq108.nextboundarycornerstone.motion.Rush.reset();
+            return;
+        }
+        if (mc.isPaused()) return;
 
         boolean isSpectator = player.isSpectator();
         if (isSpectator && !lastIsSpectator) {
@@ -209,118 +220,14 @@ public class ClientEvents {
             // System.out.println("111111111111111111111");
         }
 
-        //然后才让外部功能去跑它们的逻辑
-        cn.rbq108.nextboundarycornerstone.motion.GravityClose.updateGravityState();
-        cn.rbq108.nextboundarycornerstone.motion.Rush.updateRushState();
-
-        //确保 B_LowGravity始终跟随感应状态
         GlobalVariables.B_LowGravity = currentRealState;
-
-        //备份记录，给下一帧用
-        GlobalVariables.prevLowGravity = GlobalVariables.B_LowGravity;
-
+        GlobalVariables.prevLowGravity = currentRealState;
         cn.rbq108.nextboundarycornerstone.motion.GravityClose.updateGravityState();
-        cn.rbq108.nextboundarycornerstone.motion.Rush.updateRushState();
 
         GlobalVariables.prev_B_Dz = GlobalVariables.B_Dz;
         GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
 
-        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.debug.FORCE_LOW_GRAVITY) {
-            GlobalVariables.B_LowGravity = true;
-        }
-
-        /*
-        下面的屎山注释真的超级超级乱，反正也用不着就全删除了
-
-        // 只在开启瞬间抓拍一次
-        if (GlobalVariables.B_LowGravity && !GlobalVariables.prevLowGravity) {
-
-            var currentMotion = player.getDeltaMovement();
-
-
-            GlobalVariables.B_Vx1 = (float) currentMotion.x * 0.91f;
-            GlobalVariables.B_Vy1 = (float) currentMotion.y * 0.80f;
-            GlobalVariables.B_Vz1 = (float) currentMotion.z * 0.91f;
-
-
-            GlobalVariables.currentQuat.rotationYXZ(
-                    (float) Math.toRadians(-player.getYRot()),
-                    (float) Math.toRadians(player.getXRot()),
-                    0.0f
-            );
-
-
-        }
-
-        GlobalVariables.prevLowGravity = GlobalVariables.B_LowGravity;*/
-
-
-
-
-
-
         if (GlobalVariables.B_LowGravity) {
-            // FOV 逻辑帧计算 (0.4f
-            // 备份旧值用于渲染插值
-            GlobalVariables.prevFovModifier = GlobalVariables.currentFovModifier;
-
-            float targetFovMod = GlobalVariables.B_rush ? 12.0f : 0.0f;
-            GlobalVariables.currentFovModifier += (targetFovMod - GlobalVariables.currentFovModifier) * 0.4f;//进入/退出冲刺fov变化速率
-
-            if (Math.abs(GlobalVariables.currentFovModifier) < 0.01f) {
-                GlobalVariables.currentFovModifier = 0.0f;
-            }
-
-            //动态读取原版映射
-            if (mc.options.keyUp.isDown()) GlobalVariables.B_INz = 1;
-            else if (mc.options.keyDown.isDown()) GlobalVariables.B_INz = -1;
-            else GlobalVariables.B_INz = 0;
-
-            if (mc.options.keyLeft.isDown()) GlobalVariables.B_INx = -1;
-            else if (mc.options.keyRight.isDown()) GlobalVariables.B_INx = 1;
-            else GlobalVariables.B_INx = 0;
-
-            if (mc.options.keyJump.isDown()) GlobalVariables.B_INy = 1;
-            else if (mc.options.keyShift.isDown()) GlobalVariables.B_INy = -1;
-            else GlobalVariables.B_INy = 0;
-
-            if (GlobalVariables.blockMovementUntilRelease) {
-                // 如果用户仍未松开固定视角键 (Shift)，则继续屏蔽所有移动指令
-                if (!cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FIXED_CAMERA.isDown()) {
-                    GlobalVariables.blockMovementUntilRelease = false;
-                } else {
-                    GlobalVariables.B_INx = 0;
-                    GlobalVariables.B_INy = 0;
-                    GlobalVariables.B_INz = 0;
-                }
-            }
-
-            // 真实物理硬核限制：如果在失重下且没有穿推进背包，且身体四周1格没有方块可供借力，清空所有推力！
-            if (GlobalVariables.B_LowGravity && GlobalVariables.B_CanBackpackGrantGravity) {
-                net.minecraft.world.item.ItemStack chest = mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
-                if (chest.isEmpty() || !chest.is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get())) {
-                    // 没有穿任何推进背包（如果穿了新工业模组背包，B_CanBackpackGrantGravity 就是 false）
-                    // 开始对方块进行碰撞盒外扩探测
-                    net.minecraft.world.phys.AABB reachBox = mc.player.getBoundingBox().inflate(1.0D);
-                    boolean canPushOff = false;
-                    for (net.minecraft.core.BlockPos bp : net.minecraft.core.BlockPos.betweenClosed(
-                            net.minecraft.util.Mth.floor(reachBox.minX), net.minecraft.util.Mth.floor(reachBox.minY), net.minecraft.util.Mth.floor(reachBox.minZ),
-                            net.minecraft.util.Mth.floor(reachBox.maxX), net.minecraft.util.Mth.floor(reachBox.maxY), net.minecraft.util.Mth.floor(reachBox.maxZ))) {
-                        net.minecraft.world.level.block.state.BlockState bs = mc.player.level().getBlockState(bp);
-                        if (!bs.isAir() && !bs.getCollisionShape(mc.player.level(), bp).isEmpty()) {
-                            canPushOff = true;
-                            break;
-                        }
-                    }
-                    // 若周围无方块可供借力，则无法产生加速度
-                    if (!canPushOff) {
-                        GlobalVariables.B_INx = 0;
-                        GlobalVariables.B_INy = 0;
-                        GlobalVariables.B_INz = 0;
-                    }
-                }
-            }
-
             //roll轴旋转逻辑
             long window = mc.getWindow().getWindow();
             boolean isShift = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);
@@ -451,6 +358,17 @@ public class ClientEvents {
                 GlobalVariables.headRelQuat.set(targetRelQuat);
             }
 
+            // One ordered movement update per tick, after body orientation is finalized.
+            cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler.pollInput();
+            cn.rbq108.nextboundarycornerstone.motion.Rush.updateRushState();
+            boolean grabbingHandle = cn.rbq108.nextboundarycornerstone.ModCompatible.isGrabbingAeronauticsHandle(player);
+            cn.rbq108.nextboundarycornerstone.motion.calculate.calculateTargetVelocity(grabbingHandle);
+
+            GlobalVariables.prevFovModifier = GlobalVariables.currentFovModifier;
+            float targetFovMod = GlobalVariables.B_rush ? 12.0f : 0.0f;
+            GlobalVariables.currentFovModifier += (targetFovMod - GlobalVariables.currentFovModifier) * 0.4f;
+            if (Math.abs(GlobalVariables.currentFovModifier) < 0.01f) GlobalVariables.currentFovModifier = 0;
+
             //阻断与物理注入
             player.xxa = 0.0f; player.yya = 0.0f; player.zza = 0.0f;
             mc.options.keyShift.setDown(false);
@@ -461,7 +379,7 @@ public class ClientEvents {
             player.setSprinting(false);
             
             // 接入兼容逻辑：如果玩家正在抓取航空学铁把手，临时撤销飞行状态以允许物理位移
-            if (cn.rbq108.nextboundarycornerstone.ModCompatible.isGrabbingAeronauticsHandle(player)) {
+            if (grabbingHandle) {
                 player.getAbilities().flying = false;
             } else {
                 cn.rbq108.nextboundarycornerstone.ServeMiao.AllowFly.updateFlightPermission(player, true);
@@ -481,6 +399,9 @@ public class ClientEvents {
             }
 
         } else {
+            cn.rbq108.nextboundarycornerstone.motion.SurfaceAdhesion.reset();
+            cn.rbq108.nextboundarycornerstone.motion.Rush.reset();
+            cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler.pollInput();
             player.getAbilities().setFlyingSpeed(0.05f);
             //player.getAbilities().mayfly = false;
             //player.getAbilities().flying = false;

@@ -1,118 +1,57 @@
 package cn.rbq108.nextboundarycornerstone.motion;
 
-import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.Config;
+import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.math.CoordinateSystemTransformation;
-import org.joml.Vector3f;
 import net.minecraft.client.Minecraft;
+import org.joml.Vector3f;
 
 public class calculate {
-
     public static void calculateTargetVelocity() {
-        var mc = Minecraft.getInstance();
-        if (mc.player == null) return;
+        var player = Minecraft.getInstance().player;
+        if (player != null) calculateTargetVelocity(cn.rbq108.nextboundarycornerstone.ModCompatible.isGrabbingAeronauticsHandle(player));
+    }
 
-        //碰撞同步
-        double ax = mc.player.getX() - mc.player.xo;
-        double ay = mc.player.getY() - mc.player.yo;
-        double az = mc.player.getZ() - mc.player.zo;
-        if (mc.player.horizontalCollision) {
-            if (Math.abs(ax) < 0.01) GlobalVariables.B_Vx1 = 0;
-            if (Math.abs(az) < 0.01) GlobalVariables.B_Vz1 = 0;
-        }
-        //if (mc.player.verticalCollision && Math.abs(ay) < 0.01) GlobalVariables.B_Vy1 = 0;
-        if (mc.player.verticalCollision && Math.abs(ay) < 0.01) {
-            // mc.player.onGround() 是判断碰撞到底是不是“地板”的最稳方法
-            if (mc.player.onGround() && GlobalVariables.B_Vy1 < 0) {
-                GlobalVariables.B_Vy1 = 0; // 踩在地上，只把向下砸的速度清零，允许向上飞
-            } else if (!mc.player.onGround() && GlobalVariables.B_Vy1 > 0) {
-                GlobalVariables.B_Vy1 = 0; // 撞到了天花板，把向上冲的速度清零
-            }
-        }
+    public static void calculateTargetVelocity(boolean grabbingHandle) {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return;
 
-        //Config 变量提取
-        float cfgVmax = Config.PHYSICS.vMax.get().floatValue();
-        float cfgRushXy = Config.PHYSICS.rushXy.get().floatValue();
-        float cfgRushZ = Config.PHYSICS.rushZ.get().floatValue();
-        float cfgAfterburner = Config.PHYSICS.afterburnerRatio.get().floatValue();
-        float cfgAmax = Config.PHYSICS.aMax.get().floatValue();
-        float cfgBrake = Config.PHYSICS.brakeRatio.get().floatValue();
+        float maxSpeed = Config.PHYSICS.vMax.get().floatValue();
+        float afterburner = Config.PHYSICS.afterburnerRatio.get().floatValue();
+        float maxAcceleration = Config.PHYSICS.aMax.get().floatValue() * afterburner;
+        Vector3f localInput = new Vector3f(GlobalVariables.B_INx, GlobalVariables.B_INy, GlobalVariables.B_INz);
+        boolean hasInput = localInput.lengthSquared() > 0;
+        if (hasInput) localInput.normalize();
 
-        //一：目标推力计算
-        int inX = GlobalVariables.B_INx;
-        int inY = GlobalVariables.B_INy;
-        int inZ = GlobalVariables.B_INz;
-
-        if (GlobalVariables.B_rush && inZ < 0) GlobalVariables.B_rush = false;
-
-        Vector3f localInput = new Vector3f(inX, inY, inZ);
-        if (localInput.lengthSquared() > 0) localInput.normalize();
-
-        float curRushX = GlobalVariables.B_rush ? cfgRushXy : 1.0f;
-        float curRushY = GlobalVariables.B_rush ? cfgRushXy : 1.0f;
-        float curRushZ = GlobalVariables.B_rush ? ((inZ > 0) ? cfgRushZ : cfgRushXy) : 1.0f;
-
-        GlobalVariables.B_Vx3_1 = localInput.x * cfgVmax * curRushX * cfgAfterburner;
-        GlobalVariables.B_Vy3_1 = localInput.y * cfgVmax * curRushY * cfgAfterburner;
-        GlobalVariables.B_Vz3_1 = localInput.z * cfgVmax * curRushZ * cfgAfterburner;
-
+        float rushXy = GlobalVariables.B_rush ? Config.PHYSICS.rushXy.get().floatValue() : 1;
+        float rushZ = GlobalVariables.B_rush
+                ? (GlobalVariables.B_INz > 0 ? Config.PHYSICS.rushZ.get().floatValue() : rushXy) : 1;
+        GlobalVariables.B_Vx3_1 = localInput.x * maxSpeed * rushXy * afterburner;
+        GlobalVariables.B_Vy3_1 = localInput.y * maxSpeed * rushXy * afterburner;
+        GlobalVariables.B_Vz3_1 = localInput.z * maxSpeed * rushZ * afterburner;
         CoordinateSystemTransformation.transformVelocityToWorld();
 
-        // 三：平滑制动（我二呢？）
-        boolean hasInput = (inX != 0 || inY != 0 || inZ != 0);
-        boolean shouldBrake = cn.rbq108.nextboundarycornerstone.VariableLibrary.debug.DEBUG_B_HOLD ||
-                cn.rbq108.nextboundarycornerstone.core.Keybinds.B_MANUAL_BRAKE.isDown();
+        Vector3f velocity = new Vector3f(GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1);
+        SurfaceAdhesion.prepare(player, velocity, grabbingHandle);
+        Vector3f target = new Vector3f(GlobalVariables.B_Vx4, GlobalVariables.B_Vy4, GlobalVariables.B_Vz4);
+        boolean shouldBrake = cn.rbq108.nextboundarycornerstone.VariableLibrary.debug.DEBUG_B_HOLD
+                || cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler.isPressed(
+                        cn.rbq108.nextboundarycornerstone.core.Keybinds.B_MANUAL_BRAKE);
+        Vector3f propulsionDelta = FlightVelocityMath.advance(velocity, target, hasInput, shouldBrake,
+                maxAcceleration, Config.PHYSICS.brakeRatio.get().floatValue());
+        // Also runs when no movement key is held; free drift only skips the propulsion step.
+        SurfaceAdhesion.apply(velocity, target, propulsionDelta, maxAcceleration);
 
-        Vector3f currentVel = new Vector3f(GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1);
-
-        if (!hasInput && !shouldBrake) {
-            currentVel.x += GlobalVariables.B_Vx5;
-            currentVel.y += GlobalVariables.B_Vy5;
-            currentVel.z += GlobalVariables.B_Vz5;
-
-            GlobalVariables.B_Vx1 = currentVel.x;
-            GlobalVariables.B_Vy1 = currentVel.y;
-            GlobalVariables.B_Vz1 = currentVel.z;
-
-            GlobalVariables.B_Vx5 = 0; GlobalVariables.B_Vy5 = 0; GlobalVariables.B_Vz5 = 0;
-            return; // 自由滑行
-        }
-
-        if (!hasInput && shouldBrake) {
-
-            float damping = Math.min(cfgBrake * 0.1f, 0.95f);
-            currentVel.lerp(new Vector3f(0, 0, 0), damping);
-            if (currentVel.length() < 0.005f) currentVel.set(0, 0, 0);
-        } else {
-
-            Vector3f targetVel = new Vector3f(GlobalVariables.B_Vx4, GlobalVariables.B_Vy4, GlobalVariables.B_Vz4);
-            float maxA = cfgAmax * cfgAfterburner;
-            Vector3f accel = new Vector3f();
-            targetVel.sub(currentVel, accel);
-            if (accel.length() > maxA) accel.normalize().mul(maxA);
-            currentVel.add(accel);
-        }
-
-        currentVel.x += GlobalVariables.B_Vx5;
-        currentVel.y += GlobalVariables.B_Vy5;
-        currentVel.z += GlobalVariables.B_Vz5;
-
-        GlobalVariables.B_Vx5 = 0; GlobalVariables.B_Vy5 = 0; GlobalVariables.B_Vz5 = 0;
-
-        GlobalVariables.B_Vx1 = currentVel.x;
-        GlobalVariables.B_Vy1 = currentVel.y;
-        GlobalVariables.B_Vz1 = currentVel.z;
-
-
-    }
-
-    private static void printDebugInfo(String status) {
-        System.out.printf("[这里写啥都没用了，反正idea不显示中文 - %s] 输入[Z:%d] | 真实惯性[Vx:%.3f, Vy:%.3f, Vz:%.3f]\n",
-                status, GlobalVariables.B_INz, GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1);
+        // Recoil remains an impulse after movement assistance, consumed exactly once.
+        velocity.add(GlobalVariables.B_Vx5, GlobalVariables.B_Vy5, GlobalVariables.B_Vz5);
+        GlobalVariables.B_Vx5 = 0;
+        GlobalVariables.B_Vy5 = 0;
+        GlobalVariables.B_Vz5 = 0;
+        GlobalVariables.B_Vx1 = velocity.x;
+        GlobalVariables.B_Vy1 = velocity.y;
+        GlobalVariables.B_Vz1 = velocity.z;
     }
 }
-
-
 
 // 下面是……我塞的屎！
 /*package cn.rbq108.test.motion;

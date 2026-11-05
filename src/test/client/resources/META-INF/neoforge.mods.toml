@@ -1,0 +1,18 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="AGPL-3.0-only"
+
+[[mods]]
+modId="cornerstone_surface_qa"
+version="1.0"
+displayName="Cornerstone Surface QA (test only)"
+
+[[dependencies.cornerstone_surface_qa]]
+modId="next_boundary_cornerstone"
+type="required"
+versionRange="[0,)"
+ordering="AFTER"
+side="CLIENT"
+
+[[mixins]]
+config="cornerstone.surface.qa.mixins.json"

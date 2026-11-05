@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "cn.rbq108.nextboundarycornerstone.qa.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": ["BackgroundWindowMixin", "SurfaceInputMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

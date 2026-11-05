@@ -21,11 +21,11 @@ public class Rush {
         if (mc.player == null) return;
 
         //读取玩家自定义的“前进键”状态
-        boolean isForwardDown = mc.options.keyUp.isDown();
+        boolean isForwardDown = GlobalVariables.B_INz > 0;
 
         // 读取注册的专用冲刺键状态
         // 使用 isDown() 直接获取物理按下状态，不触发原版疾跑逻辑
-        boolean isRushKeyDown = Keybinds.B_RUSH_BUTTON.isDown();
+        boolean isRushKeyDown = cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler.isPressed(Keybinds.B_RUSH_BUTTON);
 
 
 
@@ -58,5 +58,10 @@ public class Rush {
                 GlobalVariables.B_rush = false;
             }
         }
+    }
+    public static void reset() {
+        lastWPressTime = 0;
+        wasWDown = false;
+        GlobalVariables.B_rush = false;
     }
 }

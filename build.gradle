@@ -31,6 +31,60 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
+// Dependency-free numerical checks, plus opt-in runtime verification excluded from the JAR.
+sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
+sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
+sourceSets.create('gameTest') {
+    java.srcDirs = ['src/test/server/java']
+    resources.srcDirs = ['src/test/server/resources']
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+}
+sourceSets.create('clientQa') {
+    java.srcDirs = ['src/test/client/java']
+    resources.srcDirs = ['src/test/client/resources']
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+}
+def surfaceGameTestMod = project.container(net.neoforged.moddevgradle.dsl.ModModel).create(mod_id)
+surfaceGameTestMod.sourceSet(sourceSets.main)
+surfaceGameTestMod.sourceSet(sourceSets.gameTest)
+def surfaceClientMainMod = project.container(net.neoforged.moddevgradle.dsl.ModModel).create(mod_id)
+surfaceClientMainMod.sourceSet(sourceSets.main)
+def surfaceClientQaMod = project.container(net.neoforged.moddevgradle.dsl.ModModel).create('cornerstone_surface_qa')
+surfaceClientQaMod.sourceSet(sourceSets.clientQa)
+
+tasks.register('surfaceTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'cn.rbq108.nextboundarycornerstone.motion.SurfaceAdhesionTests'
+}
+tasks.named('check') { dependsOn tasks.named('surfaceTest') }
+
+// Only the isolated QA directory is touched. Disable FML's pre-Mixin splash window so the
+// test-only background window hints can suppress focus/visibility before window creation.
+def surfaceQaConfig = layout.buildDirectory.file('surface-client-qa/config/fml.toml')
+def surfaceQaOptions = layout.buildDirectory.file('surface-client-qa/options.txt')
+tasks.register('prepareSurfaceQaConfig') {
+    doLast {
+        def config = surfaceQaConfig.get().asFile
+        config.parentFile.mkdirs()
+        def contents = config.exists() ? config.getText('UTF-8') : ''
+        if (contents =~ /(?m)^earlyWindowControl\s*=/) {
+            contents = contents.replaceAll(/(?m)^earlyWindowControl\s*=.*$/, 'earlyWindowControl = false')
+        } else contents += '\nearlyWindowControl = false\n'
+        config.setText(contents, 'UTF-8')
+        def options = surfaceQaOptions.get().asFile
+        def optionText = options.exists() ? options.getText('UTF-8') : ''
+        if (optionText =~ /(?m)^fullscreen:/) optionText = optionText.replaceAll(/(?m)^fullscreen:.*$/, 'fullscreen:false')
+        else optionText += '\nfullscreen:false\n'
+        options.setText(optionText, 'UTF-8')
+    }
+}
+tasks.matching { it.name == 'runSurfaceClient' }.configureEach {
+    dependsOn tasks.named('prepareSurfaceQaConfig')
+}
+
 neoForge {
     // Specify the version of NeoForge to use.
     version = project.neo_version
@@ -47,6 +101,14 @@ neoForge {
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
+        surfaceClient {
+            client()
+            sourceSet = sourceSets.clientQa
+            loadedMods = [surfaceClientMainMod, surfaceClientQaMod]
+            gameDirectory = layout.projectDirectory.dir('build/surface-client-qa')
+            systemProperty 'cornerstone.surface.qa', 'true'
+            systemProperty 'cornerstone.surface.physical', providers.gradleProperty('surfacePhysicalInput').getOrElse('false')
+        }
 
         server {
             server()
@@ -59,6 +121,9 @@ neoForge {
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
             type = "gameTestServer"
+            sourceSet = sourceSets.gameTest
+            loadedMods = [surfaceGameTestMod]
+            gameDirectory = layout.projectDirectory.dir('build/surface-game-test')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 

@@ -150,6 +150,8 @@ public class main
         // 这是旧代码ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC, "next-boundary.toml");
         // 用最新的modContainer注册
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC, "next-boundary.toml");
+        modContainer.registerConfig(ModConfig.Type.SERVER,
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.SurfaceConfig.SPEC, "next-boundary-surface-server.toml");
 
         // 检测 TACZ 模组是否已安装
         if (net.neoforged.fml.ModList.get().isLoaded("tacz")) {
