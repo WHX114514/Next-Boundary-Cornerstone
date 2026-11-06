@@ -71,7 +71,7 @@ public final class SurfaceRuntimeGameTests {
                 "actual seam under the footprint captures");
         Vector3f velocity = new Vector3f();
         Vector3f intent = new Vector3f(.2f, .2f, 0);
-        var settings = new SurfaceAdhesionMath.Settings(.65f, .5f, 6, .15f);
+        var settings = new SurfaceAdhesionMath.Settings(.4f, .3f, 6, .15f);
         double separation = 0;
         for (int tick = 0; tick < 100; tick++) {
             var normal = state.update(body, probe(helper, body), velocity, false);

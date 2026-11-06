@@ -11,7 +11,7 @@ import java.util.Map;
 /** Run with `bash gradlew surfaceTest`; no game bootstrap or external test engine required. */
 public final class SurfaceAdhesionTests {
     private static final AABB BODY = new AABB(0, 0, 0, 1.2, 1.2, 1.2);
-    private static final SurfaceAdhesionMath.Settings DEFAULTS = new SurfaceAdhesionMath.Settings(.65f, .5f, 6, .15f);
+    private static final SurfaceAdhesionMath.Settings DEFAULTS = new SurfaceAdhesionMath.Settings(.4f, .3f, 6, .15f);
     private static int checks;
 
     public static void main(String[] args) {
@@ -139,7 +139,7 @@ public final class SurfaceAdhesionTests {
         for (Direction normal : Direction.values()) {
             Vector3f inward = vector(normal, -.2f);
             SurfaceAdhesionMath.apply(inward, normal, new Vector3f(), new Vector3f(), .1f, 1, DEFAULTS);
-            close(SurfaceGeometry.dot(inward, normal), -.265, "no approach damping " + normal);
+            close(SurfaceGeometry.dot(inward, normal), -.24, "no approach damping " + normal);
             Vector3f outward = vector(normal, .2f);
             SurfaceAdhesionMath.apply(outward, normal, new Vector3f(), new Vector3f(), .1f, 1, DEFAULTS);
             close(SurfaceGeometry.dot(outward, normal), .11, "bounded outward resistance " + normal);

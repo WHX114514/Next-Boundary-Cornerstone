@@ -11,8 +11,8 @@
 | `Surface_Assistance` 配置 | 默认值 | 含义 |
 | --- | --- | --- |
 | `Enabled` | `true` | 启用失重表面辅助 |
-| `StrengthRatio` | `0.65` | 吸附加速度占当前基础推进加速度上限的比例 |
-| `NormalDamping` | `0.5` | 每 tick 的离壁阻尼系数 |
+| `StrengthRatio` | `0.4` | 吸附加速度占当前基础推进加速度上限的比例 |
+| `NormalDamping` | `0.3` | 每 tick 的离壁阻尼系数 |
 | `StopTicks` | `6` | 标准贴壁速度下的近似松键停车时间 |
 | `SprintMultiplier` | `0.15` | 冲刺时吸力和切向制动倍率 |
 
