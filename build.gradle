@@ -12,6 +12,10 @@ group = 'cn.rbq108.nextboundary.cornerstone'
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {
+        url = 'https://maven.firstdark.dev/snapshots'
+        content { includeGroup 'com.lowdragmc.photon'; includeGroup 'com.lowdragmc.ldlib2' }
+    }
     exclusiveContent {
         forRepository {
             maven {
@@ -169,6 +173,8 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    compileOnly('com.lowdragmc.photon:photon-neoforge-1.21.1:2.2.8:all') { transitive = false }
+    compileOnly('com.lowdragmc.ldlib2:ldlib2-neoforge-1.21.1:2.2.42:all') { transitive = false }
     compileOnly "maven.modrinth:OypNE65K:wPvGWIj9"
     // Example mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime

@@ -162,6 +162,7 @@ public class main
         }
 
         modEventBus.addListener(this::registerNetwork);//手动把registerNetwork 挂载到模组总线上
+        cn.rbq108.nextboundarycornerstone.effect.ExplosionParticles.register(modEventBus);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event)

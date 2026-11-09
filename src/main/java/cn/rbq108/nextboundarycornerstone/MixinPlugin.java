@@ -1,5 +1,6 @@
 package cn.rbq108.nextboundarycornerstone;
 
+import net.neoforged.fml.loading.FMLLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -36,6 +37,12 @@ public class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.PhotonNetworkingMixin")) {
+            var mods = FMLLoader.getLoadingModList();
+            var photon = mods == null ? null : mods.getModFileById("photon");
+            return photon != null && photon.getMods().stream().anyMatch(mod ->
+                    mod.getModId().equals("photon") && mod.getVersion().toString().equals("2.2.8"));
+        }
         // TACZ 相关的 Mixin 仅在 TACZ 已安装时启用
         if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.FixTACZ") ||
             mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.MixinShellRender")) {
