@@ -55,9 +55,8 @@ public final class SurfaceAdhesion {
         if (activeNormal == null) return;
         var config = SurfaceConfig.SETTINGS;
         var settings = new SurfaceAdhesionMath.Settings(config.strengthRatio.get().floatValue(),
-                config.normalDamping.get().floatValue(), config.stopTicks.get(), config.sprintMultiplier.get().floatValue());
-        SurfaceAdhesionMath.apply(velocity, activeNormal, worldIntent, propulsionDelta, maxAcceleration,
-                STATE.assistanceWeight(settings.sprintMultiplier()), settings);
+                config.normalDamping.get().floatValue(), config.stopTicks.get());
+        SurfaceAdhesionMath.apply(velocity, activeNormal, worldIntent, propulsionDelta, maxAcceleration, settings);
     }
 
     public static void reset() {

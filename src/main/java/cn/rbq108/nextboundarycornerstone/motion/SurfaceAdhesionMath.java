@@ -4,19 +4,19 @@ import net.minecraft.core.Direction;
 import org.joml.Vector3f;
 
 final class SurfaceAdhesionMath {
-    record Settings(float strengthRatio, float normalDamping, int stopTicks, float sprintMultiplier) {}
+    record Settings(float strengthRatio, float normalDamping, int stopTicks) {}
 
     private SurfaceAdhesionMath() {}
 
     static void apply(Vector3f velocity, Direction normal, Vector3f worldIntent, Vector3f propulsionDelta,
-                      float maxAcceleration, float weight, Settings settings) {
-        if (normal == null || maxAcceleration <= 0 || weight <= 0) return;
+                      float maxAcceleration, Settings settings) {
+        if (normal == null || maxAcceleration <= 0) return;
 
         float normalVelocity = SurfaceGeometry.dot(velocity, normal);
         float normalIntent = SurfaceGeometry.dot(worldIntent, normal);
-        float attraction = maxAcceleration * settings.strengthRatio() * weight;
+        float attraction = maxAcceleration * settings.strengthRatio();
         // No approach damping: only outward motion is resisted after a real contact.
-        float resistance = attraction + Math.max(0, normalVelocity) * settings.normalDamping() * weight;
+        float resistance = attraction + Math.max(0, normalVelocity) * settings.normalDamping();
         float limit = maxAcceleration * 0.9f;
         if (normalIntent > 0.00001f) {
             // Use the acceleration the target-velocity controller actually supplied this tick,
@@ -31,10 +31,9 @@ final class SurfaceAdhesionMath {
             Vector3f tangentVelocity = new Vector3f(velocity);
             SurfaceGeometry.addNormal(tangentVelocity, normal, -SurfaceGeometry.dot(velocity, normal));
             // Remove 99% in the configured time, with a finite deceleration budget.
-            float fraction = (float) (1 - Math.pow(0.01, 1.0 / settings.stopTicks())) * weight;
+            float fraction = (float) (1 - Math.pow(0.01, 1.0 / settings.stopTicks()));
             Vector3f braking = tangentVelocity.mul(-fraction);
-            float budget = maxAcceleration * weight;
-            if (braking.lengthSquared() > budget * budget) braking.normalize().mul(budget);
+            if (braking.lengthSquared() > maxAcceleration * maxAcceleration) braking.normalize().mul(maxAcceleration);
             velocity.add(braking);
             Vector3f remaining = new Vector3f(velocity);
             SurfaceGeometry.addNormal(remaining, normal, -SurfaceGeometry.dot(velocity, normal));

@@ -21,7 +21,6 @@ public final class SurfaceConfig {
         public final ModConfigSpec.DoubleValue strengthRatio;
         public final ModConfigSpec.DoubleValue normalDamping;
         public final ModConfigSpec.IntValue stopTicks;
-        public final ModConfigSpec.DoubleValue sprintMultiplier;
 
         private Settings(ModConfigSpec.Builder builder) {
             builder.push("Surface_Assistance");
@@ -33,8 +32,6 @@ public final class SurfaceConfig {
                     .defineInRange("NormalDamping", 0.3, 0.0, 1.0);
             stopTicks = builder.comment("普通贴壁松键停车时间（tick，标准速度下的近似值）。")
                     .defineInRange("StopTicks", 6, 1, 100);
-            sprintMultiplier = builder.comment("冲刺时吸附与贴壁制动的倍率，3 tick 内平滑切换。")
-                    .defineInRange("SprintMultiplier", 0.15, 0.0, 1.0);
             builder.pop();
         }
     }

@@ -12,12 +12,14 @@ final class SurfaceAdhesionState {
     private double plane;
     private int missingTicks;
     private int cooldown;
-    private float sprintBlend;
 
     Direction update(AABB body, Map<Direction, SurfaceGeometry.Contact> contacts, Vector3f velocity, boolean sprinting) {
-        sprintBlend = moveTowards(sprintBlend, sprinting ? 1 : 0, 1.0f / 3);
         if (cooldown > 0) {
             cooldown--;
+            return null;
+        }
+        if (sprinting) {
+            clearSurface();
             return null;
         }
         if (normal != null) {
@@ -55,10 +57,6 @@ final class SurfaceAdhesionState {
         return normal;
     }
 
-    float assistanceWeight(float sprintMultiplier) {
-        return 1 - sprintBlend * (1 - sprintMultiplier);
-    }
-
     Direction rememberedNormal() {
         return normal;
     }
@@ -66,15 +64,10 @@ final class SurfaceAdhesionState {
     void reset() {
         clearSurface();
         cooldown = 0;
-        sprintBlend = 0;
     }
 
     private void clearSurface() {
         normal = null;
         missingTicks = 0;
-    }
-
-    private static float moveTowards(float value, float target, float step) {
-        return value < target ? Math.min(target, value + step) : Math.max(target, value - step);
     }
 }

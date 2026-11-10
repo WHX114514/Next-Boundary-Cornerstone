@@ -1,6 +1,6 @@
 # 失重表面辅助
 
-失重玩家的碰撞箱接触静态方块后，会获得有限的吸附和贴壁制动。推进仍使用身体朝向和现有六自由度输入：持续按身体的上升键（默认空格），或转向后向表面外推进，可以挣脱；冲刺会减弱辅助。自由观察、手动翻滚及后坐力沿用现有逻辑。
+失重玩家的碰撞箱接触静态方块后，会获得有限的吸附和贴壁制动。推进仍使用身体朝向和现有六自由度输入，持续按身体的上升键（默认空格），或转向后向表面外推进，可以挣脱。进入冲刺状态立即解除吸附和贴壁制动，结束冲刺时需有实际接触才能再次吸附。自由观察、手动翻滚及后坐力沿用现有逻辑。
 
 吸附不要求装备磁靴，也不限制方块材质。首次接触前不施加吸力或接近阻尼。碰撞箱任意侧均可捕获，不自动旋转身体或镜头；模型姿态不代表碰撞箱发生旋转。
 
@@ -14,7 +14,8 @@
 | `StrengthRatio` | `0.4` | 吸附加速度占当前基础推进加速度上限的比例 |
 | `NormalDamping` | `0.3` | 每 tick 的离壁阻尼系数 |
 | `StopTicks` | `6` | 标准贴壁速度下的近似松键停车时间 |
-| `SprintMultiplier` | `0.15` | 冲刺时吸力和切向制动倍率 |
+
+旧配置中的 `SprintMultiplier` 已废弃。
 
 离壁阻力受本 tick 实际向外推进增量的 90% 限幅，包含斜向推进和临近期望速度时的小加速度。没有推进能力时，辅助也不凭空提供动力。仅按上升等法向输入时，切向漂移仍会主动停车。
 
@@ -31,7 +32,7 @@ bash gradlew surfaceTest build
 bash gradlew runGameTestServer
 ```
 
-`surfaceTest` 是独立的数值/几何回归，覆盖六向接触、向内碰撞清除、接缝、冷却、停车、斜推挣脱、弱冲刺辅助和原有推进/手动制动。`check` 和 `build` 会执行它。GameTest 专服使用隔离的 `build/surface-game-test`，验证实际 SERVER 配置加载以及真实半砖、楼梯、流体和接缝碰撞形状。
+`surfaceTest` 是独立的数值/几何回归，覆盖六向接触、向内碰撞清除、接缝、冷却、停车、斜推挣脱、冲刺解除吸附和原有推进/手动制动。`check` 和 `build` 会执行它。GameTest 专服使用隔离的 `build/surface-game-test`，验证实际 SERVER 配置加载以及真实半砖、楼梯、流体和接缝碰撞形状。
 
 真实客户端入口仅包含在测试 source set 中，默认执行全自动后台验收：
 
@@ -60,7 +61,7 @@ bash gradlew runSurfaceClient
 3. fixture 自动创建隔离世界并按 UP、DOWN、EAST、WEST、SOUTH、NORTH 顺序布置。每次在 build/surface-client-qa/logs/latest.log 看到 SURFACE_QA_READY normal=... inputMode=physical 后，激活游戏窗口，长按空格约一秒并松开，等待对应 SURFACE_QA_ESCAPED。
 4. 逐面完成真实按键。不要用直接改坐标、输入变量或绕过物理键盘轮询代替此检查；fixture 自身的坐标和姿态设置仅用于初始布置。
 5. 核对 build/surface-client-qa/surface-result.json 的 passed=true、inputMode=physical、physicalInputVerified=true、六项 capture-and-parking-* 和六项 real-space-key-escape-*，以及日志 SURFACE_CLIENT_QA_PASS inputMode=physical checks=12。
-6. 另在普通 runClient 中实际检查 WASD、空格、自由观察、翻滚、手动制动、冲刺弱辅助、方向键重绑和修饰键组合。记录撞壁、松键停车与挣脱的实际手感；这部分不能由模拟输入结果代替。
+6. 另在普通 runClient 中实际检查 WASD、空格、自由观察、翻滚、手动制动、冲刺解除吸附、方向键重绑和修饰键组合。记录撞壁、松键停车与挣脱的实际手感；这部分不能由模拟输入结果代替。
 7. 使用独立服务器和两个客户端检查位置同步、服务端配置开关与参数同步、重生及换维度；单人集成服务器的测试不能证明双客户端验证完成。
 8. 报告实际完成的检查、结果文件路径和缺失项。仅到达 READY 只证明当前面捕获与停车，不能宣称挣脱通过。遇到锁屏、失焦或超时须明确记录未完成。
 ```

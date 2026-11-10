@@ -11,7 +11,7 @@ import java.util.Map;
 /** Run with `bash gradlew surfaceTest`; no game bootstrap or external test engine required. */
 public final class SurfaceAdhesionTests {
     private static final AABB BODY = new AABB(0, 0, 0, 1.2, 1.2, 1.2);
-    private static final SurfaceAdhesionMath.Settings DEFAULTS = new SurfaceAdhesionMath.Settings(.4f, .3f, 6, .15f);
+    private static final SurfaceAdhesionMath.Settings DEFAULTS = new SurfaceAdhesionMath.Settings(.4f, .3f, 6);
     private static int checks;
 
     public static void main(String[] args) {
@@ -22,12 +22,12 @@ public final class SurfaceAdhesionTests {
         run("missing support pauses force and expires", SurfaceAdhesionTests::missingSupport);
         run("release distance, cooldown and reset", SurfaceAdhesionTests::release);
         run("corner keeps previous normal", SurfaceAdhesionTests::corner);
-        run("three tick sprint transition", SurfaceAdhesionTests::sprintTransition);
+        run("sprint detaches immediately and requires new contact", SurfaceAdhesionTests::sprintTransition);
         run("six-axis finite attraction and no approach damping", SurfaceAdhesionTests::normalForces);
         run("normal and oblique sustained propulsion escape", SurfaceAdhesionTests::escape);
         run("near-target tiny outward acceleration remains positive", SurfaceAdhesionTests::tinyAcceleration);
         run("normal-only input brakes tangent drift", SurfaceAdhesionTests::braking);
-        run("sprint weakens normal and tangent assistance", SurfaceAdhesionTests::sprintForces);
+        run("sprint preserves normal and tangent drift at the surface", SurfaceAdhesionTests::sprintForces);
         run("free drift and original target-speed/manual-brake behavior", SurfaceAdhesionTests::flight);
         run("zero acceleration remains finite", SurfaceAdhesionTests::zeroAcceleration);
         System.out.println("SURFACE_TEST_PASS scenarios=15 assertions=" + checks);
@@ -127,21 +127,22 @@ public final class SurfaceAdhesionTests {
 
     private static void sprintTransition() {
         SurfaceAdhesionState state = attached(Direction.UP);
-        for (int i = 1; i <= 3; i++) {
-            state.update(BODY, contact(Direction.UP, 0), new Vector3f(), true);
-            close(state.assistanceWeight(.15f), 1 - i / 3.0 * .85, "sprint blend " + i);
-        }
-        for (int i = 1; i <= 3; i++) state.update(BODY, contact(Direction.UP, 0), new Vector3f(), false);
-        close(state.assistanceWeight(.15f), 1, "normal weight restored");
+        var touching = contact(Direction.UP, 0);
+        check(state.update(BODY, touching, new Vector3f(), true) == null, "first sprint tick detaches");
+        check(state.rememberedNormal() == null, "sprint clears contact memory");
+        check(state.update(BODY, touching, new Vector3f(), true) == null, "touching during sprint cannot attach");
+        check(state.update(BODY.move(0, .2, 0), contact(Direction.UP, .2), new Vector3f(), false) == null,
+                "ending sprint near a surface does not restore the old attachment");
+        check(state.update(BODY, touching, new Vector3f(), false) == Direction.UP, "touching after sprint captures again");
     }
 
     private static void normalForces() {
         for (Direction normal : Direction.values()) {
             Vector3f inward = vector(normal, -.2f);
-            SurfaceAdhesionMath.apply(inward, normal, new Vector3f(), new Vector3f(), .1f, 1, DEFAULTS);
+            SurfaceAdhesionMath.apply(inward, normal, new Vector3f(), new Vector3f(), .1f, DEFAULTS);
             close(SurfaceGeometry.dot(inward, normal), -.24, "no approach damping " + normal);
             Vector3f outward = vector(normal, .2f);
-            SurfaceAdhesionMath.apply(outward, normal, new Vector3f(), new Vector3f(), .1f, 1, DEFAULTS);
+            SurfaceAdhesionMath.apply(outward, normal, new Vector3f(), new Vector3f(), .1f, DEFAULTS);
             close(SurfaceGeometry.dot(outward, normal), .11, "bounded outward resistance " + normal);
         }
     }
@@ -155,7 +156,7 @@ public final class SurfaceAdhesionTests {
                 float distance = 0;
                 for (int tick = 0; tick < 100 && distance <= .35; tick++) {
                     Vector3f delta = FlightVelocityMath.advance(velocity, target, true, false, .1f, .9f);
-                    SurfaceAdhesionMath.apply(velocity, normal, target, delta, .1f, 1, DEFAULTS);
+                    SurfaceAdhesionMath.apply(velocity, normal, target, delta, .1f, DEFAULTS);
                     float outward = SurfaceGeometry.dot(velocity, normal);
                     check(outward > 0, "continuous outward movement " + normal + " oblique=" + oblique);
                     distance += outward;
@@ -170,7 +171,7 @@ public final class SurfaceAdhesionTests {
         Vector3f target = new Vector3f(0, .3f, 0);
         float previous = velocity.y;
         Vector3f delta = FlightVelocityMath.advance(velocity, target, true, false, .1f, .9f);
-        SurfaceAdhesionMath.apply(velocity, Direction.UP, target, delta, .1f, 1, DEFAULTS);
+        SurfaceAdhesionMath.apply(velocity, Direction.UP, target, delta, .1f, DEFAULTS);
         check(velocity.y > previous, "tiny actual acceleration cannot be fully cancelled");
     }
 
@@ -179,30 +180,33 @@ public final class SurfaceAdhesionTests {
         for (int i = 0; i < 6; i++) {
             Vector3f target = new Vector3f(0, .3f, 0);
             Vector3f delta = FlightVelocityMath.advance(velocity, target, true, false, .1f, .9f);
-            SurfaceAdhesionMath.apply(velocity, Direction.UP, target, delta, .1f, 1, DEFAULTS);
+            SurfaceAdhesionMath.apply(velocity, Direction.UP, target, delta, .1f, DEFAULTS);
         }
         close(velocity.x, 0, "space/up-only input parks the tangent drift");
         velocity.set(.3f, 0, 0);
-        for (int i = 0; i < 6; i++) SurfaceAdhesionMath.apply(velocity, Direction.UP, new Vector3f(), new Vector3f(), .1f, 1, DEFAULTS);
+        for (int i = 0; i < 6; i++) SurfaceAdhesionMath.apply(velocity, Direction.UP, new Vector3f(), new Vector3f(), .1f, DEFAULTS);
         close(velocity.x, 0, "no-input parking within six ticks");
         velocity.set(.3f, 0, 0);
-        SurfaceAdhesionMath.apply(velocity, Direction.UP, new Vector3f(.3f, 0, 0), new Vector3f(), .1f, 1, DEFAULTS);
+        SurfaceAdhesionMath.apply(velocity, Direction.UP, new Vector3f(.3f, 0, 0), new Vector3f(), .1f, DEFAULTS);
         close(velocity.x, .3, "tangent input is not projected away or forcibly braked");
     }
 
     private static void sprintForces() {
-        Vector3f normal = new Vector3f(.3f, .1f, 0);
-        Vector3f sprint = new Vector3f(normal);
-        SurfaceAdhesionMath.apply(normal, Direction.UP, new Vector3f(), new Vector3f(), .1f, 1, DEFAULTS);
-        SurfaceAdhesionMath.apply(sprint, Direction.UP, new Vector3f(), new Vector3f(), .1f, .15f, DEFAULTS);
-        check(sprint.x > normal.x && sprint.y > normal.y, "both normal drag and parking are weaker");
+        for (Direction normal : Direction.values()) {
+            SurfaceAdhesionState state = attached(normal);
+            Vector3f initial = vector(normal, .1f).add(tangent(normal).mul(.3f));
+            Vector3f velocity = new Vector3f(initial);
+            var surface = state.update(BODY, contact(normal, 0), velocity, true);
+            SurfaceAdhesionMath.apply(velocity, surface, new Vector3f(), new Vector3f(), .1f, DEFAULTS);
+            close(velocity.distance(initial), 0, "sprint applies no attraction, damping, or parking " + normal);
+        }
     }
 
     private static void flight() {
         Vector3f velocity = new Vector3f(.1f, .2f, .3f);
         FlightVelocityMath.advance(velocity, new Vector3f(), false, false, .1f, .9f);
         close(velocity.y, .2, "free drift retained");
-        SurfaceAdhesionMath.apply(velocity, null, new Vector3f(), new Vector3f(), .1f, 1, DEFAULTS);
+        SurfaceAdhesionMath.apply(velocity, null, new Vector3f(), new Vector3f(), .1f, DEFAULTS);
         close(velocity.y, .2, "no surface leaves drift untouched");
         FlightVelocityMath.advance(velocity, new Vector3f(), false, true, .1f, .9f);
         close(velocity.y, .182, "manual brake remains original 9 percent damping");
@@ -215,7 +219,7 @@ public final class SurfaceAdhesionTests {
     private static void zeroAcceleration() {
         Vector3f velocity = new Vector3f(.1f, .2f, .3f);
         FlightVelocityMath.advance(velocity, new Vector3f(0, 1, 0), true, false, 0, .9f);
-        SurfaceAdhesionMath.apply(velocity, Direction.UP, new Vector3f(), new Vector3f(), 0, 1, DEFAULTS);
+        SurfaceAdhesionMath.apply(velocity, Direction.UP, new Vector3f(), new Vector3f(), 0, DEFAULTS);
         close(velocity.y, .2, "zero configured propulsion creates no auxiliary movement");
         check(Float.isFinite(velocity.x) && Float.isFinite(velocity.z), "finite zero budget");
     }

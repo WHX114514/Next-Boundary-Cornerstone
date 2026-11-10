@@ -25,7 +25,7 @@ public final class SurfaceRuntimeGameTests {
     public static void serverConfigLoadsWithoutClientClasses(GameTestHelper helper) {
         helper.assertTrue(SurfaceConfig.SPEC.isLoaded(), "SERVER config loaded on dedicated GameTest server");
         helper.assertTrue(SurfaceConfig.SETTINGS.enabled.get(), "surface assistance defaults enabled");
-        helper.assertTrue(Math.abs(SurfaceConfig.SETTINGS.strengthRatio.get() - .65) < .00001, "default strength");
+        helper.assertTrue(Math.abs(SurfaceConfig.SETTINGS.strengthRatio.get() - .4) < .00001, "default strength");
         helper.assertTrue(SurfaceConfig.SETTINGS.stopTicks.get() == 6, "default parking time");
         helper.succeed();
     }
@@ -71,13 +71,13 @@ public final class SurfaceRuntimeGameTests {
                 "actual seam under the footprint captures");
         Vector3f velocity = new Vector3f();
         Vector3f intent = new Vector3f(.2f, .2f, 0);
-        var settings = new SurfaceAdhesionMath.Settings(.4f, .3f, 6, .15f);
+        var settings = new SurfaceAdhesionMath.Settings(.4f, .3f, 6);
         double separation = 0;
         for (int tick = 0; tick < 100; tick++) {
             var normal = state.update(body, probe(helper, body), velocity, false);
             if (normal == null) break;
             var delta = FlightVelocityMath.advance(velocity, intent, true, false, .1f, .9f);
-            SurfaceAdhesionMath.apply(velocity, normal, intent, delta, .1f, 1, settings);
+            SurfaceAdhesionMath.apply(velocity, normal, intent, delta, .1f, settings);
             body = body.move(velocity.x, velocity.y, velocity.z);
             separation += velocity.y;
         }
