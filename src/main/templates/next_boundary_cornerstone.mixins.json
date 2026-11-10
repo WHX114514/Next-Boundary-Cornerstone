@@ -17,6 +17,7 @@
     "MixinItemInHandRenderer",
     "MixinGui",
     "ParticleAccessor",
+    "PhotonNetworkingMixin",
     "FixTACZ",
     "MixinShellRender"
   ],
