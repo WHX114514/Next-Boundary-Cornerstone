@@ -39,6 +39,14 @@ public class NetworkHandler {
             // 记录下这个玩家的旋转和状态
             REMOTE_ROTATIONS.put(payload.playerId(), payload.quat());
             REMOTE_GRAVITY_STATES.put(payload.playerId(), payload.lowGravity());
+            var local = context.player();
+            var target = local.level().getPlayerByUUID(payload.playerId());
+            if (target != null && target != local) {
+                var attachment = target.getData(cn.rbq108.nextboundarycornerstone.main.PLAYER_ROTATION);
+                attachment.setQuaternion(payload.quat());
+                attachment.setLowGravity(payload.lowGravity());
+                attachment.setHitboxPose(payload.hitboxPose());
+            }
         });
     }
 
@@ -46,15 +54,15 @@ public class NetworkHandler {
     public static void handleDataOnServer(final SyncRotationPayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {
             net.minecraft.world.entity.player.Player player = context.player();
-            if (player != null) {
+            if (player != null && player.getUUID().equals(payload.playerId())) {
+                boolean lowGravity = player.isNoGravity() && !isSpectatorAndRestored(player);
+                if (lowGravity != payload.lowGravity()) return;
                 cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment attachment = player.getData(cn.rbq108.nextboundarycornerstone.main.PLAYER_ROTATION);
                 attachment.setQuaternion(payload.quat());
-                attachment.setLowGravity(payload.lowGravity());
+                attachment.setLowGravity(lowGravity);
+                attachment.setHitboxPose(lowGravity ? payload.hitboxPose() : null);
+                net.neoforged.neoforge.network.PacketDistributor.sendToAllPlayers(payload);
             }
-            //context.broadcast(payload);这个不能用，会坏
-            //要使用 PacketDistributor 广播给所有在线玩家
-            // 这一行代码会把 A 玩家的姿态数据，再同步给服务器里的所有人
-            net.neoforged.neoforge.network.PacketDistributor.sendToAllPlayers(payload);
         });
     }
 }

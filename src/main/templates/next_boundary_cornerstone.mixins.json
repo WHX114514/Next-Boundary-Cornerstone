@@ -5,8 +5,15 @@
   "compatibilityLevel": "JAVA_21",
   "plugin": "cn.rbq108.nextboundarycornerstone.MixinPlugin",
   "mixins": [
+    "SegmentedProjectileMixin",
+    "SegmentedInteractionMixin",
+    "SegmentedServerInteractionMixin",
+    "TACZSegmentedHitboxMixin"
   ],
   "client": [
+    "PlayerArmPoseAccessor",
+    "SegmentedRemotePoseMixin",
+    "SegmentedHitboxDebugMixin",
     "ClientPositionCorrectionMixin",
     "LocalPlayerCollisionMixin",
     "CameraContral",

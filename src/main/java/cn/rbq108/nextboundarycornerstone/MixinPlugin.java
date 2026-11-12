@@ -44,6 +44,9 @@ public class MixinPlugin implements IMixinConfigPlugin {
                     mod.getModId().equals("photon") && mod.getVersion().toString().equals("2.2.8"));
         }
         // TACZ 相关的 Mixin 仅在 TACZ 已安装时启用
+        if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.TACZSegmentedHitboxMixin")) {
+            return taczLoaded && isClassAvailable("com.tacz.guns.util.EntityUtil");
+        }
         if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.FixTACZ") ||
             mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.MixinShellRender")) {
             return taczLoaded;

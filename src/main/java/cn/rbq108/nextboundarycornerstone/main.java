@@ -225,7 +225,7 @@ public class main
 
     //@SubscribeEvent
     public void registerNetwork(final RegisterPayloadHandlersEvent event) {
-        final PayloadRegistrar registrar = event.registrar(main.MODID);
+        final PayloadRegistrar registrar = event.registrar(main.MODID + "-segmented-hitboxes-2");
 
         // 注册四元数同步包
         registrar.playBidirectional(

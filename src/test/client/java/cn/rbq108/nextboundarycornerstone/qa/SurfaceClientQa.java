@@ -54,6 +54,7 @@ public final class SurfaceClientQa {
     }
 
     public SurfaceClientQa() {
+        if (Boolean.getBoolean("cornerstone.hitbox.visual")) HitboxVisualQa.start();
         if (Boolean.getBoolean("cornerstone.surface.qa")) NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, SurfaceClientQa::tick);
     }
 
@@ -94,6 +95,21 @@ public final class SurfaceClientQa {
                 SurfaceAdhesion.reset();
                 next(3);
             } else if (phase == 3 && ticks > 12) {
+                var hitboxPose = mc.player.getData(main.PLAYER_ROTATION).getHitboxPose();
+                require(hitboxPose != null && hitboxPose.joints().size() == 6, "first-person skeleton sampled without rendering body");
+                require(((cn.rbq108.nextboundarycornerstone.body.SegmentedAABB)
+                        cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxes.forHitQuery(mc.player)).pieces().size() == 16,
+                        "actual client has sixteen hit pieces for " + FACES[faceIndex]);
+                var playerId = mc.player.getUUID();
+                mc.getSingleplayerServer().execute(() -> {
+                    try {
+                        var serverPlayer = mc.getSingleplayerServer().getPlayerList().getPlayer(playerId);
+                        require(serverPlayer.getData(main.PLAYER_ROTATION).getHitboxPose() != null, "server received sampled skeleton");
+                        require(((cn.rbq108.nextboundarycornerstone.body.SegmentedAABB)
+                                cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxes.forHitQuery(serverPlayer)).pieces().size() == 16,
+                                "server builds same number of hit pieces");
+                    } catch (Throwable error) { serverFailure = error; }
+                });
                 require(SurfaceConfig.SPEC.isLoaded(), "SERVER settings available on actual client");
                 require(activeNormal() == FACES[faceIndex], "actual client capture " + FACES[faceIndex]);
                 // Give a real world-space tangent drift, then let normal client ticks stop it.

@@ -48,7 +48,9 @@ public class OtherPlayer {
 
                 Quaternionf currentBody = SMOOTH_BODY_QUATS.computeIfAbsent(id, k -> new Quaternionf(targetQuat));
                 SMOOTH_BODY_QUATS_O.put(id, new Quaternionf(currentBody));
-                currentBody.slerp(targetQuat, 0.15f);
+                var hitboxPose = player.getData(main.PLAYER_ROTATION).getHitboxPose();
+                if (hitboxPose != null) currentBody.set(hitboxPose.body());
+                else currentBody.slerp(targetQuat, 0.15f);
             }
         }
     }
@@ -76,6 +78,8 @@ public class OtherPlayer {
                 Quaternionf prevBody = SMOOTH_BODY_QUATS_O.getOrDefault(id, headQuatNet);
                 Quaternionf currBody = SMOOTH_BODY_QUATS.getOrDefault(id, headQuatNet);
                 Quaternionf smoothBodyQuatRender = new Quaternionf(prevBody).slerp(currBody, frameTime);
+                var hitboxPose = player.getData(main.PLAYER_ROTATION).renderHitboxPose(frameTime);
+                if (hitboxPose != null) smoothBodyQuatRender.set(hitboxPose.body());
 
                 float currentHitboxHeight = player.getBbHeight();
                 float centerY = currentHitboxHeight * 0.5f;
@@ -90,7 +94,7 @@ public class OtherPlayer {
                 //执行旋转
                 event.getPoseStack().mulPose(smoothBodyQuatRender);
                 // 旋转完后再把轴心降回脚底，居中
-                event.getPoseStack().translate(0.0D, -centerY, 0.0D);
+                event.getPoseStack().translate(0.0D, -0.9D + (player.hasPose(net.minecraft.world.entity.Pose.SWIMMING) ? centerY : 0), 0.0D);
 
 
 

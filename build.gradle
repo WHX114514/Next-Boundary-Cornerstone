@@ -65,6 +65,14 @@ tasks.register('surfaceTest', JavaExec) {
 }
 tasks.named('check') { dependsOn tasks.named('surfaceTest') }
 
+tasks.register('hitboxTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxTests'
+}
+
+tasks.named('check') { dependsOn tasks.named('hitboxTest') }
+
 // Only the isolated QA directory is touched. Disable FML's pre-Mixin splash window so the
 // test-only background window hints can suppress focus/visibility before window creation.
 def surfaceQaConfig = layout.buildDirectory.file('surface-client-qa/config/fml.toml')
@@ -112,6 +120,14 @@ neoForge {
             gameDirectory = layout.projectDirectory.dir('build/surface-client-qa')
             systemProperty 'cornerstone.surface.qa', 'true'
             systemProperty 'cornerstone.surface.physical', providers.gradleProperty('surfacePhysicalInput').getOrElse('false')
+        }
+        hitboxVisualClient {
+            client()
+            sourceSet = sourceSets.clientQa
+            loadedMods = [surfaceClientMainMod, surfaceClientQaMod]
+            gameDirectory = layout.projectDirectory.dir('.local-artifacts/hitbox-visual/game')
+            systemProperty 'cornerstone.hitbox.visual', 'true'
+            systemProperty 'cornerstone.hitbox.visual.scenario', providers.gradleProperty('hitboxVisualScenario').getOrElse('all')
         }
 
         server {

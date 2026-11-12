@@ -59,6 +59,9 @@ public class hitbox {
                 player.refreshDimensions();
             }
         } else {
+            if (player.hasData(main.PLAYER_ROTATION) && player.getData(main.PLAYER_ROTATION).getHitboxPose() != null) {
+                player.getData(main.PLAYER_ROTATION).setHitboxPose(null);
+            }
             // 如果关闭失重操作，但盒子还是小的，强制变回原状
             if (Math.abs(player.getBbHeight() - GlobalVariables.B_HitboxSize) < 0.01f) {
                 player.refreshDimensions();

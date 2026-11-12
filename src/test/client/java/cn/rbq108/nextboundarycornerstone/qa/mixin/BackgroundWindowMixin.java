@@ -14,7 +14,8 @@ public abstract class BackgroundWindowMixin {
             "Lnet/neoforged/fml/loading/ImmediateWindowHandler;setupMinecraftWindow(Ljava/util/function/IntSupplier;Ljava/util/function/IntSupplier;Ljava/util/function/Supplier;Ljava/util/function/LongSupplier;)J",
             remap = false))
     private void surfaceqa$backgroundWindow(CallbackInfo ci) {
-        if (Boolean.getBoolean("cornerstone.surface.qa") && !Boolean.getBoolean("cornerstone.surface.physical")) {
+        if (Boolean.getBoolean("cornerstone.hitbox.visual")
+                || Boolean.getBoolean("cornerstone.surface.qa") && !Boolean.getBoolean("cornerstone.surface.physical")) {
             GLFW.glfwWindowHint(GLFW.GLFW_FOCUSED, GLFW.GLFW_FALSE);
             GLFW.glfwWindowHint(GLFW.GLFW_FOCUS_ON_SHOW, GLFW.GLFW_FALSE);
             GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE);

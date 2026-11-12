@@ -1,6 +1,7 @@
 package cn.rbq108.nextboundarycornerstone.ServeMiao.communication;
 
 import cn.rbq108.nextboundarycornerstone.main;
+import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -8,7 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.joml.Quaternionf;
 import java.util.UUID;
 
-public record SyncRotationPayload(UUID playerId, Quaternionf quat, boolean lowGravity) implements CustomPacketPayload {
+public record SyncRotationPayload(UUID playerId, Quaternionf quat, boolean lowGravity, SegmentedHitboxPose hitboxPose) implements CustomPacketPayload {
 
     public static final Type<SyncRotationPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(main.MODID, "rotation_sync"));
 
@@ -18,11 +19,10 @@ public record SyncRotationPayload(UUID playerId, Quaternionf quat, boolean lowGr
     );
 
     public static SyncRotationPayload read(FriendlyByteBuf buf) {
-        return new SyncRotationPayload(
-                buf.readUUID(),
-                new Quaternionf(buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat()),
-                buf.readBoolean()
-        );
+        UUID id = buf.readUUID();
+        Quaternionf rotation = SegmentedHitboxPose.normalized(new Quaternionf(buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat()));
+        boolean lowGravity = buf.readBoolean();
+        return new SyncRotationPayload(id, rotation, lowGravity, lowGravity ? SegmentedHitboxPose.read(buf) : null);
     }
 
     public void write(FriendlyByteBuf buf) {
@@ -32,6 +32,7 @@ public record SyncRotationPayload(UUID playerId, Quaternionf quat, boolean lowGr
         buf.writeFloat(quat.z);
         buf.writeFloat(quat.w);
         buf.writeBoolean(lowGravity);
+        if (lowGravity) hitboxPose.write(buf);
     }
 
     @Override
