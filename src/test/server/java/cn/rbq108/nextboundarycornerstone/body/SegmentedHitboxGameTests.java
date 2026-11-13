@@ -2,6 +2,9 @@ package cn.rbq108.nextboundarycornerstone.body;
 
 import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.SyncRotationPayload;
 import cn.rbq108.nextboundarycornerstone.main;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxConfig;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxMode;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.OBBHitbox;
 import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
@@ -47,6 +50,9 @@ public final class SegmentedHitboxGameTests {
             attachment.setHitboxPose(SegmentedHitboxPose.standing(new Quaternionf()));
             AABB movement = player.getBoundingBox();
             var hitbox = (SegmentedAABB) SegmentedHitboxes.forHitQuery(player);
+            helper.assertTrue(HitboxConfig.SPEC.isLoaded(), "hitbox SERVER config loaded on dedicated server");
+            helper.assertTrue((hitbox instanceof OBBHitbox) == (HitboxConfig.mode() == HitboxMode.OBB),
+                    "shape comes from actual server file, not player payload");
             helper.assertTrue(hitbox.pieces().size() == 16, "server has sixteen AABBs without client classes");
             helper.assertTrue(SegmentedHitboxes.forHitQuery(player) == hitbox, "unchanged queries reuse geometry");
             helper.assertTrue(player.getBoundingBox() == movement, "hit queries do not replace movement box");
@@ -73,6 +79,25 @@ public final class SegmentedHitboxGameTests {
                     entity -> entity == player, 16) == null, "empty space is not a melee/picking hit");
             helper.assertTrue(ProjectileUtil.getEntityHitResult(helper.getLevel(), source, start, end, area,
                     entity -> false, 0) == null, "candidate supplement preserves caller predicate");
+
+            // A head twisted 45 degrees has corners in its AABB that are outside its OBB.
+            var neutral = SegmentedHitboxPose.standing(new Quaternionf());
+            var joints = new java.util.ArrayList<>(neutral.joints());
+            joints.set(0, new SegmentedHitboxPose.Joint(0, 0, 0, new Quaternionf().rotateY((float) Math.PI / 4)));
+            attachment.setHitboxPose(new SegmentedHitboxPose(new Quaternionf(), 0, false, joints));
+            Vec3 corner = head.add(.30, 0, .30);
+            Vec3 cornerStart = corner.add(0, -.04, 0), cornerEnd = corner.add(0, .04, 0);
+            AABB cornerArea = new AABB(cornerStart, cornerEnd).inflate(.001);
+            var cornerHit = ProjectileUtil.getEntityHitResult(helper.getLevel(), source, cornerStart, cornerEnd,
+                    cornerArea, entity -> entity == player, 0);
+            boolean aabbMode = HitboxConfig.mode() == HitboxMode.AABB;
+            helper.assertTrue((cornerHit != null) == aabbMode, "real projectile envelope-corner result follows server mode");
+            var cornerPick = ProjectileUtil.getEntityHitResult(source, cornerStart, cornerEnd, cornerArea, entity -> entity == player, 1);
+            helper.assertTrue((cornerPick != null) == aabbMode, "real melee/picking result follows server mode");
+            var selected = (SegmentedAABB) SegmentedHitboxes.forHitQuery(player);
+            helper.assertTrue(selected.clipHead(cornerStart, cornerEnd).isPresent() == aabbMode,
+                    "headshot geometry also follows server mode");
+            com.mojang.logging.LogUtils.getLogger().info("HITBOX_SERVER_MODE_PASS mode={}", HitboxConfig.mode());
 
             player.setPos(player.getX() + 1, player.getY(), player.getZ());
             var moved = (SegmentedAABB) SegmentedHitboxes.forHitQuery(player);

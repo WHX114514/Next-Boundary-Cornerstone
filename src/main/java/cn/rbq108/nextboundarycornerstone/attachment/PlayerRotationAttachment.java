@@ -3,6 +3,10 @@ package cn.rbq108.nextboundarycornerstone.attachment;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedAABB;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxConfig;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxMode;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.OBBGeometry;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.OBBHitbox;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.world.entity.Pose;
@@ -19,6 +23,7 @@ public class PlayerRotationAttachment {
     private double boxX, boxY, boxZ;
     private float boxHeight, boxScale;
     private boolean boxSwimming;
+    private HitboxMode boxMode;
     private final Quaternionf quaternion = new Quaternionf();
     private boolean lowGravity = false;
 
@@ -75,15 +80,21 @@ public class PlayerRotationAttachment {
 
     public SegmentedAABB hitbox(Player player) {
         boolean swimming = player.hasPose(Pose.SWIMMING);
+        HitboxMode mode = HitboxConfig.mode();
         if (hitbox == null || boxX != player.getX() || boxY != player.getY() || boxZ != player.getZ()
-                || boxHeight != player.getBbHeight() || boxScale != player.getScale() || boxSwimming != swimming) {
+                || boxHeight != player.getBbHeight() || boxScale != player.getScale() || boxSwimming != swimming || boxMode != mode) {
             boxX = player.getX(); boxY = player.getY(); boxZ = player.getZ();
             boxHeight = player.getBbHeight(); boxScale = player.getScale(); boxSwimming = swimming;
+            boxMode = mode;
             var pose = hitboxPose != null ? hitboxPose
                     : SegmentedHitboxPose.standing(quaternion);
-            var pieces = SegmentedHitboxGeometry.build(pose, boxHeight, boxScale, swimming);
-            hitbox = new SegmentedAABB(
-                    pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList());
+            if (mode == HitboxMode.OBB) {
+                var pieces = OBBGeometry.build(pose, boxHeight, boxScale, swimming);
+                hitbox = new OBBHitbox(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList());
+            } else {
+                var pieces = SegmentedHitboxGeometry.build(pose, boxHeight, boxScale, swimming);
+                hitbox = new SegmentedAABB(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList());
+            }
         }
         return hitbox;
     }

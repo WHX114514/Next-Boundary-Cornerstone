@@ -4,6 +4,9 @@ import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.debug;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedAABB;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxes;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxConfig;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxMode;
+import cn.rbq108.nextboundarycornerstone.body.OOBB.OBBHitbox;
 import cn.rbq108.nextboundarycornerstone.main;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.CameraType;
@@ -35,6 +38,7 @@ public final class HitboxVisualQa {
     private static volatile Throwable failure;
     private static final long STARTED = System.currentTimeMillis();
     private static final boolean SIDE_ONLY = "side".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
+    private static final boolean ROLLED_ONLY = "rolled".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
 
     private HitboxVisualQa() {}
 
@@ -56,10 +60,18 @@ public final class HitboxVisualQa {
                 }
                 if (mc.screen instanceof TitleScreen && mc.getOverlay() == null) {
                     phase = 1;
+                    // Copy a real per-world server file; expectedMode below is only an assertion, never a mode override.
+                    String worldName = "hitbox-visual-" + STARTED;
+                    var serverTemplate = mc.gameDirectory.toPath().resolve("../server-config.toml");
+                    if (Files.exists(serverTemplate)) {
+                        var serverDir = mc.gameDirectory.toPath().resolve("saves").resolve(worldName).resolve("serverconfig");
+                        Files.createDirectories(serverDir);
+                        Files.copy(serverTemplate, serverDir.resolve(HitboxConfig.FILE_NAME));
+                    }
                     GameRules rules = new GameRules();
                     rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, null);
                     rules.getRule(GameRules.RULE_DAYLIGHT).set(false, null);
-                    mc.createWorldOpenFlows().createFreshLevel("hitbox-visual-" + STARTED,
+                    mc.createWorldOpenFlows().createFreshLevel(worldName,
                             new LevelSettings("分段受击盒视觉验收", GameType.CREATIVE, false, Difficulty.PEACEFUL,
                                     true, rules, WorldDataConfiguration.DEFAULT),
                             new WorldOptions(20261112L, false, false),
@@ -94,9 +106,10 @@ public final class HitboxVisualQa {
                     mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                     mc.getEntityRenderDispatcher().setRenderHitBoxes(true);
                     if (SIDE_ONLY) posture(mc, 2);
+                    else if (ROLLED_ONLY) posture(mc, 1);
                 }
-                if (SIDE_ONLY) {
-                    if (ticks == 60) {
+                if (SIDE_ONLY || ROLLED_ONLY) {
+                    if (SIDE_ONLY && ticks == 60) {
                         // Use the mod's free-camera separation: body stays horizontal, camera views its side.
                         GlobalVariables.B_Dx = GlobalVariables.B_Dy = GlobalVariables.B_Dz = 0;
                         GlobalVariables.B_FreeCameraToggle = true;
@@ -106,8 +119,8 @@ public final class HitboxVisualQa {
                         GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
                         mc.player.setYRot(90); mc.player.yRotO = 90;
                         mc.player.setXRot(0); mc.player.xRotO = 0;
-                    } else if (ticks == 140) capture(mc, "04-floating-side");
-                    else if (ticks == 160) finish(mc, "side-result.json");
+                    } else if (ticks == 140) capture(mc, SIDE_ONLY ? "04-floating-side" : "02-rolled");
+                    else if (ticks == 160) finish(mc, SIDE_ONLY ? "side-result.json" : "rolled-result.json");
                 } else {
                     if (ticks == 100) capture(mc, "01-upright");
                     else if (ticks == 110) posture(mc, 1);
@@ -120,12 +133,17 @@ public final class HitboxVisualQa {
                     var boxes = ((SegmentedAABB) SegmentedHitboxes.forHitQuery(mc.player)).pieces();
                     var status = Map.of("scenario", scenario, "noGravity", mc.player.isNoGravity(), "pose", mc.player.getPose().toString(),
                             "camera", mc.options.getCameraType().toString(), "debugBoxes", mc.getEntityRenderDispatcher().shouldRenderHitBoxes(),
-                            "language", mc.options.languageCode, "pieces", boxes.size(), "boxes", boxes.stream().map(Object::toString).toList());
+                            "language", mc.options.languageCode, "mode", HitboxConfig.mode().name(), "pieces", boxes.size(), "boxes", boxes.stream().map(Object::toString).toList());
                     Files.writeString(mc.gameDirectory.toPath().resolve("visual-status.json"), new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(status));
                 }
             }
         } catch (Throwable error) {
             com.mojang.logging.LogUtils.getLogger().error("HITBOX_VISUAL_QA_FAILED", error);
+            try {
+                Files.writeString(mc.gameDirectory.toPath().resolve("../failure.txt"), error.toString());
+            } catch (java.io.IOException writeFailure) {
+                error.addSuppressed(writeFailure);
+            }
             phase = 99;
             mc.stop();
         }
@@ -147,8 +165,12 @@ public final class HitboxVisualQa {
     }
 
     private static void capture(Minecraft mc, String name) throws java.io.IOException {
+        String expectation = System.getProperty("cornerstone.hitbox.visual.expectedMode", "");
+        HitboxMode expected = expectation.isBlank() ? HitboxConfig.mode() : HitboxMode.valueOf(expectation);
         if (mc.options.getCameraType().isFirstPerson() || !mc.player.isNoGravity()
-                || ((SegmentedAABB) SegmentedHitboxes.forHitQuery(mc.player)).pieces().size() != 16) {
+                || ((SegmentedAABB) SegmentedHitboxes.forHitQuery(mc.player)).pieces().size() != 16
+                || !HitboxConfig.SPEC.isLoaded() || HitboxConfig.mode() != expected
+                || (SegmentedHitboxes.forHitQuery(mc.player) instanceof OBBHitbox) != (expected == HitboxMode.OBB)) {
             throw new IllegalStateException("Visual fixture not synchronized: " + name);
         }
         try (var frame = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
@@ -160,8 +182,8 @@ public final class HitboxVisualQa {
 
     private static void finish(Minecraft mc, String file) throws java.io.IOException {
         Files.writeString(mc.gameDirectory.toPath().resolve("../" + file),
-                "{\"capturesComplete\":true,\"language\":\"zh_cn\",\"camera\":\"THIRD_PERSON_BACK\",\"pieces\":16,\"desktopInput\":false}");
-        com.mojang.logging.LogUtils.getLogger().info("HITBOX_VISUAL_CAPTURES_COMPLETE");
+                "{\"capturesComplete\":true,\"language\":\"zh_cn\",\"camera\":\"THIRD_PERSON_BACK\",\"pieces\":16,\"desktopInput\":false,\"mode\":\"" + HitboxConfig.mode() + "\"}");
+        com.mojang.logging.LogUtils.getLogger().info("HITBOX_VISUAL_CAPTURES_COMPLETE mode={}", HitboxConfig.mode());
         phase = 99;
         mc.stop();
     }

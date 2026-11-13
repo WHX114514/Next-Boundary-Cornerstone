@@ -152,6 +152,9 @@ public class main
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC, "next-boundary.toml");
         modContainer.registerConfig(ModConfig.Type.SERVER,
                 cn.rbq108.nextboundarycornerstone.VariableLibrary.SurfaceConfig.SPEC, "next-boundary-surface-server.toml");
+        modContainer.registerConfig(ModConfig.Type.SERVER,
+                cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxConfig.SPEC,
+                cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxConfig.FILE_NAME);
 
         // 检测 TACZ 模组是否已安装
         if (net.neoforged.fml.ModList.get().isLoaded("tacz")) {
@@ -225,7 +228,7 @@ public class main
 
     //@SubscribeEvent
     public void registerNetwork(final RegisterPayloadHandlersEvent event) {
-        final PayloadRegistrar registrar = event.registrar(main.MODID + "-segmented-hitboxes-2");
+        final PayloadRegistrar registrar = event.registrar(main.MODID + "-hitbox-modes-3");
 
         // 注册四元数同步包
         registrar.playBidirectional(

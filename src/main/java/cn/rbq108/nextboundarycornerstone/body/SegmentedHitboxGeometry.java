@@ -7,11 +7,23 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Sixteen ordinary world-axis AABBs; no oriented-box intersection or auxiliary entities. */
+/** Shared anatomy and model transforms for both hit-query modes. */
 public final class SegmentedHitboxGeometry {
     private SegmentedHitboxGeometry() {}
 
+    @FunctionalInterface
+    public interface PartConsumer {
+        void accept(Matrix4f transform, float x, float y, float z, float width, float height, float depth, int count);
+    }
+
     public static List<AABB> build(SegmentedHitboxPose pose, float height, float scale, boolean swimming) {
+        var boxes = new ArrayList<AABB>(16);
+        visitParts(pose, height, scale, swimming,
+                (transform, x, y, z, width, partHeight, depth, count) -> add(boxes, transform, x, y, z, width, partHeight, depth, count));
+        return List.copyOf(boxes);
+    }
+
+    public static void visitParts(SegmentedHitboxPose pose, float height, float scale, boolean swimming, PartConsumer consumer) {
         float center = height * .5f;
         Matrix4f root = new Matrix4f().translation(0, center, 0).rotate(pose.body())
                 .translate(0, -.9f + (swimming ? center : 0), 0).scale(scale)
@@ -19,22 +31,25 @@ public final class SegmentedHitboxGeometry {
         if (swimming && pose.swim() > 0) root.translate(0, -1, .3f);
         root.scale(-.9375f, -.9375f, .9375f).translate(0, -1.501f, 0);
 
-        var boxes = new ArrayList<AABB>(16);
         // Model pixels, in the same order as the synchronized skeleton.
-        add(boxes, root, pose.joints().get(0), 0, -4, 0, 8, 8, 8, 1);
-        add(boxes, root, pose.joints().get(1), 0, 6, 0, 8, 12, 4, 3);
+        visit(consumer, root, pose.joints().get(0), 0, -4, 0, 8, 8, 8, 1);
+        visit(consumer, root, pose.joints().get(1), 0, 6, 0, 8, 12, 4, 3);
         float armWidth = pose.slim() ? 3 : 4;
-        add(boxes, root, pose.joints().get(2), pose.slim() ? .5f : 1, 4, 0, armWidth, 12, 4, 3);
-        add(boxes, root, pose.joints().get(3), pose.slim() ? -.5f : -1, 4, 0, armWidth, 12, 4, 3);
-        add(boxes, root, pose.joints().get(4), 0, 6, 0, 4, 12, 4, 3);
-        add(boxes, root, pose.joints().get(5), 0, 6, 0, 4, 12, 4, 3);
-        return List.copyOf(boxes);
+        visit(consumer, root, pose.joints().get(2), pose.slim() ? .5f : 1, 4, 0, armWidth, 12, 4, 3);
+        visit(consumer, root, pose.joints().get(3), pose.slim() ? -.5f : -1, 4, 0, armWidth, 12, 4, 3);
+        visit(consumer, root, pose.joints().get(4), 0, 6, 0, 4, 12, 4, 3);
+        visit(consumer, root, pose.joints().get(5), 0, 6, 0, 4, 12, 4, 3);
     }
 
-    private static void add(List<AABB> boxes, Matrix4f root, SegmentedHitboxPose.Joint joint,
+    private static void visit(PartConsumer consumer, Matrix4f root, SegmentedHitboxPose.Joint joint,
                             float x, float y, float z, float width, float height, float depth, int count) {
         Matrix4f transform = new Matrix4f(root).translate(joint.x() / 16, joint.y() / 16, joint.z() / 16)
                 .rotate(joint.rotation());
+        consumer.accept(transform, x, y, z, width, height, depth, count);
+    }
+
+    private static void add(List<AABB> boxes, Matrix4f transform,
+                            float x, float y, float z, float width, float height, float depth, int count) {
         float hx = width / 32, hy = height / count / 32, hz = depth / 32;
         // Absolute basis gives an AABB envelope in constant time, without rotating eight corners.
         float ex = Math.abs(transform.m00()) * hx + Math.abs(transform.m10()) * hy + Math.abs(transform.m20()) * hz;

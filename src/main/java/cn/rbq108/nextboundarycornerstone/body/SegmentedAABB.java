@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 /** Used only during hit queries: the envelope gathers candidates, the pieces decide hits. */
-public final class SegmentedAABB extends AABB {
+public class SegmentedAABB extends AABB {
     private final List<AABB> pieces;
     private double cachedInflation;
     private AABB inflated;
@@ -67,4 +67,14 @@ public final class SegmentedAABB extends AABB {
     }
 
     public List<AABB> pieces() { return pieces; }
+
+    public Optional<Vec3> clipHead(Vec3 start, Vec3 end) {
+        var head = pieces.getFirst();
+        return head.contains(start) ? Optional.of(start) : head.clip(start, end);
+    }
+
+    public boolean isHeadshot(Vec3 start, Vec3 end, Vec3 nearestHit) {
+        var headHit = clipHead(start, end);
+        return headHit.isPresent() && start.distanceToSqr(headHit.get()) <= start.distanceToSqr(nearestHit) + 1.0e-8;
+    }
 }

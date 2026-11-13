@@ -40,9 +40,7 @@ public abstract class TACZSegmentedHitboxMixin {
             cir.setReturnValue(null);
             return;
         }
-        var head = box.pieces().getFirst();
-        var headHit = head.contains(start) ? java.util.Optional.of(start) : head.clip(start, end);
-        boolean headshot = headHit.isPresent() && start.distanceToSqr(headHit.get()) <= start.distanceToSqr(hit.get()) + 1.0e-8;
+        boolean headshot = box.isHeadshot(start, end, hit.get());
         cir.setReturnValue(new EntityKineticBullet.EntityResult(target, hit.get(), headshot));
     }
 }
