@@ -188,6 +188,24 @@ public final class SurfaceClientQa {
                 require(GlobalVariables.B_Vx5 == 0 && GlobalVariables.B_Vx1 > 0 && GlobalVariables.B_Vx1 < .1f,
                         "following tick brakes without replaying recoil");
                 CHECKS.add("recoil-consumed-once");
+                teleport(mc, .5, 82.5, .5);
+                next(17);
+            } else if (phase == 17 && serverReady && ticks > 20 && Math.abs(mc.player.getY() - 82.5) < .2) {
+                GlobalVariables.currentQuat.rotationX((float) Math.toRadians(24));
+                GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
+                // Set only the initial approach. Subsequent motion, pose sampling, collision,
+                // capture and parking all run through production ticks with no held input.
+                GlobalVariables.B_Vx1 = .25f;
+                GlobalVariables.B_Vy1 = -.2f;
+                GlobalVariables.B_Vz1 = .1f;
+                next(18);
+            } else if (phase == 18 && ticks > 40) {
+                require(GlobalVariables.B_INx == 0 && GlobalVariables.B_INy == 0 && GlobalVariables.B_INz == 0,
+                        "oblique landing uses released movement input");
+                require(activeNormal() == Direction.UP, "oblique landing establishes floor attachment");
+                require(Math.hypot(GlobalVariables.B_Vx1, GlobalVariables.B_Vz1) < .0051,
+                        "oblique landing parks horizontal drift after release");
+                CHECKS.add("oblique-landing-parking");
                 finish(mc, null);
             }
         } catch (Throwable error) {
@@ -205,7 +223,7 @@ public final class SurfaceClientQa {
         var rotation = new org.joml.Quaternionf().rotationTo(new Vector3f(0, 1, 0), vector(normal));
         var physicalPose = cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose.standing(rotation);
         var relativeBody = cn.rbq108.nextboundarycornerstone.body.collision.CompoundCollisionMath.envelope(
-                cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry.build(physicalPose, GlobalVariables.B_HitboxSize, 1, false));
+                cn.rbq108.nextboundarycornerstone.body.collision.RotationPlanner.boxes(physicalPose, net.minecraft.world.phys.Vec3.ZERO, GlobalVariables.B_HitboxSize, 1));
         GlobalVariables.currentQuat.set(rotation);
         GlobalVariables.prevQuat.set(rotation);
         cn.rbq108.nextboundarycornerstone.body.trunk.constrainTo(rotation);

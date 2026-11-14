@@ -19,6 +19,7 @@ public final class SurfaceAdhesionTests {
         run("partial-hit collision retains outward and tangent velocity", SurfaceAdhesionTests::collisionDirections);
         run("seams, partial shapes and nearest visible face", SurfaceAdhesionTests::geometry);
         run("contact-only acquisition and support retention", SurfaceAdhesionTests::acquisition);
+        run("animated landing retains contact after releasing input", SurfaceAdhesionTests::animatedLanding);
         run("missing support pauses force and expires", SurfaceAdhesionTests::missingSupport);
         run("release distance, cooldown and reset", SurfaceAdhesionTests::release);
         run("corner keeps previous normal", SurfaceAdhesionTests::corner);
@@ -30,7 +31,7 @@ public final class SurfaceAdhesionTests {
         run("sprint preserves normal and tangent drift at the surface", SurfaceAdhesionTests::sprintForces);
         run("free drift and original target-speed/manual-brake behavior", SurfaceAdhesionTests::flight);
         run("zero acceleration remains finite", SurfaceAdhesionTests::zeroAcceleration);
-        System.out.println("SURFACE_TEST_PASS scenarios=15 assertions=" + checks);
+        System.out.println("SURFACE_TEST_PASS scenarios=16 assertions=" + checks);
     }
 
     private static void run(String name, Runnable test) {
@@ -106,6 +107,46 @@ public final class SurfaceAdhesionTests {
         check(state.update(BODY, contact(Direction.UP, 0), new Vector3f(), false) == Direction.UP, "seam recovers");
         state.update(BODY, Map.of(), new Vector3f(), false);
         check(state.update(BODY, Map.of(), new Vector3f(), false) == null && state.rememberedNormal() == null, "second missing tick clears");
+    }
+
+    private static void animatedLanding() {
+        var pose = cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose.standing(new org.joml.Quaternionf());
+        var bodies = cn.rbq108.nextboundarycornerstone.body.collision.RotationPlanner.boxes(pose, new Vec3(0, 2, 0), 1.2f, 1);
+        var floor = new AABB(-10, 0, -10, 10, 1, 10);
+        double fall = cn.rbq108.nextboundarycornerstone.body.collision.CompoundCollisionMath.envelope(bodies).minY - 1;
+        var request = new Vec3(.3, -fall - .1, .2);
+        var resolved = cn.rbq108.nextboundarycornerstone.body.collision.CompoundCollisionMath.clip(
+                bodies, List.of(net.minecraft.world.phys.shapes.Shapes.create(floor)), request);
+        check(resolved.y > request.y, "oblique landing really collides with the floor");
+        var landed = bodies.stream().map(box -> box.move(resolved)).toList();
+        var contactsAtImpact = SurfaceGeometry.findContacts(landed, List.of(floor));
+        check(contactsAtImpact.get(Direction.UP).gap() <= SurfaceGeometry.CONTACT_EPSILON, "feet touched at impact");
+
+        // Pose sampling runs before the next surface probe. A tiny retreat is enough to
+        // miss first capture even though collision synchronization already removed downward drift.
+        var animated = landed.stream().map(box -> box.move(0, .02, 0)).toList();
+        var body = cn.rbq108.nextboundarycornerstone.body.collision.CompoundCollisionMath.envelope(animated);
+        var contacts = SurfaceGeometry.findContacts(animated, List.of(floor));
+        Vector3f velocity = new Vector3f(.3f, -.1f, .2f);
+        SurfaceGeometry.removeInwardVelocity(velocity, SurfaceGeometry.blockedNormals(request, resolved));
+        SurfaceAdhesionState state = new SurfaceAdhesionState();
+        state.recordBlockCollision(contactsAtImpact, new Vector3f(.3f, -.1f, .2f), false);
+        var normal = state.update(body, contacts, velocity, false);
+        check(normal == Direction.UP, "actual collision survives a small animation gap");
+        for (int tick = 0; tick < 12; tick++) {
+            SurfaceAdhesionMath.apply(velocity, normal, new Vector3f(), new Vector3f(), .1f, DEFAULTS);
+        }
+        close(velocity.x, 0, "released horizontal x drift parks after landing");
+        close(velocity.z, 0, "released horizontal z drift parks after landing");
+
+        state.reset();
+        state.recordBlockCollision(contactsAtImpact, new Vector3f(.3f, -.1f, .2f), true);
+        check(state.rememberedNormal() == null, "sprinting impact cannot establish attachment");
+        state.recordBlockCollision(contacts, new Vector3f(.3f, -.1f, .2f), false);
+        check(state.rememberedNormal() == null, "nearby blocks after a non-block collision cannot establish attachment");
+        state.recordBlockCollision(contactsAtImpact, new Vector3f(.3f, -.1f, .2f), false);
+        check(state.update(body.move(0, 1, 0), Map.of(), velocity, false) == null,
+                "moving out of reach after impact still releases");
     }
 
     private static void release() {

@@ -13,7 +13,7 @@ public final class HitboxConfig {
         builder.push("Zero_Gravity_Hitboxes");
         MODE = builder.comment("失重受击盒模式：AABB 为分段轴对齐包络；OBB 为随骨架旋转的精确盒。",
                         "联机以服务器此文件为准，客户端自动接收；修改后重启服务器并重新连接。",
-                        "物理碰撞始终使用分段 AABB；此选项只切换受击和选取模型。")
+                        "物理碰撞使用头、躯干、双腿共十块 AABB；六块手臂只受击。此选项只切换受击和选取模型。")
                 .defineEnum("Mode", HitboxMode.AABB);
         builder.pop();
         SPEC = builder.build();

@@ -17,9 +17,18 @@ public final class SegmentedHitboxGeometry {
     }
 
     public static List<AABB> build(SegmentedHitboxPose pose, float height, float scale, boolean swimming) {
+        return build(pose, height, scale, swimming, BodyBoxTag.ALL_MASK);
+    }
+
+    public static List<AABB> build(SegmentedHitboxPose pose, float height, float scale, boolean swimming, int tagMask) {
         var boxes = new ArrayList<AABB>(16);
+        int[] firstPiece = {0};
         visitParts(pose, height, scale, swimming,
-                (transform, x, y, z, width, partHeight, depth, count) -> add(boxes, transform, x, y, z, width, partHeight, depth, count));
+                (transform, x, y, z, width, partHeight, depth, count) -> {
+                    int selected = (tagMask >>> firstPiece[0]) & ((1 << count) - 1);
+                    if (selected != 0) add(boxes, transform, x, y, z, width, partHeight, depth, count, selected);
+                    firstPiece[0] += count;
+                });
         return List.copyOf(boxes);
     }
 
@@ -54,13 +63,14 @@ public final class SegmentedHitboxGeometry {
     }
 
     private static void add(List<AABB> boxes, Matrix4f transform,
-                            float x, float y, float z, float width, float height, float depth, int count) {
+                            float x, float y, float z, float width, float height, float depth, int count, int selected) {
         float hx = width / 32, hy = height / count / 32, hz = depth / 32;
         // Absolute basis gives an AABB envelope in constant time, without rotating eight corners.
         float ex = Math.abs(transform.m00()) * hx + Math.abs(transform.m10()) * hy + Math.abs(transform.m20()) * hz;
         float ey = Math.abs(transform.m01()) * hx + Math.abs(transform.m11()) * hy + Math.abs(transform.m21()) * hz;
         float ez = Math.abs(transform.m02()) * hx + Math.abs(transform.m12()) * hy + Math.abs(transform.m22()) * hz;
         for (int i = 0; i < count; i++) {
+            if ((selected & (1 << i)) == 0) continue;
             Vector3f c = transform.transformPosition(new Vector3f(x / 16, (y - height / 2 + (i + .5f) * height / count) / 16, z / 16));
             boxes.add(new AABB(c.x - ex, c.y - ey, c.z - ez, c.x + ex, c.y + ey, c.z + ez));
         }

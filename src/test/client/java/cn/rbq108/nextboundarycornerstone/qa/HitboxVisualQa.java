@@ -42,6 +42,7 @@ public final class HitboxVisualQa {
     private static final boolean ROLLED_ONLY = "rolled".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean PHYSICS_ONLY = "physics".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean POSTURE_ONLY = "posture".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
+    private static final boolean PERFORMANCE_ONLY = "performance".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
 
     private HitboxVisualQa() {}
 
@@ -111,7 +112,9 @@ public final class HitboxVisualQa {
                     if (SIDE_ONLY) posture(mc, 2);
                     else if (ROLLED_ONLY) posture(mc, 1);
                 }
-                if (PHYSICS_ONLY) {
+                if (PERFORMANCE_ONLY) {
+                    if (ticks >= 60 && PhysicsClientPerformance.tick(mc)) finish(mc, "performance-result.json");
+                } else if (PHYSICS_ONLY) {
                     physicsScenario(mc);
                 } else if (POSTURE_ONLY) {
                     if (ticks == 100) { checkPosture(mc, false); capture(mc, "08-standing"); }
@@ -145,7 +148,8 @@ public final class HitboxVisualQa {
                     var boxes = ((SegmentedAABB) SegmentedHitboxes.forHitQuery(mc.player)).pieces();
                     var status = Map.of("scenario", scenario, "noGravity", mc.player.isNoGravity(), "pose", mc.player.getPose().toString(),
                             "camera", mc.options.getCameraType().toString(), "debugBoxes", mc.getEntityRenderDispatcher().shouldRenderHitBoxes(),
-                            "language", mc.options.languageCode, "mode", HitboxConfig.mode().name(), "pieces", boxes.size(), "boxes", boxes.stream().map(Object::toString).toList());
+                            "language", mc.options.languageCode, "mode", HitboxConfig.mode().name(), "pieces", boxes.size(),
+                            "collisionPieces", SegmentedPhysics.box(mc.player).pieces().size(), "boxes", boxes.stream().map(Object::toString).toList());
                     Files.writeString(mc.gameDirectory.toPath().resolve("visual-status.json"), new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(status));
                 }
             }
@@ -182,8 +186,11 @@ public final class HitboxVisualQa {
                 "accepted physical posture follows equipment on client");
         require(mc.level.noCollision(mc.player), "posture transition leaves physical body clear");
         var physical = SegmentedPhysics.box(mc.player);
-        require((SegmentedHitboxes.forHitQuery(mc.player) == physical) == (HitboxConfig.mode() == HitboxMode.AABB),
-                "AABB shares physical model and OBB remains independent during posture changes");
+        require(physical.pieces().size() == 10 && physical.tags().equals(cn.rbq108.nextboundarycornerstone.body.BodyBoxTag.MOVEMENT),
+                "movement contains tagged head, torso and complete legs only");
+        var fullHit = (SegmentedAABB) SegmentedHitboxes.forHitQuery(mc.player);
+        require(fullHit.pieces().size() == 16 && fullHit.tags().equals(cn.rbq108.nextboundarycornerstone.body.BodyBoxTag.ALL),
+                "all hit pieces and tags survive posture changes");
         var id = mc.player.getUUID();
         mc.getSingleplayerServer().execute(() -> {
             try {
@@ -201,6 +208,7 @@ public final class HitboxVisualQa {
         HitboxMode expected = expectation.isBlank() ? HitboxConfig.mode() : HitboxMode.valueOf(expectation);
         if (mc.options.getCameraType().isFirstPerson() || !mc.player.isNoGravity()
                 || ((SegmentedAABB) SegmentedHitboxes.forHitQuery(mc.player)).pieces().size() != 16
+                || SegmentedPhysics.box(mc.player).pieces().size() != 10
                 || !HitboxConfig.SPEC.isLoaded() || HitboxConfig.mode() != expected
                 || (SegmentedHitboxes.forHitQuery(mc.player) instanceof OBBHitbox) != (expected == HitboxMode.OBB)) {
             throw new IllegalStateException("Visual fixture not synchronized: " + name);
@@ -214,7 +222,7 @@ public final class HitboxVisualQa {
 
     private static void finish(Minecraft mc, String file) throws java.io.IOException {
         Files.writeString(mc.gameDirectory.toPath().resolve("../" + file),
-                "{\"capturesComplete\":true,\"language\":\"zh_cn\",\"camera\":\"THIRD_PERSON_BACK\",\"pieces\":16,\"desktopInput\":false,\"mode\":\"" + HitboxConfig.mode() + "\"}");
+                "{\"capturesComplete\":true,\"language\":\"zh_cn\",\"camera\":\"THIRD_PERSON_BACK\",\"pieces\":16,\"collisionPieces\":10,\"desktopInput\":false,\"mode\":\"" + HitboxConfig.mode() + "\"}");
         com.mojang.logging.LogUtils.getLogger().info("HITBOX_VISUAL_CAPTURES_COMPLETE mode={}", HitboxConfig.mode());
         phase = 99;
         mc.stop();
@@ -243,9 +251,9 @@ public final class HitboxVisualQa {
                     && !mc.level.getBlockState(new BlockPos(0, 84, -1)).getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SOUTH),
                     "fixture panes do not bridge across the corridor");
             require(mc.level.noCollision(mc.player), "upright body fits corridor before rotation request");
-            GlobalVariables.currentQuat.rotationY(-(float) Math.PI / 2);
+            GlobalVariables.currentQuat.rotationX((float) Math.PI / 2);
             GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
-            mc.player.setYRot(90); mc.player.yRotO = 90;
+            mc.player.setXRot(90); mc.player.xRotO = 90;
         } else if (ticks == 420) {
             var pose = mc.player.getData(main.PLAYER_ROTATION).poseOrDefault();
             var sampled = cn.rbq108.nextboundarycornerstone.body.ClientSegmentedHitboxes.sample(mc.player);
@@ -256,7 +264,7 @@ public final class HitboxVisualQa {
             require(mc.player.getData(main.PLAYER_ROTATION).isBodyBlocked(), "real client holds body at collision limit");
             require(Math.abs(pose.body().dot(GlobalVariables.currentQuat)) < .98, "camera continues independently of blocked body");
             require(Math.abs(pose.joints().getFirst().rotation().w) < .99, "head turns relative to body");
-            require(Math.abs(GlobalVariables.currentQuat.dot(new org.joml.Quaternionf().rotateY(-(float) Math.PI / 2))) > .999,
+            require(Math.abs(GlobalVariables.currentQuat.dot(new org.joml.Quaternionf().rotateX((float) Math.PI / 2))) > .999,
                     "collision constraint does not reset camera");
             require(!GlobalVariables.B_FreeCameraToggle, "head-only fallback does not toggle user's C mode");
             require(mc.level.noCollision(mc.player), "blocked physical body is nonpenetrating");
@@ -307,7 +315,7 @@ public final class HitboxVisualQa {
         mc.getSingleplayerServer().execute(() -> {
             try {
                 var player = mc.getSingleplayerServer().getPlayerList().getPlayer(id);
-                require(SegmentedPhysics.box(player).pieces().size() == 16 && player.serverLevel().noCollision(player), "server physical body matches clear client geometry");
+                require(SegmentedPhysics.box(player).pieces().size() == 10 && player.serverLevel().noCollision(player), "server physical body matches clear client geometry");
                 if (constrained) require(Math.abs(player.getData(main.PLAYER_ROTATION).poseOrDefault().body()
                         .dot(player.getData(main.PLAYER_ROTATION).getQuaternion())) < .98, "server receives head-only body/view separation");
             } catch (Throwable error) { failure = error; }

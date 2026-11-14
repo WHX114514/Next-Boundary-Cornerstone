@@ -1,6 +1,9 @@
 package cn.rbq108.nextboundarycornerstone.body.collision;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
+import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
+import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry;
+import cn.rbq108.nextboundarycornerstone.body.SegmentedAABB;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -25,6 +28,8 @@ public final class CompoundPhysicsTests {
         swimmingSweep();
         scaledThinFloor();
         swimmingHeadOnly();
+        unionShapeSemantics();
+        taggedMotionPolicy();
         System.out.println("COMPOUND_PHYSICS_TEST_PASS assertions=" + checks);
     }
 
@@ -92,7 +97,7 @@ public final class CompoundPhysicsTests {
     private static void crampedTurn() {
         var previous = SegmentedHitboxPose.standing(new Quaternionf());
         var desired = SegmentedHitboxPose.standing(new Quaternionf().rotateY((float) Math.PI / 2));
-        var walls = shapes(List.of(new AABB(-4, -4, -.6, 4, 4, -.35), new AABB(-4, -4, .35, 4, 4, .6)));
+        var walls = shapes(List.of(new AABB(-4, -4, -.6, 4, 4, -.3), new AABB(-4, -4, .3, 4, 4, .6)));
         var result = RotationPlanner.plan(previous, desired, Vec3.ZERO, 1.2f, 1, walls);
         check(result.bodyBlocked(), "narrow corridor refuses body turn");
         check(Math.abs(result.pose().body().dot(previous.body())) > .99999, "body retains last safe orientation");
@@ -118,7 +123,7 @@ public final class CompoundPhysicsTests {
 
     private static void headAtArmContact() {
         var previous = SegmentedHitboxPose.standing(new Quaternionf().rotateY(.9f));
-        var bounds = CompoundCollisionMath.envelope(RotationPlanner.boxes(previous, Vec3.ZERO, 1.2f, 1));
+        var bounds = CompoundCollisionMath.envelope(SegmentedHitboxGeometry.build(previous, 1.2f, 1, false));
         var walls = List.of(new AABB(-4, -4, bounds.maxZ + .00001, 4, 4, 3),
                 new AABB(-4, -4, -3, 4, 4, bounds.minZ - .00001));
         var joints = new java.util.ArrayList<>(previous.joints());
@@ -136,10 +141,10 @@ public final class CompoundPhysicsTests {
             var to = SegmentedHitboxPose.standing(new Quaternionf().rotateZ(.02f));
             var sweep = RotationPlanner.sweep(from, to, Vec3.ZERO, 1.2f * scale, scale);
             var actual = RotationPlanner.boxes(SegmentedHitboxPose.interpolate(from, to, .5f), Vec3.ZERO, 1.2f * scale, scale);
-            for (int part = 0; part < 16; part++) {
+            for (int part = 0; part < BodyBoxTag.MOVEMENT.size(); part++) {
                 AABB bounds = actual.get(part);
                 AABB covered = sweep.get(part);
-                for (int i = part + 16; i < sweep.size(); i += 16) covered = covered.minmax(sweep.get(i));
+                for (int i = part + BodyBoxTag.MOVEMENT.size(); i < sweep.size(); i += BodyBoxTag.MOVEMENT.size()) covered = covered.minmax(sweep.get(i));
                 check(covered.minX <= bounds.minX + 1.0e-7 && covered.minY <= bounds.minY + 1.0e-7
                                 && covered.minZ <= bounds.minZ + 1.0e-7 && covered.maxX >= bounds.maxX - 1.0e-7
                                 && covered.maxY >= bounds.maxY - 1.0e-7 && covered.maxZ >= bounds.maxZ - 1.0e-7,
@@ -160,12 +165,12 @@ public final class CompoundPhysicsTests {
 
     private static void verifySwimSweep(SegmentedHitboxPose from, SegmentedHitboxPose to, String label) {
         var sweep = RotationPlanner.sweep(from, to, Vec3.ZERO, 1.2f, 1);
-        int steps = sweep.size() / 16;
+        int steps = sweep.size() / BodyBoxTag.MOVEMENT.size();
         for (int step = 0; step < steps; step++) {
             for (int sample = 1; sample < 10; sample++) {
                 var actual = RotationPlanner.boxes(SegmentedHitboxPose.interpolate(from, to, (step + sample / 10f) / steps), Vec3.ZERO, 1.2f, 1);
-                for (int part = 0; part < 16; part++) {
-                    AABB bounds = actual.get(part), covered = sweep.get(step * 16 + part);
+                for (int part = 0; part < BodyBoxTag.MOVEMENT.size(); part++) {
+                    AABB bounds = actual.get(part), covered = sweep.get(step * BodyBoxTag.MOVEMENT.size() + part);
                     check(covered.minX <= bounds.minX + 1.0e-7 && covered.minY <= bounds.minY + 1.0e-7
                                     && covered.minZ <= bounds.minZ + 1.0e-7 && covered.maxX >= bounds.maxX - 1.0e-7
                                     && covered.maxY >= bounds.maxY - 1.0e-7 && covered.maxZ >= bounds.maxZ - 1.0e-7,
@@ -202,6 +207,76 @@ public final class CompoundPhysicsTests {
         var actual = cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry.root(accepted, 1.2f, 1)
                 .transformDirection(accepted.joints().getFirst().rotation().transform(new org.joml.Vector3f(0, 0, 1))).normalize();
         check(wanted.dot(actual) > .99999, "floating head-only fallback preserves world head direction");
+    }
+
+    private static void unionShapeSemantics() {
+        var unit = new PhysicsBox(List.of(new AABB(0, 0, 0, 1, 1, 1)));
+        for (double gap : new double[] {-1.0e-5, -1.0e-8, 0, 1.0e-8, 1.0e-5}) {
+            var contact = Shapes.create(new AABB(1 + gap, 0, 0, 2, 1, 1));
+            check(unit.intersectsShape(contact) == Shapes.joinIsNotEmpty(unit.shape(), contact, BooleanOp.AND),
+                    "direct shape probe preserves vanilla contact epsilon at gap " + gap);
+        }
+        for (int i = 0; i < 8; i++) {
+            var pieces = RotationPlanner.boxes(SegmentedHitboxPose.standing(new Quaternionf().rotateXYZ(
+                    .17f * i, .31f * i, .23f * i)), Vec3.ZERO, 1.2f, 1);
+            var body = new PhysicsBox(pieces);
+            VoxelShape legacy = Shapes.empty();
+            for (AABB piece : pieces) legacy = Shapes.or(legacy, Shapes.create(piece));
+            check(!Shapes.joinIsNotEmpty(legacy, body.shape(), BooleanOp.NOT_SAME),
+                    "balanced union preserves exact old collision volume for orientation " + i);
+            for (int probe = 0; probe < 8; probe++) {
+                var obstacle = Shapes.or(Shapes.create(new AABB(-.7 + probe * .2, -.5, -.4, -.6 + probe * .2, 2, .4)),
+                        Shapes.create(new AABB(-1, .3 + probe * .1, -.3, 1, .4 + probe * .1, .3)));
+                check(body.intersectsShape(obstacle) == Shapes.joinIsNotEmpty(legacy, obstacle, BooleanOp.AND),
+                        "direct complex block probe matches exact union intersection " + i + "/" + probe);
+            }
+        }
+    }
+
+    private static void taggedMotionPolicy() {
+        var pose = SegmentedHitboxPose.standing(new Quaternionf());
+        var all = SegmentedHitboxGeometry.build(pose, 1.2f, 1, false);
+        var physical = RotationPlanner.boxes(pose, Vec3.ZERO, 1.2f, 1);
+        check(BodyBoxTag.ALL.size() == 16 && BodyBoxTag.MOVEMENT.size() == 10, "six arms omitted only from movement");
+        check(BodyBoxTag.LEFT_LEG_MIDDLE.participatesInMovement() && BodyBoxTag.RIGHT_LEG_MIDDLE.participatesInMovement(),
+                "both leg middles remain physical");
+        var full = new SegmentedAABB(all, BodyBoxTag.ALL);
+        var shared = full.pieces(BodyBoxTag.MOVEMENT_MASK);
+        for (int i = 0; i < physical.size(); i++) {
+            var tag = BodyBoxTag.MOVEMENT.get(i);
+            check(physical.get(i).equals(all.get(tag.ordinal())), "motion geometry matches tagged hit geometry " + tag);
+            check(shared.get(i) == all.get(tag.ordinal()), "selected retained boxes share references " + tag);
+        }
+        var labeled = new PhysicsBox(shared, BodyBoxTag.MOVEMENT);
+        check(labeled.move(1, 2, 3).inflate(.01).expandTowards(1, 0, 0).tags().equals(BodyBoxTag.MOVEMENT),
+                "world transforms preserve physics labels");
+        check(((SegmentedAABB) full.inflate(.1)).tags().equals(BodyBoxTag.ALL), "hit margin preserves all labels");
+        for (BodyBoxTag tag : BodyBoxTag.ALL) {
+            var center = all.get(tag.ordinal()).getCenter();
+            Vec3 start = center.add(0, 0, -2), end = center.add(0, 0, 2);
+            check(full.clip(start, end).isPresent(), "complete hit model still detects " + tag);
+            if (tag.matches(BodyBoxTag.ARMS_MASK)) {
+                check(!labeled.contains(center), "arm is absent from movement " + tag);
+                var obstacle = List.of(all.get(tag.ordinal()).deflate(.02));
+                check(CompoundCollisionMath.clear(physical, obstacle, Vec3.ZERO), "arm-only obstacle does not collide " + tag);
+            }
+        }
+        var joints = new java.util.ArrayList<>(pose.joints());
+        joints.set(2, new SegmentedHitboxPose.Joint(5, 2, 0, new Quaternionf().rotateX(1.2f)));
+        joints.set(3, new SegmentedHitboxPose.Joint(-5, 2, 0, new Quaternionf().rotateZ(-1.1f)));
+        var waving = new SegmentedHitboxPose(pose.body(), 0, false, joints);
+        var walls = shapes(List.of(new AABB(-3, -4, -.26, 3, 4, -.25), new AABB(-3, -4, .25, 3, 4, .26)));
+        var result = RotationPlanner.plan(pose, waving, Vec3.ZERO, 1.2f, 1, walls);
+        check(!result.bodyBlocked() && result.offset().lengthSqr() == 0, "arm animations neither nudge nor block motion");
+        check(result.pose().joints().get(2).equals(waving.joints().get(2)), "arm animation remains accepted");
+        var blockedBody = new SegmentedHitboxPose(new Quaternionf().rotateY(.5f), 0, false, joints);
+        var headOnly = RotationPlanner.headOnly(pose, blockedBody);
+        check(headOnly.joints().get(2).equals(joints.get(2)) && headOnly.joints().get(3).equals(joints.get(3)),
+                "free arms continue animating while body is held");
+        var constrained = RotationPlanner.plan(pose, blockedBody, Vec3.ZERO, 1.2f, 1, walls);
+        check(constrained.bodyBlocked() && constrained.pose().joints().get(2).equals(joints.get(2))
+                        && constrained.pose().joints().get(3).equals(joints.get(3)),
+                "partially blocked head fallback still accepts complete arm animation");
     }
 
     private static void close(double actual, double expected, String message) {

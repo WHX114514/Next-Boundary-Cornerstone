@@ -62,8 +62,14 @@ public final class SegmentedHitboxGameTests {
             AABB area = new AABB(start, end).inflate(.01);
             helper.assertTrue(movement instanceof cn.rbq108.nextboundarycornerstone.body.collision.PhysicsBox,
                     "actual movement uses a compound box");
-            helper.assertTrue((hitbox == movement) == (HitboxConfig.mode() == HitboxMode.AABB),
-                    "AABB mode shares physical/hit geometry; OBB mode keeps a separate hit model");
+            helper.assertTrue(hitbox != movement && ((SegmentedAABB) movement).pieces().size() == 10,
+                    "hit model keeps sixteen boxes while movement omits both arms");
+            helper.assertTrue(hitbox.tags().equals(BodyBoxTag.ALL), "both hit modes expose all sixteen anatomy tags");
+            if (HitboxConfig.mode() == HitboxMode.AABB) {
+                for (int i = 0; i < BodyBoxTag.MOVEMENT.size(); i++) helper.assertTrue(
+                        ((SegmentedAABB) movement).pieces().get(i) == hitbox.pieces().get(BodyBoxTag.MOVEMENT.get(i).ordinal()),
+                        "AABB hit/movement share retained box geometry without copying");
+            }
             var source = helper.makeMockPlayer(GameType.SURVIVAL);
             helper.assertTrue(hitbox.clip(start, end).isPresent(), "head geometry intersects exact world-space ray");
             helper.assertTrue(SegmentedHitboxes.candidates(helper.getLevel(), source, area, entity -> entity == player,

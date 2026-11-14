@@ -9,16 +9,23 @@ import java.util.Optional;
 /** The envelope gathers candidates; the pieces decide hits. PhysicsBox adds movement-specific operations. */
 public class SegmentedAABB extends AABB {
     private final List<AABB> pieces;
+    private final List<BodyBoxTag> tags;
     private double cachedInflation;
     private AABB inflated;
 
     public SegmentedAABB(List<AABB> pieces) {
-        this(pieces, envelope(pieces));
+        this(pieces, List.of());
     }
 
-    private SegmentedAABB(List<AABB> pieces, AABB envelope) {
+    public SegmentedAABB(List<AABB> pieces, List<BodyBoxTag> tags) {
+        this(pieces, tags, envelope(pieces));
+    }
+
+    private SegmentedAABB(List<AABB> pieces, List<BodyBoxTag> tags, AABB envelope) {
         super(envelope.minX, envelope.minY, envelope.minZ, envelope.maxX, envelope.maxY, envelope.maxZ);
         this.pieces = List.copyOf(pieces);
+        if (!tags.isEmpty() && tags.size() != pieces.size()) throw new IllegalArgumentException("Body tag count differs from box count");
+        this.tags = List.copyOf(tags);
     }
 
     private static AABB envelope(List<AABB> pieces) {
@@ -33,7 +40,7 @@ public class SegmentedAABB extends AABB {
         if (amount == 0) return this;
         if (inflated == null || cachedInflation != amount) {
             cachedInflation = amount;
-            inflated = new SegmentedAABB(pieces.stream().map(box -> box.inflate(amount)).toList());
+            inflated = new SegmentedAABB(pieces.stream().map(box -> box.inflate(amount)).toList(), tags);
         }
         return inflated;
     }
@@ -67,6 +74,15 @@ public class SegmentedAABB extends AABB {
     }
 
     public List<AABB> pieces() { return pieces; }
+    public List<BodyBoxTag> tags() { return tags; }
+
+    /** Geometry references are shared; callers choose a mask once for their own collision policy. */
+    public List<AABB> pieces(int tagMask) {
+        if (tags.isEmpty()) throw new IllegalStateException("This box has no anatomy tags");
+        var selected = new java.util.ArrayList<AABB>();
+        for (int i = 0; i < pieces.size(); i++) if (tags.get(i).matches(tagMask)) selected.add(pieces.get(i));
+        return List.copyOf(selected);
+    }
 
     public Optional<Vec3> clipHead(Vec3 start, Vec3 end) {
         var head = pieces.getFirst();

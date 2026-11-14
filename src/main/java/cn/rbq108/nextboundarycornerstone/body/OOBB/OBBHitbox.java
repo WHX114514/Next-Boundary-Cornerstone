@@ -1,6 +1,7 @@
 package cn.rbq108.nextboundarycornerstone.body.OOBB;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedAABB;
+import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -14,7 +15,11 @@ public final class OBBHitbox extends SegmentedAABB {
     private OBBHitbox inflated;
 
     public OBBHitbox(List<OrientedBox> boxes) {
-        super(boxes.stream().map(OrientedBox::bounds).toList());
+        this(boxes, List.of());
+    }
+
+    public OBBHitbox(List<OrientedBox> boxes, List<BodyBoxTag> tags) {
+        super(boxes.stream().map(OrientedBox::bounds).toList(), tags);
         this.boxes = List.copyOf(boxes);
     }
 
@@ -25,7 +30,7 @@ public final class OBBHitbox extends SegmentedAABB {
         if (amount == 0) return this;
         if (inflated == null || cachedInflation != amount) {
             cachedInflation = amount;
-            inflated = new OBBHitbox(boxes.stream().map(box -> box.inflate(amount)).toList());
+            inflated = new OBBHitbox(boxes.stream().map(box -> box.inflate(amount)).toList(), tags());
         }
         return inflated;
     }

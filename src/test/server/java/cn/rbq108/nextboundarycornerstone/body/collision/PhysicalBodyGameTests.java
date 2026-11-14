@@ -1,6 +1,7 @@
 package cn.rbq108.nextboundarycornerstone.body.collision;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
+import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
 import cn.rbq108.nextboundarycornerstone.main;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
@@ -86,9 +87,9 @@ public final class PhysicalBodyGameTests {
 
     @GameTest(template = "surface_empty")
     public static void realServerMovePacketAndGapQueriesUseCompoundShape(GameTestHelper helper) {
-        try (var fixture = player(helper, new Vec3(3.7, 3, 2.5))) {
+        try (var fixture = player(helper, new Vec3(3.5, 3, 2.8))) {
             var player = fixture.player();
-            BlockPos corner = helper.absolutePos(new BlockPos(4, 4, 4));
+            BlockPos corner = helper.absolutePos(new BlockPos(3, 3, 5));
             helper.getLevel().setBlockAndUpdate(corner, Blocks.STONE_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.TOP));
             double targetZ = player.getZ() + 2;
             player.connection.handleMovePlayer(new ServerboundMovePlayerPacket.Pos(player.getX(), player.getY(), targetZ, false));
@@ -97,6 +98,13 @@ public final class PhysicalBodyGameTests {
             AABB envelope = CompoundCollisionMath.envelope(body.pieces());
             helper.assertTrue(!helper.getLevel().noCollision(player, envelope), "test slab intersects broad envelope");
             helper.assertTrue(helper.getLevel().noCollision(player, body), "precise world query leaves actual body clear");
+            var probe = new PhysicsBox(body.pieces());
+            helper.assertTrue(helper.getLevel().noCollision(player, probe), "direct compound block query remains exact");
+            try {
+                var unionCache = PhysicsBox.class.getDeclaredField("shape");
+                unionCache.setAccessible(true);
+                helper.assertTrue(unionCache.get(probe) == null, "block query does not construct dense body voxel grid");
+            } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
             var slab = helper.getLevel().getBlockState(corner).getCollisionShape(helper.getLevel(), corner).move(corner.getX(), corner.getY(), corner.getZ());
             helper.assertTrue(!Shapes.joinIsNotEmpty(Shapes.create(body), slab, BooleanOp.AND), "vanilla Shapes.create preserves compound voids");
             helper.assertTrue(player.getData(main.PLAYER_ROTATION).hitbox(player).pieces().size() == 16, "hit model remains segmented in both modes");
@@ -108,6 +116,48 @@ public final class PhysicalBodyGameTests {
             helper.assertTrue(!helper.getLevel().noCollision(player, CompoundCollisionMath.envelope(gap.pieces())), "full stone block is inside query envelope");
             helper.assertTrue(helper.getLevel().noCollision(player, gap), "full-cube fast path also preserves compound gaps");
             helper.assertTrue(helper.getLevel().noBlockCollision(player, gap), "vanilla block-only query preserves compound gaps");
+            helper.succeed();
+        }
+    }
+
+    @GameTest(template = "surface_empty")
+    public static void armsKeepHitsAndLabelsButDoNotStopMovement(GameTestHelper helper) {
+        try (var fixture = player(helper, new Vec3(3.65, 3, 2.5))) {
+            var player = fixture.player();
+            var attachment = player.getData(main.PLAYER_ROTATION);
+            var full = attachment.aabbModel(player);
+            var physical = SegmentedPhysics.box(player);
+            helper.assertTrue(physical.tags().equals(BodyBoxTag.MOVEMENT) && physical.pieces().size() == 10,
+                    "actual player movement has tagged head, torso and six leg boxes");
+            helper.assertTrue(attachment.hitbox(player).tags().equals(BodyBoxTag.ALL), "both hit modes retain all anatomy labels");
+            var source = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+            for (BodyBoxTag tag : BodyBoxTag.ALL) {
+                if (!tag.matches(BodyBoxTag.ARMS_MASK)) continue;
+                AABB arm = full.pieces().get(tag.ordinal());
+                var center = arm.getCenter();
+                Vec3 start = center.add(0, 0, -2), end = center.add(0, 0, 2);
+                helper.assertTrue(!physical.contains(center), "arm is not solid for movement: " + tag);
+                helper.assertTrue(SegmentedPhysics.intersectsParts(player, arm.deflate(.02), tag.mask()), "device can query arm tag: " + tag);
+                helper.assertTrue(!SegmentedPhysics.intersectsParts(player, arm.deflate(.02), BodyBoxTag.MOVEMENT_MASK),
+                        "device mask distinguishes motion boxes from arms");
+                var hit = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(helper.getLevel(), source,
+                        start, end, new AABB(start, end).inflate(.001), entity -> entity == player, 0);
+                helper.assertTrue(hit != null && hit.getEntity() == player, "real projectile still hits " + tag);
+                var pick = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(source, start, end,
+                        new AABB(start, end).inflate(.001), entity -> entity == player, 16);
+                helper.assertTrue(pick != null && pick.getEntity() == player, "real melee ray still hits " + tag);
+            }
+            for (var tag : java.util.List.of(BodyBoxTag.LEFT_LEG_MIDDLE, BodyBoxTag.RIGHT_LEG_MIDDLE)) {
+                helper.assertTrue(physical.tags().contains(tag) && physical.contains(full.pieces().get(tag.ordinal()).getCenter()),
+                        "leg middle remains solid: " + tag);
+            }
+            for (int y = 2; y <= 5; y++) helper.setBlock(new BlockPos(4, y, 3), Blocks.STONE);
+            double originalZ = player.getZ();
+            player.move(MoverType.SELF, new Vec3(0, 0, 1));
+            helper.assertTrue(Math.abs(player.getZ() - originalZ - 1) < .00001, "arms may enter wall without blocking movement");
+            helper.assertTrue(helper.getLevel().noCollision(player), "real world query ignores embedded arms");
+            helper.assertTrue(!helper.getLevel().noCollision(player, new PhysicsBox(attachment.aabbModel(player).pieces())),
+                    "the former sixteen-box movement body would collide with this wall");
             helper.succeed();
         }
     }

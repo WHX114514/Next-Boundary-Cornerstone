@@ -40,6 +40,16 @@ final class SurfaceAdhesionState {
             clearSurface();
         }
 
+        capture(contacts, velocity);
+        return normal;
+    }
+
+    /** Remember a real impact before the next animation/rotation update can retreat the touching part. */
+    void recordBlockCollision(Map<Direction, SurfaceGeometry.Contact> contacts, Vector3f velocity, boolean sprinting) {
+        if (normal == null && cooldown == 0 && !sprinting) capture(contacts, velocity);
+    }
+
+    private void capture(Map<Direction, SurfaceGeometry.Contact> contacts, Vector3f velocity) {
         SurfaceGeometry.Contact best = null;
         float bestImpact = -Float.MAX_VALUE;
         for (SurfaceGeometry.Contact contact : contacts.values()) {
@@ -54,7 +64,6 @@ final class SurfaceAdhesionState {
             normal = best.normal();
             plane = best.plane();
         }
-        return normal;
     }
 
     Direction rememberedNormal() {

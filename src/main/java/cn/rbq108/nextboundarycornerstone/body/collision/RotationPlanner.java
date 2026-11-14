@@ -1,6 +1,7 @@
 package cn.rbq108.nextboundarycornerstone.body.collision;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry;
+import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -17,15 +18,21 @@ public final class RotationPlanner {
     private RotationPlanner() {}
 
     public static List<AABB> boxes(SegmentedHitboxPose pose, Vec3 origin, float height, float scale) {
-        return SegmentedHitboxGeometry.build(pose, height, scale, pose.swimming()).stream()
+        return SegmentedHitboxGeometry.build(pose, height, scale, pose.swimming(), BodyBoxTag.MOVEMENT_MASK).stream()
                 .map(box -> box.move(origin)).toList();
     }
 
     public static Result plan(SegmentedHitboxPose previous, SegmentedHitboxPose desired, Vec3 origin,
                                float height, float scale, List<VoxelShape> shapes) {
+        if (shapes.isEmpty()) return new Result(desired, Vec3.ZERO, false);
+        return plan(previous, desired, origin, height, scale, shapes, sweep(previous, desired, origin, height, scale));
+    }
+
+    static Result plan(SegmentedHitboxPose previous, SegmentedHitboxPose desired, Vec3 origin,
+                       float height, float scale, List<VoxelShape> shapes, List<AABB> sweep) {
+        if (shapes.isEmpty()) return new Result(desired, Vec3.ZERO, false);
         List<AABB> obstacles = shapes.stream().flatMap(shape -> shape.toAabbs().stream()).toList();
         List<AABB> oldBoxes = boxes(previous, origin, height, scale);
-        List<AABB> sweep = sweep(previous, desired, origin, height, scale);
         var offset = CompoundCollisionMath.findRotationOffset(oldBoxes, sweep, shapes, obstacles, .5 * scale);
         if (offset.isPresent()) return new Result(desired, offset.get(), false);
 
@@ -44,13 +51,14 @@ public final class RotationPlanner {
                 low = middle;
             } else high = middle;
         }
-        return new Result(safe, Vec3.ZERO, true);
+        return new Result(withDesiredArms(safe, desired), Vec3.ZERO, true);
     }
 
     public static List<AABB> sweep(SegmentedHitboxPose from, SegmentedHitboxPose to, Vec3 origin, float height, float scale) {
         double bodyAngle = angle(from.body(), to.body());
         double jointAngle = 0, pivotDistance = 0;
         for (int i = 0; i < 6; i++) {
+            if (!BodyBoxTag.movementJoint(i)) continue;
             var a = from.joints().get(i); var b = to.joints().get(i);
             jointAngle = Math.max(jointAngle, angle(a.rotation(), b.rotation()));
             pivotDistance = Math.max(pivotDistance, Math.max(Math.abs(a.x() - b.x()),
@@ -66,11 +74,12 @@ public final class RotationPlanner {
                 Math.abs(-.9 + (to.swimming() ? height * .5 : 0)));
         double rootAllowance = rootOffset * (1 - Math.cos(Math.min(Math.PI, bodyAngle / steps) / 2));
         for (int i = 0; i < 6; i++) {
+            if (!BodyBoxTag.movementJoint(i)) continue;
             double partAngle = bodyAngle + Math.abs(from.swim() - to.swim()) * Math.PI / 2
                     + angle(from.joints().get(i).rotation(), to.joints().get(i).rotation());
             allowance[i] = rootAllowance + 4 * scale * (1 - Math.cos(Math.min(Math.PI, partAngle / steps) / 2));
         }
-        var result = new ArrayList<AABB>(steps * 16);
+        var result = new ArrayList<AABB>(steps * BodyBoxTag.MOVEMENT.size());
         List<AABB> last = boxes(from, origin, height, scale);
         // Vanilla's swim translation turns on as soon as swim is positive. Preserve
         // that one-sided endpoint instead of spanning only from the untranslated pose.
@@ -89,7 +98,7 @@ public final class RotationPlanner {
                 AABB covered = last.get(i).minmax(next.get(i));
                 if (step == 1 && afterSwimStarts != null) covered = covered.minmax(afterSwimStarts.get(i));
                 if (beforePostureSwitch != null) covered = covered.minmax(beforePostureSwitch.get(i));
-                result.add(covered.inflate(allowance[i == 0 ? 0 : 1 + (i - 1) / 3]));
+                result.add(covered.inflate(allowance[BodyBoxTag.MOVEMENT.get(i).jointIndex()]));
             }
             last = next;
         }
@@ -113,7 +122,16 @@ public final class RotationPlanner {
         var joints = new ArrayList<>(previous.joints());
         var neck = previous.joints().getFirst();
         joints.set(0, new SegmentedHitboxPose.Joint(neck.x(), neck.y(), neck.z(), head));
+        joints.set(2, desired.joints().get(2));
+        joints.set(3, desired.joints().get(3));
         return new SegmentedHitboxPose(previous.body(), previous.swim(), previous.slim(), joints, previous.swimming());
+    }
+
+    private static SegmentedHitboxPose withDesiredArms(SegmentedHitboxPose safe, SegmentedHitboxPose desired) {
+        var joints = new ArrayList<>(safe.joints());
+        joints.set(2, desired.joints().get(2));
+        joints.set(3, desired.joints().get(3));
+        return new SegmentedHitboxPose(safe.body(), safe.swim(), safe.slim(), joints, safe.swimming());
     }
 
     private static float clamp(float angle, float degrees) {

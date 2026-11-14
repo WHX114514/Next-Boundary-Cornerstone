@@ -8,7 +8,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
-import cn.rbq108.nextboundarycornerstone.body.collision.SegmentedPhysics;
+import cn.rbq108.nextboundarycornerstone.body.collision.PhysicsBox;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,15 +30,7 @@ public final class SurfaceAdhesion {
         owner = player;
         level = player.level();
 
-        List<AABB> shapes = new ArrayList<>();
-        // getBlockCollisions supplies world-space, context-sensitive VoxelShapes, not full cubes.
-        for (var shape : level.getBlockCollisions(player,
-                player.getBoundingBox().inflate(SurfaceGeometry.RELEASE_DISTANCE + SurfaceGeometry.CONTACT_EPSILON))) {
-            shapes.addAll(shape.toAabbs());
-        }
-        Map<Direction, SurfaceGeometry.Contact> contacts = SegmentedPhysics.enabled(player)
-                ? SurfaceGeometry.findContacts(SegmentedPhysics.box(player).pieces(), shapes)
-                : SurfaceGeometry.findContacts(player.getBoundingBox(), shapes);
+        Map<Direction, SurfaceGeometry.Contact> contacts = blockContacts(player, player.getBoundingBox());
         Vector3f incomingVelocity = new Vector3f(velocity);
         // Collision reconciliation remains active when surface assistance is disabled.
         SurfaceGeometry.removeInwardVelocity(velocity, BLOCKED_NORMALS);
@@ -74,6 +66,26 @@ public final class SurfaceAdhesion {
         if (owner != player || level != player.level()) reset();
         owner = player;
         level = player.level();
-        BLOCKED_NORMALS.addAll(SurfaceGeometry.blockedNormals(requested, resolved));
+        var blocked = SurfaceGeometry.blockedNormals(requested, resolved);
+        BLOCKED_NORMALS.addAll(blocked);
+        if (blocked.isEmpty() || !SurfaceConfig.SPEC.isLoaded() || !SurfaceConfig.SETTINGS.enabled.get()) return;
+        // collide() returns before Entity.move installs the resolved position. Probe the
+        // actual endpoint with the same physical pieces which just hit the obstacle.
+        var contacts = blockContacts(player, player.getBoundingBox().move(resolved));
+        contacts.keySet().retainAll(blocked);
+        STATE.recordBlockCollision(contacts, new Vector3f((float) requested.x, (float) requested.y, (float) requested.z),
+                GlobalVariables.B_rush);
+    }
+
+    private static Map<Direction, SurfaceGeometry.Contact> blockContacts(LocalPlayer player, AABB body) {
+        List<AABB> shapes = new ArrayList<>();
+        // Only block shapes can establish adhesion. Entity/border clipping still clears inward velocity.
+        for (var shape : player.level().getBlockCollisions(player,
+                body.inflate(SurfaceGeometry.RELEASE_DISTANCE + SurfaceGeometry.CONTACT_EPSILON))) {
+            shapes.addAll(shape.toAabbs());
+        }
+        return body instanceof PhysicsBox compound
+                ? SurfaceGeometry.findContacts(compound.pieces(), shapes)
+                : SurfaceGeometry.findContacts(body, shapes);
     }
 }

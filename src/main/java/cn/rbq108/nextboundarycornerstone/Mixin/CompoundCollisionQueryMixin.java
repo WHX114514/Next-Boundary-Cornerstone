@@ -4,8 +4,6 @@ import cn.rbq108.nextboundarycornerstone.body.collision.PhysicsBox;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.shapes.BooleanOp;
-import net.minecraft.world.phys.shapes.Shapes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -21,10 +19,10 @@ public interface CompoundCollisionQueryMixin {
             if (!shape.isEmpty()) { cir.setReturnValue(false); return; }
         }
         for (var shape : level.getEntityCollisions(entity, body)) {
-            if (Shapes.joinIsNotEmpty(body.shape(), shape, BooleanOp.AND)) { cir.setReturnValue(false); return; }
+            if (body.intersectsShape(shape)) { cir.setReturnValue(false); return; }
         }
         var border = level.getWorldBorder();
         cir.setReturnValue(entity == null || !border.isInsideCloseToBorder(entity, body)
-                || !Shapes.joinIsNotEmpty(body.shape(), border.getCollisionShape(), BooleanOp.AND));
+                || !body.intersectsShape(border.getCollisionShape()));
     }
 }

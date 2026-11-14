@@ -1,6 +1,7 @@
 package cn.rbq108.nextboundarycornerstone.attachment;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedAABB;
+import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxConfig;
@@ -21,6 +22,7 @@ public class PlayerRotationAttachment {
     private SegmentedHitboxPose renderedHitboxPose;
     private float renderedPartialTick;
     private SegmentedAABB hitbox;
+    private SegmentedAABB aabbModel;
     private PhysicsBox collision;
     private boolean bodyBlocked;
     private double boxX, boxY, boxZ;
@@ -51,6 +53,7 @@ public class PlayerRotationAttachment {
         this.quaternion.set(quat);
         hitbox = null;
         collision = null;
+        aabbModel = null;
     }
 
     public boolean isLowGravity() {
@@ -72,6 +75,7 @@ public class PlayerRotationAttachment {
         hitbox = null;
         collision = null;
         renderedHitboxPose = null;
+        aabbModel = null;
     }
 
     public SegmentedHitboxPose renderHitboxPose(float partialTick) {
@@ -93,6 +97,7 @@ public class PlayerRotationAttachment {
             boxMode = mode;
             hitbox = null;
             collision = null;
+            aabbModel = null;
         }
     }
 
@@ -103,20 +108,32 @@ public class PlayerRotationAttachment {
     public PhysicsBox collision(Player player) {
         checkGeometryCache(player);
         if (collision == null) {
-            var pieces = SegmentedHitboxGeometry.build(poseOrDefault(), boxHeight, boxScale, boxSwimming);
-            collision = new PhysicsBox(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList());
+            var pieces = HitboxConfig.mode() == HitboxMode.AABB ? aabbModel(player).pieces(BodyBoxTag.MOVEMENT_MASK)
+                    : SegmentedHitboxGeometry.build(poseOrDefault(), boxHeight, boxScale, boxSwimming, BodyBoxTag.MOVEMENT_MASK)
+                    .stream().map(box -> box.move(boxX, boxY, boxZ)).toList();
+            collision = new PhysicsBox(pieces, BodyBoxTag.MOVEMENT);
         }
         return collision;
     }
 
     public SegmentedAABB hitbox(Player player) {
         checkGeometryCache(player);
-        if (HitboxConfig.mode() == HitboxMode.AABB) return collision(player);
+        if (HitboxConfig.mode() == HitboxMode.AABB) return aabbModel(player);
         if (hitbox == null) {
             var pieces = OBBGeometry.build(poseOrDefault(), boxHeight, boxScale, boxSwimming);
-            hitbox = new OBBHitbox(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList());
+            hitbox = new OBBHitbox(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList(), BodyBoxTag.ALL);
         }
         return hitbox;
+    }
+
+    /** All sixteen tagged AABBs, also available to devices regardless of the hit-query mode. */
+    public SegmentedAABB aabbModel(Player player) {
+        checkGeometryCache(player);
+        if (aabbModel == null) {
+            var pieces = SegmentedHitboxGeometry.build(poseOrDefault(), boxHeight, boxScale, boxSwimming);
+            aabbModel = new SegmentedAABB(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList(), BodyBoxTag.ALL);
+        }
+        return aabbModel;
     }
 
     public boolean isBodyBlocked() { return bodyBlocked; }

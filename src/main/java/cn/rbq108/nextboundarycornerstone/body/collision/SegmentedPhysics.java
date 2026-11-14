@@ -1,6 +1,7 @@
 package cn.rbq108.nextboundarycornerstone.body.collision;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
+import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxes;
 import cn.rbq108.nextboundarycornerstone.main;
 import net.minecraft.world.entity.MoverType;
@@ -21,6 +22,16 @@ public final class SegmentedPhysics {
     }
 
     public static PhysicsBox box(Player player) { return player.getData(main.PLAYER_ROTATION).collision(player); }
+
+    /** Device query: e.g. ARMS_MASK can detect arms even though ordinary movement ignores them. */
+    public static boolean intersectsParts(Player player, AABB obstacle, int tagMask) {
+        if (!SegmentedHitboxes.enabled(player) || (tagMask & BodyBoxTag.ALL_MASK) == 0) return false;
+        var model = player.getData(main.PLAYER_ROTATION).aabbModel(player);
+        for (int i = 0; i < model.pieces().size(); i++) {
+            if (model.tags().get(i).matches(tagMask) && CompoundCollisionMath.overlaps(model.pieces().get(i), obstacle)) return true;
+        }
+        return false;
+    }
 
     public static List<VoxelShape> obstacles(Player player, AABB area) {
         var result = new ArrayList<VoxelShape>(player.level().getEntityCollisions(player, area));
@@ -47,7 +58,7 @@ public final class SegmentedPhysics {
         List<AABB> sweep = RotationPlanner.sweep(previous, desired, player.position(), player.getBbHeight(), player.getScale());
         AABB area = CompoundCollisionMath.envelope(sweep).inflate(.5001 * player.getScale());
         var scene = obstacles(player, area);
-        var result = RotationPlanner.plan(previous, desired, player.position(), player.getBbHeight(), player.getScale(), scene);
+        var result = RotationPlanner.plan(previous, desired, player.position(), player.getBbHeight(), player.getScale(), scene, sweep);
         if (result.offset().lengthSqr() > 1.0e-16) {
             Vec3 origin = player.position();
             player.move(MoverType.SELF, result.offset());

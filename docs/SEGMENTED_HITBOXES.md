@@ -16,18 +16,20 @@
 
 ## 物理碰撞与转身
 
-失重时始终使用上述 16 个分段 AABB 参与实际移动、可碰撞实体和世界边界检测。
+失重运动碰撞使用 10 个分段 AABB：头部 1、躯干 3、双腿各 3。左右手臂共 6 个盒不参与移动、转身让位、贴附接触、可碰撞实体及世界边界的运动阻挡；受击仍保留完整 16 个盒。腿部中段正常参与运动碰撞。
 `getBoundingBox()` 返回复合盒：其外包络只供空间索引使用，原版体素形状查询和服务端移动包校验使用小盒子的实际并集。
+方块碰撞迭代器直接用各小盒检查复杂方块形状，不为每次探测构建整个人体的体素网格。
+其他确实需要 `VoxelShape` 的调用使用缓存的平衡并集合并，不在每加一个小盒时反复执行体素简化。
 移动按原版轴顺序裁剪所有小盒，保留沿墙方向的速度；空隙不会再被原来的 1.2 格大方块挡住。
 表面辅助按实际小盒查找接触，不以外包络中的空气作为支撑。
 
-- AABB 受击模式：命中模型直接共用同一个物理复合盒，不重复生成另一套小盒。
-- OBB 受击模式：物理仍是分段 AABB，另外保留 OBB 用于精确命中。
+- AABB 受击模式：完整受击对象保留 16 块，运动对象选择其中 10 块并复用同一批 AABB 几何引用，不重新计算保留部分。
+- OBB 受击模式：运动仍是 10 块 AABB，另外保留完整 16 块 OBB 用于精确命中。
 
-转身、改变姿态或摆动四肢前，检查中间姿态的扫掠范围，并在附近搜索最小让位位移。
+转身、改变姿态或摆动双腿前，检查运动小盒的中间姿态扫掠范围，并在附近搜索最小让位位移。手臂动作不增加扫掠步数，也不触发让位。
 扫掠余量同时计入缩放后的身体尺寸和未随实体缩放的渲染支点偏移；漂浮标记切换、游泳动画从零开始及归零时，包含位移跳变两侧的轨迹。
 让位范围限制为半格乘实体缩放，搜索节点数有上限；让位路径也须可通行，不能直接挪到墙另一侧。
-无法完成时保留之前安全的身体、四肢姿态，把期望头部方向转换到原来的颈部坐标。
+无法完成时保留之前安全的身体、腿部姿态，把期望头部方向转换到原来的颈部坐标。六个手臂盒继续跟随手臂动画并保留受击，不随身体受阻而冻结。
 头部同样受墙面限制，空间不足时只转到安全角度；视角不会被强制重置，也不会修改玩家手动 C 键的切换状态。
 每 tick 重试，空间恢复后身体继续跟随视角。
 服务器复核收到的姿态，必要时回传受限姿态和位置纠正；不会禁用原版服务端移动检查来掩盖不同步。
@@ -50,7 +52,7 @@ Mode = "AABB"
 OBB 模式复用完全相同的 16 段骨架、尺寸、姿态和同步数据，保存每段的实际朝向。
 候选查询仍使用便宜的 AABB 包络，最终射线、盒内判断、交互距离及 TACZ 头部判断转到 OBB 局部坐标计算。
 投射物的命中余量扩展 OBB 的局部半尺寸，不把旋转盒退化成大 AABB。
-OBB 的包络角落不算命中；相比 AABB 需要更多运算。本实现没有进行性能基准测试，不承诺具体帧率差异。
+OBB 的包络角落不算命中；相比 AABB 需要更多运算。尚未对两种受击模式做性能对比，不承诺具体帧率差异。
 几何和常用余量结果沿用缓存，切换模式时缓存失效。
 OBB 的配置、数学、构建及调试绘制均位于 `body/OOBB/`，文件夹名按项目约定保留为 `OOBB`。
 
@@ -71,12 +73,40 @@ TACZ 适配已编译，尚未在安装 TACZ 的运行环境中做实机射击验
 普通重力、旁观者的穿墙状态、乘坐实体时沿用原版物理路径；离开失重后清除受限姿态并恢复尺寸。
 普通重力或恢复原版控制的观察者模式使用原版命中盒。
 退出失重时清除骨架缓存；服务端核对发包玩家 UUID、实际失重状态，并拒绝非法骨架数值。
-网络协议版本已更新，联机双方需要使用这一版模组。
+网络协议版本为 `compound-physics-5`，联机双方需要同时更新，避免旧版 16 块运动模型与新版 10 块模型产生位置纠正。
 
-游戏内按 **F3+B** 查看：AABB 模式直接显示共用的黄色头部、青色躯干及四肢小盒。
+游戏内按 **F3+B** 查看：AABB 模式显示黄色头部、青色躯干和双腿，六个只受击的手臂盒显示紫色。
 OBB 模式额外用**橙色**显示物理 AABB，黄色、青色仍显示受击 OBB。
 不再绘制代表实体包络的大白方块，避免把空间索引误认为实际碰撞范围。
 显示的是当前 tick 的实际命中盒；渲染中的人物使用帧插值，快速运动时可能看到轻微时间差。
+
+## 部位标签与其他设备接入
+
+`body/BodyBoxTag` 定义 16 个固定标签，顺序与原有完整骨架一致。每个标签有 `id()`、`part()`、`segment()`、`jointIndex()` 和 `mask()`。
+
+- 部位：`HEAD`、`TORSO`、`LEFT_ARM`、`RIGHT_ARM`、`LEFT_LEG`、`RIGHT_LEG`。
+- 分段：头为 `WHOLE`，其余部位为 `UPPER` / `MIDDLE` / `LOWER`；`LOWER` 是远离躯干的一端。
+- 完整标签如 `LEFT_ARM_MIDDLE`、`RIGHT_LEG_LOWER`，字符串 ID 为 `left_arm_middle`、`right_leg_lower`。
+- `ALL_MASK` 选择全部 16 块；`ARMS_MASK` 选择六块手臂；`MOVEMENT_MASK` 选择默认运动的 10 块；`mask(Part)` 选择一个完整部位。
+
+其他设备可对失重玩家使用世界坐标 AABB 做部位查询：
+
+```java
+import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
+import cn.rbq108.nextboundarycornerstone.body.collision.SegmentedPhysics;
+
+int hands = BodyBoxTag.ARMS_MASK;
+boolean touchesArms = SegmentedPhysics.intersectsParts(player, deviceWorldBox, hands);
+
+int feet = BodyBoxTag.LEFT_LEG_LOWER.mask() | BodyBoxTag.RIGHT_LEG_LOWER.mask();
+boolean touchesFeet = SegmentedPhysics.intersectsParts(player, deviceWorldBox, feet);
+```
+
+接口使用完整缓存的 AABB 模型，因此即使手臂不参与默认运动，设备仍可识别它们；普通重力玩家和空选择返回 false。它是检测接口，设备自己的推挤、抓取等响应由设备实现，不会自动改变全局运动规则。
+
+`player.getData(main.PLAYER_ROTATION).aabbModel(player)` 提供完整标签模型；`pieces()` 与 `tags()` 按索引对应，`pieces(mask)` 返回选中的几何引用。运动对象只含 `BodyBoxTag.MOVEMENT`，移动、膨胀、扫掠变换保留标签。受击 AABB / OBB 对象均提供 `tags()`；OBB 的 `pieces()` 是其 AABB 包络，精确朝向仍由 `orientedPieces()` 提供。
+
+标签是固定共享元数据，筛选使用整数位掩码；不逐帧生成字符串，不增加同步包字段。第三方绕过统一碰撞入口的物理系统需自行调用接口适配。
 
 ## 验证
 
@@ -88,6 +118,8 @@ OBB 模式额外用**橙色**显示物理 AABB，黄色、青色仍显示受击 
 - `gradlew.bat runSurfaceClient`：隐藏窗口、模拟按键的客户端 QA，检查第一人称采样、服务端收到骨架、六面吸附和既有退出/恢复行为。
 - `gradlew.bat runHitboxVisualClient -PhitboxVisualScenario=physics --no-parallel`：后台真实客户端检查墙边转身让位、窄通道只转头、移除障碍后自动恢复，并保存帧缓冲截图。与普通截图任务相同，可通过实际世界 SERVER 配置分别运行 AABB / OBB；不发送桌面键鼠输入。
 - `gradlew.bat runHitboxVisualClient -PhitboxVisualScenario=posture --no-parallel`：真实客户端穿脱背包，检查站立→漂浮→站立时客户端、服务器和物理姿态一致，并截图保存。
+- `gradlew.bat physicsProfile -PphysicsProfileOutput=.local-artifacts/physics-performance/profile --no-parallel`：手动微基准，记录旋转人体并集和窄处转身的耗时、每调用分配量及 JFR；不加入普通 `check`。
+- `gradlew.bat runHitboxVisualClient -PhitboxVisualScenario=performance --no-parallel`：隐藏客户端按相同输入运行高空静止、转视角和叶子墙附近转身，固定 120 FPS 上限、关闭垂直同步，每场景预热 2 秒并采样约 5 秒，输出 `performance.json` 和 `performance.jfr`。测试结果是隔离环境的数据，不代表任意整合包帧率。
 - `gradlew.bat runHitboxVisualClient --no-parallel`：隐藏窗口、中文、实际第三人称帧缓冲截图，不发送桌面键鼠输入。可用 `-PhitboxVisualScenario=rolled` 或 `side` 定点取景，`-PhitboxVisualDir=<产物目录>` 隔离世界，`-PhitboxExpectedMode=OBB` 仅声明预期断言，不强制选择模式。在产物目录放置 `server-config.toml`，夹具会将其复制成真实的世界 SERVER 配置，用于验证它覆盖相反的实例默认值。
 
 核心尺寸及分段数量在 `SegmentedHitboxGeometry`，共同的姿态数据结构在 `SegmentedHitboxPose`。

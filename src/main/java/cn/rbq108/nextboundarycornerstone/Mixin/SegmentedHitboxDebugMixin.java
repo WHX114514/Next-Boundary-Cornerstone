@@ -1,6 +1,7 @@
 package cn.rbq108.nextboundarycornerstone.Mixin;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedAABB;
+import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxes;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.OBBDebugRenderer;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.OBBHitbox;
@@ -33,7 +34,8 @@ public abstract class SegmentedHitboxDebugMixin {
         }
         for (int i = 0; i < hitbox.pieces().size(); i++) {
             var box = hitbox.pieces().get(i).move(-entity.getX(), -entity.getY(), -entity.getZ());
-            LevelRenderer.renderLineBox(stack, lines, box, i == 0 ? 1 : .2f, 1, i == 0 ? .2f : 1, 1);
+            boolean arm = hitbox.tags().get(i).matches(BodyBoxTag.ARMS_MASK);
+            LevelRenderer.renderLineBox(stack, lines, box, i == 0 || arm ? 1 : .2f, arm ? .35f : 1, i == 0 ? .2f : 1, 1);
         }
         ci.cancel();
     }

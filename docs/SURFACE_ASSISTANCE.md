@@ -21,6 +21,8 @@
 
 接触容差为 0.0001 格；已接触表面可在 0.35 格范围内保持。超过范围后有 5 tick 重新捕获冷却。支撑缺失时立即暂停辅助，连续两 tick 缺失则清除记忆；同平面跨方块接缝优先保持法线。传送/服务器位置纠正、断线、退出失重、死亡/重生、换维度、骑乘及航空学把手抓取均清除吸附状态。
 
+分段运动盒撞到方块时立即记录真实接触，下一次姿态采样后再校验支撑及保持距离，避免脚部动画轻微退开导致首次吸附漏记。实体或世界边界的速度裁剪只参与碰撞同步。
+
 第一版处理静态方块碰撞形状。实体和世界边界参与正常惯性碰撞同步，但不会触发吸附。移动飞船局部坐标、自动绕外墙角、自动站正和专用行走动画不包含在此版本中。
 
 ## 回归与运行时验收
@@ -44,7 +46,7 @@ bash gradlew runSurfaceClient
 
 默认输入由独立的 `cornerstone_surface_qa` 测试模组在 `KeyPollingHandler.isPressed` 入口注入，绕过窗口焦点检测；六面的捕获、松键停车与持续上升挣脱仍经过正常生产 tick 和实际方块碰撞。只有初始位置、身体姿态和切向漂移由 fixture 布置，挣脱阶段不会直接改坐标或最终速度。随后还检查服务器传送包清理吸附、退出及恢复失重、后坐力只消费一次。
 
-成功后自动写入 `build/surface-client-qa/surface-result.json` 并退出。后台结果必须同时具有 `passed=true`、`inputMode="simulated"`、六项 `capture-and-parking-*`、六项 `simulated-input-escape-*` 和四项生命周期检查，日志为 `SURFACE_CLIENT_QA_PASS inputMode=simulated checks=16`。其中 `physicalInputVerified=false` 明确表示**没有验证真实键盘输入或主观手感**。
+成功后自动写入 `build/surface-client-qa/surface-result.json` 并退出。后台结果必须同时具有 `passed=true`、`inputMode="simulated"`、六项 `capture-and-parking-*`、六项 `simulated-input-escape-*`、四项生命周期检查及 `oblique-landing-parking`，日志为 `SURFACE_CLIENT_QA_PASS inputMode=simulated checks=17`。其中 `physicalInputVerified=false` 明确表示**没有验证真实键盘输入或主观手感**。
 
 ### 前台验收交接提示词
 

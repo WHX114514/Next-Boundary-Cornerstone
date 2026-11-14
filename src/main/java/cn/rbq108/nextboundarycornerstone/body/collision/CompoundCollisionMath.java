@@ -27,6 +27,7 @@ public final class CompoundCollisionMath {
     }
 
     public static Vec3 clip(List<AABB> bodies, List<VoxelShape> obstacles, Vec3 requested) {
+        if (obstacles.isEmpty() || requested.lengthSqr() == 0) return requested;
         Vec3 offset = Vec3.ZERO;
         double y = axis(Direction.Axis.Y, bodies, obstacles, offset, requested.y);
         offset = offset.add(0, y, 0);
@@ -47,7 +48,7 @@ public final class CompoundCollisionMath {
     private static double axis(Direction.Axis axis, List<AABB> bodies, List<VoxelShape> obstacles, Vec3 offset, double amount) {
         if (amount == 0) return 0;
         for (AABB body : bodies) {
-            amount = Shapes.collide(axis, body.move(offset), obstacles, amount);
+            amount = Shapes.collide(axis, offset.lengthSqr() == 0 ? body : body.move(offset), obstacles, amount);
             if (Math.abs(amount) < EPSILON) return 0;
         }
         return amount;
@@ -70,8 +71,13 @@ public final class CompoundCollisionMath {
 
     private static Overlap firstOverlap(List<AABB> bodies, List<AABB> obstacles, Vec3 offset) {
         for (AABB original : bodies) {
-            AABB body = original.move(offset);
-            for (AABB obstacle : obstacles) if (overlaps(body, obstacle)) return new Overlap(body, obstacle);
+            for (AABB obstacle : obstacles) {
+                if (Math.min(original.maxX + offset.x, obstacle.maxX) - Math.max(original.minX + offset.x, obstacle.minX) > EPSILON
+                        && Math.min(original.maxY + offset.y, obstacle.maxY) - Math.max(original.minY + offset.y, obstacle.minY) > EPSILON
+                        && Math.min(original.maxZ + offset.z, obstacle.maxZ) - Math.max(original.minZ + offset.z, obstacle.minZ) > EPSILON) {
+                    return new Overlap(offset.lengthSqr() == 0 ? original : original.move(offset), obstacle);
+                }
+            }
         }
         return null;
     }
@@ -79,6 +85,7 @@ public final class CompoundCollisionMath {
     /** Both the whole rotation sweep and the translation to its new pivot must be unobstructed. */
     public static Optional<Vec3> findRotationOffset(List<AABB> previous, List<AABB> sweep,
                                                    List<VoxelShape> shapes, List<AABB> obstacles, double maximum) {
+        if (clear(sweep, obstacles, Vec3.ZERO)) return Optional.of(Vec3.ZERO);
         var queue = new PriorityQueue<Vec3>(Comparator.comparingDouble(Vec3::lengthSqr)
                 .thenComparingDouble(p -> p.x).thenComparingDouble(p -> p.y).thenComparingDouble(p -> p.z));
         Set<Cell> visited = new HashSet<>();
