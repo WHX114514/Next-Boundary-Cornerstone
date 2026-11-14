@@ -6,7 +6,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 import java.util.Optional;
 
-/** Used only during hit queries: the envelope gathers candidates, the pieces decide hits. */
+/** The envelope gathers candidates; the pieces decide hits. PhysicsBox adds movement-specific operations. */
 public class SegmentedAABB extends AABB {
     private final List<AABB> pieces;
     private double cachedInflation;

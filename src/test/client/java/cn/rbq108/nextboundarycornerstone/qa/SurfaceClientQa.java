@@ -72,7 +72,16 @@ public final class SurfaceClientQa {
             require(System.currentTimeMillis() - started < 600_000, "client QA timeout phase=" + phase);
             if (serverFailure != null) throw new AssertionError("server fixture setup", serverFailure);
             ticks++;
-            if (phase == 2) GlobalVariables.B_Vx1 = GlobalVariables.B_Vy1 = GlobalVariables.B_Vz1 = 0;
+            require(ticks < 240 || phase == 0 || phase == 1, "phase timeout phase=" + phase);
+            if (phase == 2) {
+                // Approach the actual animated feet/limbs after the teleport. Unlike a cube,
+                // a walking skeleton's surface can retreat while its animation settles.
+                var approach = vector(FACES[faceIndex]).mul(-.04f);
+                GlobalVariables.B_Vx1 = approach.x;
+                GlobalVariables.B_Vy1 = approach.y;
+                GlobalVariables.B_Vz1 = approach.z;
+            }
+            if (phase == 10 || phase == 12 || phase == 14) GlobalVariables.B_Vy1 = -.04f;
             if (mc.screen != null && mc.screen.getClass().getSimpleName().equals("AccessibilityOnboardingScreen")) {
                 mc.setScreen(new TitleScreen());
             }
@@ -92,7 +101,6 @@ public final class SurfaceClientQa {
                 GlobalVariables.currentQuat.rotationTo(new Vector3f(0, 1, 0), vector(normal));
                 GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
                 GlobalVariables.B_Vx1 = GlobalVariables.B_Vy1 = GlobalVariables.B_Vz1 = 0;
-                SurfaceAdhesion.reset();
                 next(3);
             } else if (phase == 3 && ticks > 12) {
                 var hitboxPose = mc.player.getData(main.PLAYER_ROTATION).getHitboxPose();
@@ -111,6 +119,9 @@ public final class SurfaceClientQa {
                     } catch (Throwable error) { serverFailure = error; }
                 });
                 require(SurfaceConfig.SPEC.isLoaded(), "SERVER settings available on actual client");
+                LOG.info("SURFACE_CAPTURE_DIAG normal={} active={} remembered={} box={} body={} camera={} drift={},{},{}",
+                        FACES[faceIndex], activeNormal(), rememberedNormal(), mc.player.getBoundingBox(), hitboxPose.body(),
+                        GlobalVariables.currentQuat, GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1);
                 require(activeNormal() == FACES[faceIndex], "actual client capture " + FACES[faceIndex]);
                 // Give a real world-space tangent drift, then let normal client ticks stop it.
                 Vector3f tangent = FACES[faceIndex].getAxis() == Direction.Axis.X ? new Vector3f(0, 0, .3f) : new Vector3f(.3f, 0, 0);
@@ -120,6 +131,9 @@ public final class SurfaceClientQa {
                 next(4);
             } else if (phase == 4 && ticks > 12) {
                 Direction normal = FACES[faceIndex];
+                LOG.info("SURFACE_PHYSICAL_DIAG normal={} active={} remembered={} cooldown={} position={} box={} velocity={},{},{} bodyBlocked={}",
+                        normal, activeNormal(), rememberedNormal(), cooldown(), mc.player.position(), mc.player.getBoundingBox(),
+                        GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1, mc.player.getData(main.PLAYER_ROTATION).isBodyBlocked());
                 require(activeNormal() == normal, "stays attached while parking " + normal);
                 Vector3f velocity = new Vector3f(GlobalVariables.B_Vx1, GlobalVariables.B_Vy1, GlobalVariables.B_Vz1);
                 velocity.sub(new Vector3f(vector(normal)).mul(velocity.dot(vector(normal))));
@@ -150,7 +164,7 @@ public final class SurfaceClientQa {
                 require(activeNormal() == null && rememberedNormal() == null && cooldown() == 0,
                         "teleport packet clears surface and cooldown before a new collision");
                 CHECKS.add("teleport-packet-reset");
-                teleport(mc, .5, 81, .5);
+                teleport(mc, .5, floorOriginY(), .5);
                 next(12);
             } else if (phase == 12 && serverReady && ticks > 15 && activeNormal() == Direction.UP) {
                 equipBackpack(mc, false);
@@ -188,6 +202,14 @@ public final class SurfaceClientQa {
         SurfaceAdhesion.reset();
         var playerId = mc.player.getUUID();
         Direction normal = FACES[faceIndex];
+        var rotation = new org.joml.Quaternionf().rotationTo(new Vector3f(0, 1, 0), vector(normal));
+        var physicalPose = cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose.standing(rotation);
+        var relativeBody = cn.rbq108.nextboundarycornerstone.body.collision.CompoundCollisionMath.envelope(
+                cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry.build(physicalPose, GlobalVariables.B_HitboxSize, 1, false));
+        GlobalVariables.currentQuat.set(rotation);
+        GlobalVariables.prevQuat.set(rotation);
+        cn.rbq108.nextboundarycornerstone.body.trunk.constrainTo(rotation);
+        mc.player.getData(main.PLAYER_ROTATION).setHitboxPose(physicalPose);
         mc.getSingleplayerServer().execute(() -> {
             try {
                 var player = mc.getSingleplayerServer().getPlayerList().getPlayer(playerId);
@@ -197,9 +219,10 @@ public final class SurfaceClientQa {
                     level.setBlockAndUpdate(pos, boundary ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
                 }
                 player.setItemSlot(EquipmentSlot.CHEST, new ItemStack(main.BASIC_BACKPACK.get()));
-                double x = normal == Direction.EAST ? -2.4 : normal == Direction.WEST ? 3.4 : .5;
-                double y = normal == Direction.UP ? 81 : normal == Direction.DOWN ? 83.8 : 82;
-                double z = normal == Direction.SOUTH ? -2.4 : normal == Direction.NORTH ? 3.4 : .5;
+                player.getData(main.PLAYER_ROTATION).setHitboxPose(physicalPose);
+                double x = normal == Direction.EAST ? -3 - relativeBody.minX : normal == Direction.WEST ? 4 - relativeBody.maxX : .5;
+                double y = normal == Direction.UP ? 81 - relativeBody.minY : normal == Direction.DOWN ? 85 - relativeBody.maxY : 82;
+                double z = normal == Direction.SOUTH ? -3 - relativeBody.minZ : normal == Direction.NORTH ? 4 - relativeBody.maxZ : .5;
                 player.connection.teleport(x, y, z, 0, 0);
                 player.inventoryMenu.broadcastChanges();
                 serverReady = true;
@@ -214,8 +237,22 @@ public final class SurfaceClientQa {
         heldUp = false;
         GlobalVariables.currentQuat.identity();
         GlobalVariables.prevQuat.identity();
-        teleport(mc, .5, 81, .5);
+        GlobalVariables.headRelQuat.identity();
+        GlobalVariables.prevHeadRelQuat.identity();
+        cn.rbq108.nextboundarycornerstone.body.trunk.constrainTo(new org.joml.Quaternionf());
+        var standing = cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose.standing(new org.joml.Quaternionf());
+        mc.player.getData(main.PLAYER_ROTATION).setHitboxPose(standing);
+        var id = mc.player.getUUID();
+        mc.getSingleplayerServer().execute(() -> mc.getSingleplayerServer().getPlayerList().getPlayer(id)
+                .getData(main.PLAYER_ROTATION).setHitboxPose(standing));
+        teleport(mc, .5, floorOriginY(), .5);
         next(10);
+    }
+
+    private static double floorOriginY() {
+        var standing = cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose.standing(new org.joml.Quaternionf());
+        return 81 - cn.rbq108.nextboundarycornerstone.body.collision.CompoundCollisionMath.envelope(
+                cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry.build(standing, GlobalVariables.B_HitboxSize, 1, false)).minY;
     }
 
     private static void teleport(Minecraft mc, double x, double y, double z) {

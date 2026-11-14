@@ -60,7 +60,10 @@ public final class SegmentedHitboxGameTests {
             Vec3 head = hitbox.pieces().getFirst().getCenter();
             Vec3 start = head.add(0, 0, -2), end = head.add(0, 0, 2);
             AABB area = new AABB(start, end).inflate(.01);
-            helper.assertTrue(!movement.intersects(area), "head ray is outside original movement box");
+            helper.assertTrue(movement instanceof cn.rbq108.nextboundarycornerstone.body.collision.PhysicsBox,
+                    "actual movement uses a compound box");
+            helper.assertTrue((hitbox == movement) == (HitboxConfig.mode() == HitboxMode.AABB),
+                    "AABB mode shares physical/hit geometry; OBB mode keeps a separate hit model");
             var source = helper.makeMockPlayer(GameType.SURVIVAL);
             helper.assertTrue(hitbox.clip(start, end).isPresent(), "head geometry intersects exact world-space ray");
             helper.assertTrue(SegmentedHitboxes.candidates(helper.getLevel(), source, area, entity -> entity == player,
@@ -117,11 +120,14 @@ public final class SegmentedHitboxGameTests {
         var pose = SegmentedHitboxPose.standing(new Quaternionf().rotateXYZ(.3f, .5f, .7f));
         var buf = new FriendlyByteBuf(Unpooled.buffer());
         try {
-            new SyncRotationPayload(id, new Quaternionf(), true, pose).write(buf);
+            pose = new SegmentedHitboxPose(pose.body(), 0, false, pose.joints(), true);
+            new SyncRotationPayload(id, new Quaternionf(), true, pose, true).write(buf);
             var decoded = SyncRotationPayload.read(buf);
             helper.assertTrue(decoded.playerId().equals(id) && decoded.lowGravity() && decoded.hitboxPose().joints().size() == 6,
                     "pose and identity survive packet round trip");
             helper.assertTrue(Math.abs(decoded.hitboxPose().body().dot(pose.body())) > .99999, "body quaternion survives packet round trip");
+            helper.assertTrue(decoded.bodyConstrained() && decoded.hitboxPose().swimming(),
+                    "server constraint and accepted swimming posture survive packet round trip");
             helper.assertTrue(buf.readableBytes() == 0, "decoder consumes exact skeleton payload");
             buf.clear();
             new SyncRotationPayload(id, new Quaternionf(), false, null).write(buf);

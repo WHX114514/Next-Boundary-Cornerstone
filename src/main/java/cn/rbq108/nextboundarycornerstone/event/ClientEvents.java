@@ -359,6 +359,8 @@ public class ClientEvents {
             }
 
             // One ordered movement update per tick, after body orientation is finalized.
+            cn.rbq108.nextboundarycornerstone.body.trunk.update();
+            cn.rbq108.nextboundarycornerstone.ServeMiao.communication.PlayerSent.updatePhysicalPose();
             cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler.pollInput();
             cn.rbq108.nextboundarycornerstone.motion.Rush.updateRushState();
             boolean grabbingHandle = cn.rbq108.nextboundarycornerstone.ModCompatible.isGrabbingAeronauticsHandle(player);
@@ -399,6 +401,7 @@ public class ClientEvents {
             }
 
         } else {
+            cn.rbq108.nextboundarycornerstone.body.trunk.update();
             cn.rbq108.nextboundarycornerstone.motion.SurfaceAdhesion.reset();
             cn.rbq108.nextboundarycornerstone.motion.Rush.reset();
             cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler.pollInput();

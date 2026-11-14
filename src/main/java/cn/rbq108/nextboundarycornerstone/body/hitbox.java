@@ -19,16 +19,7 @@ public class hitbox {
     public static void onPlayerSize(EntityEvent.Size event) {
         if (event.getEntity() instanceof Player player && player.isNoGravity()) {
             float size = GlobalVariables.B_HitboxSize;
-            // 锁定眼高，防止视角卡进方块窒息
-
-            //定义“上移偏移量” (单位：格)
-            // 可以随时调这个数字，越大碰撞箱“看起来”就越高
-            float offsetY = 0.5f;
-
-            //眼高加上偏移量，抬高摄像头
-            event.setNewSize(EntityDimensions.scalable(size, size)
-                    .withEyeHeight(size * 0.85f + offsetY));
-
+            // Dimensions remain the camera/model anchor; physical contact uses the compound body.
             event.setNewSize(EntityDimensions.scalable(size, size).withEyeHeight(size * 0.6f));
         }
     }
@@ -61,6 +52,7 @@ public class hitbox {
         } else {
             if (player.hasData(main.PLAYER_ROTATION) && player.getData(main.PLAYER_ROTATION).getHitboxPose() != null) {
                 player.getData(main.PLAYER_ROTATION).setHitboxPose(null);
+                player.getData(main.PLAYER_ROTATION).setBodyBlocked(false);
             }
             // 如果关闭失重操作，但盒子还是小的，强制变回原状
             if (Math.abs(player.getBbHeight() - GlobalVariables.B_HitboxSize) < 0.01f) {

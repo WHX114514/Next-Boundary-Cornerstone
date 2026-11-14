@@ -19,6 +19,7 @@ import java.util.List;
 public final class ClientSegmentedHitboxes {
     private static final PlayerModel<AbstractClientPlayer> NORMAL = create(false);
     private static final PlayerModel<AbstractClientPlayer> SLIM = create(true);
+    private static boolean sampling;
 
     private ClientSegmentedHitboxes() {}
 
@@ -37,15 +38,22 @@ public final class ClientSegmentedHitboxes {
         model.attackTime = player.getAttackAnim(1);
         model.riding = player.isPassenger() && player.getVehicle() != null && player.getVehicle().shouldRiderSit();
         model.crouching = player.isCrouching();
-        model.prepareMobModel(player, player.walkAnimation.position(), player.walkAnimation.speed(), 1);
-        model.setupAnim(player, player.walkAnimation.position(), Math.min(1, player.walkAnimation.speed()), player.tickCount, 0, 0);
+        sampling = true;
+        try {
+            model.prepareMobModel(player, player.walkAnimation.position(), player.walkAnimation.speed(), 1);
+            model.setupAnim(player, player.walkAnimation.position(), Math.min(1, player.walkAnimation.speed()), player.tickCount, 0, 0);
+        } finally {
+            sampling = false;
+        }
 
         Quaternionf body = new Quaternionf().rotateY((float) Math.toRadians(-trunk.smoothY))
                 .rotateX((float) Math.toRadians(trunk.smoothX)).rotateZ((float) Math.toRadians(trunk.smoothZ));
         return new SegmentedHitboxPose(body, player.getSwimAmount(1), slim, List.of(
                 joint(model.head, headRotation(body, 1, player.isSwimming())), joint(model.body),
-                joint(model.leftArm), joint(model.rightArm), joint(model.leftLeg), joint(model.rightLeg)));
+                joint(model.leftArm), joint(model.rightArm), joint(model.leftLeg), joint(model.rightLeg)), player.hasPose(net.minecraft.world.entity.Pose.SWIMMING));
     }
+
+    public static boolean isSampling() { return sampling; }
 
     public static Quaternionf headRotation(Quaternionf body, float partialTick, boolean swimming) {
         Quaternionf relative;

@@ -8,6 +8,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
+import cn.rbq108.nextboundarycornerstone.body.collision.SegmentedPhysics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +36,9 @@ public final class SurfaceAdhesion {
                 player.getBoundingBox().inflate(SurfaceGeometry.RELEASE_DISTANCE + SurfaceGeometry.CONTACT_EPSILON))) {
             shapes.addAll(shape.toAabbs());
         }
-        Map<Direction, SurfaceGeometry.Contact> contacts = SurfaceGeometry.findContacts(player.getBoundingBox(), shapes);
+        Map<Direction, SurfaceGeometry.Contact> contacts = SegmentedPhysics.enabled(player)
+                ? SurfaceGeometry.findContacts(SegmentedPhysics.box(player).pieces(), shapes)
+                : SurfaceGeometry.findContacts(player.getBoundingBox(), shapes);
         Vector3f incomingVelocity = new Vector3f(velocity);
         // Collision reconciliation remains active when surface assistance is disabled.
         SurfaceGeometry.removeInwardVelocity(velocity, BLOCKED_NORMALS);

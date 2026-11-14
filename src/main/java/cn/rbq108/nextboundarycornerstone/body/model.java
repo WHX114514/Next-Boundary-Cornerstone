@@ -62,6 +62,8 @@ public class model {
                     .rotateY((float) Math.toRadians(-renderY))
                     .rotateX(-(float) Math.toRadians(-renderX))
                     .rotateZ((float) Math.toRadians(renderZ));
+            var physicalPose = player.getData(main.PLAYER_ROTATION).renderHitboxPose(pt);
+            if (physicalPose != null) bodyQuat.set(physicalPose.body());
 
             // 这是啥，冻结数据吗
             oldXRot = player.getXRot(); oldXRotO = player.xRotO;
@@ -79,7 +81,8 @@ public class model {
             }
 
             // 渲染与受击骨架共用头身隔离计算。
-            GlobalVariables.headFixQuat = ClientSegmentedHitboxes.headRotation(bodyQuat, pt, player.isSwimming());
+            GlobalVariables.headFixQuat = physicalPose != null ? new Quaternionf(physicalPose.joints().getFirst().rotation())
+                    : ClientSegmentedHitboxes.headRotation(bodyQuat, pt, player.isSwimming());
 
             // 应用渲染 (身箱合一逻辑)
             PoseStack poseStack = event.getPoseStack();
@@ -89,7 +92,7 @@ public class model {
             poseStack.translate(0, centerY, 0);
             poseStack.mulPose(bodyQuat);
             // 补偿：让原版 1.8 高的模型中心（0.9）对齐支点
-            if (player.hasPose(net.minecraft.world.entity.Pose.SWIMMING)) {
+            if (physicalPose != null ? physicalPose.swimming() : player.hasPose(net.minecraft.world.entity.Pose.SWIMMING)) {
                 // 在游泳状态（漂浮）下，根据玩家局部参考系向上补偿半个当前碰撞箱的高度
                 poseStack.translate(0, -0.9f + centerY, 0);
             } else {

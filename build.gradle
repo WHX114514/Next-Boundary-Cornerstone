@@ -81,6 +81,13 @@ tasks.register('obbTest', JavaExec) {
 
 tasks.named('check') { dependsOn tasks.named('obbTest') }
 
+tasks.register('physicsTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'cn.rbq108.nextboundarycornerstone.body.collision.CompoundPhysicsTests'
+}
+tasks.named('check') { dependsOn tasks.named('physicsTest') }
+
 // Only the isolated QA directory is touched. Disable FML's pre-Mixin splash window so the
 // test-only background window hints can suppress focus/visibility before window creation.
 def surfaceQaConfig = layout.buildDirectory.file('surface-client-qa/config/fml.toml')

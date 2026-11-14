@@ -46,6 +46,9 @@ public class NetworkHandler {
                 attachment.setQuaternion(payload.quat());
                 attachment.setLowGravity(payload.lowGravity());
                 attachment.setHitboxPose(payload.hitboxPose());
+                attachment.setBodyBlocked(payload.bodyConstrained());
+            } else if (target == local && payload.bodyConstrained()) {
+                PlayerSent.acceptServerConstraint(payload.hitboxPose());
             }
         });
     }
@@ -58,10 +61,29 @@ public class NetworkHandler {
                 boolean lowGravity = player.isNoGravity() && !isSpectatorAndRestored(player);
                 if (lowGravity != payload.lowGravity()) return;
                 cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment attachment = player.getData(cn.rbq108.nextboundarycornerstone.main.PLAYER_ROTATION);
-                attachment.setQuaternion(payload.quat());
                 attachment.setLowGravity(lowGravity);
-                attachment.setHitboxPose(lowGravity ? payload.hitboxPose() : null);
-                net.neoforged.neoforge.network.PacketDistributor.sendToAllPlayers(payload);
+                boolean constrained = false;
+                var accepted = payload.hitboxPose();
+                if (lowGravity) {
+                    var result = cn.rbq108.nextboundarycornerstone.body.collision.SegmentedPhysics.acceptPose(player, accepted);
+                    accepted = result.pose();
+                    // Only replace local animation when the server actually rejects its pose.
+                    // A predicted nudge keeps the requested pose; echoing it as a constraint
+                    // would rewind the client's limbs by one network round trip.
+                    constrained = result.bodyBlocked() && !accepted.equals(payload.hitboxPose());
+                    if (result.offset().lengthSqr() > 1.0e-12 && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                        // This is server-owned physical movement, already predicted by the client. Advance the
+                        // validator baseline rather than teleporting every tick and clearing surface contact.
+                        // A genuinely divergent client position still goes through vanilla collision validation.
+                        serverPlayer.connection.resetPosition();
+                    }
+                } else {
+                    attachment.setHitboxPose(null);
+                    attachment.setBodyBlocked(false);
+                }
+                attachment.setQuaternion(payload.quat());
+                net.neoforged.neoforge.network.PacketDistributor.sendToAllPlayers(
+                        new SyncRotationPayload(player.getUUID(), payload.quat(), lowGravity, accepted, constrained));
             }
         });
     }

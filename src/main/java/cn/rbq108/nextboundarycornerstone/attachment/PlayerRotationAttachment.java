@@ -7,6 +7,7 @@ import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxConfig;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxMode;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.OBBGeometry;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.OBBHitbox;
+import cn.rbq108.nextboundarycornerstone.body.collision.PhysicsBox;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.world.entity.Pose;
@@ -20,6 +21,8 @@ public class PlayerRotationAttachment {
     private SegmentedHitboxPose renderedHitboxPose;
     private float renderedPartialTick;
     private SegmentedAABB hitbox;
+    private PhysicsBox collision;
+    private boolean bodyBlocked;
     private double boxX, boxY, boxZ;
     private float boxHeight, boxScale;
     private boolean boxSwimming;
@@ -47,6 +50,7 @@ public class PlayerRotationAttachment {
     public void setQuaternion(Quaternionf quat) {
         this.quaternion.set(quat);
         hitbox = null;
+        collision = null;
     }
 
     public boolean isLowGravity() {
@@ -66,6 +70,7 @@ public class PlayerRotationAttachment {
         previousHitboxPose = hitboxPose;
         hitboxPose = pose;
         hitbox = null;
+        collision = null;
         renderedHitboxPose = null;
     }
 
@@ -78,24 +83,42 @@ public class PlayerRotationAttachment {
         return renderedHitboxPose;
     }
 
-    public SegmentedAABB hitbox(Player player) {
+    private void checkGeometryCache(Player player) {
         boolean swimming = player.hasPose(Pose.SWIMMING);
         HitboxMode mode = HitboxConfig.mode();
-        if (hitbox == null || boxX != player.getX() || boxY != player.getY() || boxZ != player.getZ()
+        if (boxX != player.getX() || boxY != player.getY() || boxZ != player.getZ()
                 || boxHeight != player.getBbHeight() || boxScale != player.getScale() || boxSwimming != swimming || boxMode != mode) {
             boxX = player.getX(); boxY = player.getY(); boxZ = player.getZ();
             boxHeight = player.getBbHeight(); boxScale = player.getScale(); boxSwimming = swimming;
             boxMode = mode;
-            var pose = hitboxPose != null ? hitboxPose
-                    : SegmentedHitboxPose.standing(quaternion);
-            if (mode == HitboxMode.OBB) {
-                var pieces = OBBGeometry.build(pose, boxHeight, boxScale, swimming);
-                hitbox = new OBBHitbox(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList());
-            } else {
-                var pieces = SegmentedHitboxGeometry.build(pose, boxHeight, boxScale, swimming);
-                hitbox = new SegmentedAABB(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList());
-            }
+            hitbox = null;
+            collision = null;
+        }
+    }
+
+    public SegmentedHitboxPose poseOrDefault() {
+        return hitboxPose != null ? hitboxPose : SegmentedHitboxPose.standing(quaternion);
+    }
+
+    public PhysicsBox collision(Player player) {
+        checkGeometryCache(player);
+        if (collision == null) {
+            var pieces = SegmentedHitboxGeometry.build(poseOrDefault(), boxHeight, boxScale, boxSwimming);
+            collision = new PhysicsBox(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList());
+        }
+        return collision;
+    }
+
+    public SegmentedAABB hitbox(Player player) {
+        checkGeometryCache(player);
+        if (HitboxConfig.mode() == HitboxMode.AABB) return collision(player);
+        if (hitbox == null) {
+            var pieces = OBBGeometry.build(poseOrDefault(), boxHeight, boxScale, boxSwimming);
+            hitbox = new OBBHitbox(pieces.stream().map(box -> box.move(boxX, boxY, boxZ)).toList());
         }
         return hitbox;
     }
+
+    public boolean isBodyBlocked() { return bodyBlocked; }
+    public void setBodyBlocked(boolean blocked) { bodyBlocked = blocked; }
 }

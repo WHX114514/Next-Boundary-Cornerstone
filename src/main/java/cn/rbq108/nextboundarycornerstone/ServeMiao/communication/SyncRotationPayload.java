@@ -9,7 +9,10 @@ import net.minecraft.resources.ResourceLocation;
 import org.joml.Quaternionf;
 import java.util.UUID;
 
-public record SyncRotationPayload(UUID playerId, Quaternionf quat, boolean lowGravity, SegmentedHitboxPose hitboxPose) implements CustomPacketPayload {
+public record SyncRotationPayload(UUID playerId, Quaternionf quat, boolean lowGravity, SegmentedHitboxPose hitboxPose, boolean bodyConstrained) implements CustomPacketPayload {
+    public SyncRotationPayload(UUID playerId, Quaternionf quat, boolean lowGravity, SegmentedHitboxPose hitboxPose) {
+        this(playerId, quat, lowGravity, hitboxPose, false);
+    }
 
     public static final Type<SyncRotationPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(main.MODID, "rotation_sync"));
 
@@ -22,7 +25,8 @@ public record SyncRotationPayload(UUID playerId, Quaternionf quat, boolean lowGr
         UUID id = buf.readUUID();
         Quaternionf rotation = SegmentedHitboxPose.normalized(new Quaternionf(buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat()));
         boolean lowGravity = buf.readBoolean();
-        return new SyncRotationPayload(id, rotation, lowGravity, lowGravity ? SegmentedHitboxPose.read(buf) : null);
+        var pose = lowGravity ? SegmentedHitboxPose.read(buf) : null;
+        return new SyncRotationPayload(id, rotation, lowGravity, pose, buf.readBoolean());
     }
 
     public void write(FriendlyByteBuf buf) {
@@ -33,6 +37,7 @@ public record SyncRotationPayload(UUID playerId, Quaternionf quat, boolean lowGr
         buf.writeFloat(quat.w);
         buf.writeBoolean(lowGravity);
         if (lowGravity) hitboxPose.write(buf);
+        buf.writeBoolean(bodyConstrained);
     }
 
     @Override

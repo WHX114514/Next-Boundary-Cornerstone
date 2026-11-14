@@ -94,7 +94,8 @@ public class OtherPlayer {
                 //执行旋转
                 event.getPoseStack().mulPose(smoothBodyQuatRender);
                 // 旋转完后再把轴心降回脚底，居中
-                event.getPoseStack().translate(0.0D, -0.9D + (player.hasPose(net.minecraft.world.entity.Pose.SWIMMING) ? centerY : 0), 0.0D);
+                event.getPoseStack().translate(0.0D, -0.9D + ((hitboxPose != null ? hitboxPose.swimming()
+                        : player.hasPose(net.minecraft.world.entity.Pose.SWIMMING)) ? centerY : 0), 0.0D);
 
 
 

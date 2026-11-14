@@ -228,7 +228,7 @@ public class main
 
     //@SubscribeEvent
     public void registerNetwork(final RegisterPayloadHandlersEvent event) {
-        final PayloadRegistrar registrar = event.registrar(main.MODID + "-hitbox-modes-3");
+        final PayloadRegistrar registrar = event.registrar(main.MODID + "-compound-physics-4");
 
         // 注册四元数同步包
         registrar.playBidirectional(

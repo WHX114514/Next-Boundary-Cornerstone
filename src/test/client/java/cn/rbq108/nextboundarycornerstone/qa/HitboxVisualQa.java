@@ -7,6 +7,7 @@ import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxes;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxConfig;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxMode;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.OBBHitbox;
+import cn.rbq108.nextboundarycornerstone.body.collision.SegmentedPhysics;
 import cn.rbq108.nextboundarycornerstone.main;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.CameraType;
@@ -39,6 +40,8 @@ public final class HitboxVisualQa {
     private static final long STARTED = System.currentTimeMillis();
     private static final boolean SIDE_ONLY = "side".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean ROLLED_ONLY = "rolled".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
+    private static final boolean PHYSICS_ONLY = "physics".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
+    private static final boolean POSTURE_ONLY = "posture".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
 
     private HitboxVisualQa() {}
 
@@ -108,7 +111,16 @@ public final class HitboxVisualQa {
                     if (SIDE_ONLY) posture(mc, 2);
                     else if (ROLLED_ONLY) posture(mc, 1);
                 }
-                if (SIDE_ONLY || ROLLED_ONLY) {
+                if (PHYSICS_ONLY) {
+                    physicsScenario(mc);
+                } else if (POSTURE_ONLY) {
+                    if (ticks == 100) { checkPosture(mc, false); capture(mc, "08-standing"); }
+                    else if (ticks == 110) posture(mc, 2);
+                    else if (ticks == 190) { checkPosture(mc, true); capture(mc, "09-floating"); }
+                    else if (ticks == 200) posture(mc, 0);
+                    else if (ticks == 280) { checkPosture(mc, false); capture(mc, "10-standing-restored"); }
+                    else if (ticks == 300) finish(mc, "posture-result.json");
+                } else if (SIDE_ONLY || ROLLED_ONLY) {
                     if (SIDE_ONLY && ticks == 60) {
                         // Use the mod's free-camera separation: body stays horizontal, camera views its side.
                         GlobalVariables.B_Dx = GlobalVariables.B_Dy = GlobalVariables.B_Dz = 0;
@@ -164,6 +176,26 @@ public final class HitboxVisualQa {
         mc.player.displayClientMessage(Component.literal("验收姿态：" + (swimming ? "无背包漂浮" : scenario == 1 ? "倾斜翻滚" : "背包直立")), true);
     }
 
+    private static void checkPosture(Minecraft mc, boolean floating) {
+        var pose = mc.player.getData(main.PLAYER_ROTATION).poseOrDefault();
+        require(pose.swimming() == floating && (floating ? pose.swim() > .99 : pose.swim() < .01),
+                "accepted physical posture follows equipment on client");
+        require(mc.level.noCollision(mc.player), "posture transition leaves physical body clear");
+        var physical = SegmentedPhysics.box(mc.player);
+        require((SegmentedHitboxes.forHitQuery(mc.player) == physical) == (HitboxConfig.mode() == HitboxMode.AABB),
+                "AABB shares physical model and OBB remains independent during posture changes");
+        var id = mc.player.getUUID();
+        mc.getSingleplayerServer().execute(() -> {
+            try {
+                var player = mc.getSingleplayerServer().getPlayerList().getPlayer(id);
+                var serverPose = player.getData(main.PLAYER_ROTATION).poseOrDefault();
+                require(serverPose.swimming() == floating && (floating ? serverPose.swim() > .99 : serverPose.swim() < .01),
+                        "server receives matching physical posture");
+                require(player.serverLevel().noCollision(player), "server posture remains collision-free");
+            } catch (Throwable error) { failure = error; }
+        });
+    }
+
     private static void capture(Minecraft mc, String name) throws java.io.IOException {
         String expectation = System.getProperty("cornerstone.hitbox.visual.expectedMode", "");
         HitboxMode expected = expectation.isBlank() ? HitboxConfig.mode() : HitboxMode.valueOf(expectation);
@@ -186,5 +218,103 @@ public final class HitboxVisualQa {
         com.mojang.logging.LogUtils.getLogger().info("HITBOX_VISUAL_CAPTURES_COMPLETE mode={}", HitboxConfig.mode());
         phase = 99;
         mc.stop();
+    }
+
+    private static void physicsScenario(Minecraft mc) throws java.io.IOException {
+        if (ticks == 40) physicsScene(mc, 0);
+        else if (ticks == 100) {
+            require(ready && mc.level.getBlockState(new BlockPos(-1, 84, 0)).is(Blocks.STONE), "left wall synchronized");
+            GlobalVariables.currentQuat.identity().rotateZ((float) Math.PI / 4);
+            GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
+        } else if (ticks == 200) {
+            require(mc.player.getX() > .7, "real client moved sideways to make room for body turn");
+            require(!mc.player.getData(main.PLAYER_ROTATION).isBodyBlocked(), "body turn completes when there is space");
+            require(mc.level.noCollision(mc.player), "nudged compound body is not penetrating wall");
+            capture(mc, "05-turn-nudge");
+            serverBodyCheck(mc, false);
+        } else if (ticks == 220) physicsScene(mc, 1);
+        else if (ticks == 280) {
+            require(ready && Math.abs(mc.player.getData(main.PLAYER_ROTATION).poseOrDefault().body().w) > .999,
+                    "body returned upright before narrow-space fixture");
+            physicsScene(mc, 2);
+        } else if (ticks == 330) {
+            require(ready && mc.level.getBlockState(new BlockPos(0, 84, 0)).is(Blocks.GLASS_PANE), "narrow corridor synchronized");
+            require(!mc.level.getBlockState(new BlockPos(0, 84, 0)).getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.NORTH)
+                    && !mc.level.getBlockState(new BlockPos(0, 84, -1)).getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SOUTH),
+                    "fixture panes do not bridge across the corridor");
+            require(mc.level.noCollision(mc.player), "upright body fits corridor before rotation request");
+            GlobalVariables.currentQuat.rotationY(-(float) Math.PI / 2);
+            GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
+            mc.player.setYRot(90); mc.player.yRotO = 90;
+        } else if (ticks == 420) {
+            var pose = mc.player.getData(main.PLAYER_ROTATION).poseOrDefault();
+            var sampled = cn.rbq108.nextboundarycornerstone.body.ClientSegmentedHitboxes.sample(mc.player);
+            com.mojang.logging.LogUtils.getLogger().info("PHYSICAL_DIAG body={} head={} camera={} rel={} sampledHead={} position={} bodyBlocked={}",
+                    pose.body(), pose.joints().getFirst().rotation(), GlobalVariables.currentQuat, GlobalVariables.headRelQuat,
+                    sampled.joints().getFirst().rotation(), mc.player.position(), mc.player.getData(main.PLAYER_ROTATION).isBodyBlocked());
+            capture(mc, "06-cramped-head-only");
+            require(mc.player.getData(main.PLAYER_ROTATION).isBodyBlocked(), "real client holds body at collision limit");
+            require(Math.abs(pose.body().dot(GlobalVariables.currentQuat)) < .98, "camera continues independently of blocked body");
+            require(Math.abs(pose.joints().getFirst().rotation().w) < .99, "head turns relative to body");
+            require(Math.abs(GlobalVariables.currentQuat.dot(new org.joml.Quaternionf().rotateY(-(float) Math.PI / 2))) > .999,
+                    "collision constraint does not reset camera");
+            require(!GlobalVariables.B_FreeCameraToggle, "head-only fallback does not toggle user's C mode");
+            require(mc.level.noCollision(mc.player), "blocked physical body is nonpenetrating");
+            serverBodyCheck(mc, true);
+        } else if (ticks == 440) physicsScene(mc, 3);
+        else if (ticks == 550) {
+            var pose = mc.player.getData(main.PLAYER_ROTATION).poseOrDefault();
+            require(!mc.player.getData(main.PLAYER_ROTATION).isBodyBlocked()
+                    && Math.abs(pose.body().dot(GlobalVariables.currentQuat)) > .999, "body resumes after obstruction removed");
+            capture(mc, "07-body-resumed");
+        } else if (ticks == 570) finish(mc, "physics-result.json");
+    }
+
+    private static void physicsScene(Minecraft mc, int scene) {
+        ready = false;
+        if (scene < 2) {
+            GlobalVariables.currentQuat.identity();
+            GlobalVariables.prevQuat.identity();
+            mc.player.setYRot(0); mc.player.yRotO = 0;
+            mc.player.setXRot(0); mc.player.xRotO = 0;
+        }
+        var id = mc.player.getUUID();
+        mc.getSingleplayerServer().execute(() -> {
+            try {
+                var player = mc.getSingleplayerServer().getPlayerList().getPlayer(id);
+                var level = player.serverLevel();
+                for (BlockPos pos : BlockPos.betweenClosed(-2, 82, -2, 2, 87, 2)) level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+                if (scene < 3) player.connection.teleport(scene == 0 ? .55 : .5, 84, scene == 2 ? 0 : .5, 0, 0);
+                if (scene == 0) {
+                    for (BlockPos pos : BlockPos.betweenClosed(-1, 82, -2, -1, 87, 2)) level.setBlockAndUpdate(pos, Blocks.STONE.defaultBlockState());
+                } else if (scene == 2) {
+                    var pane = Blocks.GLASS_PANE.defaultBlockState()
+                            .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.EAST, true)
+                            .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.WEST, true);
+                    for (int x = -2; x <= 2; x++) for (int y = 82; y <= 87; y++) {
+                        // Keep the prescribed east/west pane shape; neighbor updates must not bridge the corridor.
+                        level.setBlock(new BlockPos(x, y, -1), pane, 2 | 16);
+                        level.setBlock(new BlockPos(x, y, 0), pane, 2 | 16);
+                    }
+                }
+                ready = true;
+            } catch (Throwable error) { failure = error; }
+        });
+    }
+
+    private static void serverBodyCheck(Minecraft mc, boolean constrained) {
+        var id = mc.player.getUUID();
+        mc.getSingleplayerServer().execute(() -> {
+            try {
+                var player = mc.getSingleplayerServer().getPlayerList().getPlayer(id);
+                require(SegmentedPhysics.box(player).pieces().size() == 16 && player.serverLevel().noCollision(player), "server physical body matches clear client geometry");
+                if (constrained) require(Math.abs(player.getData(main.PLAYER_ROTATION).poseOrDefault().body()
+                        .dot(player.getData(main.PLAYER_ROTATION).getQuaternion())) < .98, "server receives head-only body/view separation");
+            } catch (Throwable error) { failure = error; }
+        });
+    }
+
+    private static void require(boolean condition, String message) {
+        if (!condition) throw new IllegalStateException(message);
     }
 }

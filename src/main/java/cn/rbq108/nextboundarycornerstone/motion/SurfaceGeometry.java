@@ -8,6 +8,7 @@ import org.joml.Vector3f;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.List;
 
 /** Geometry shared by the live block-shape probe and the numerical regression tests. */
 final class SurfaceGeometry {
@@ -35,6 +36,17 @@ final class SurfaceGeometry {
                     && overlap(body.minY, body.maxY, shape.minY, shape.maxY)) {
                 offer(result, Direction.SOUTH, body.minZ - shape.maxZ, shape.maxZ);
                 offer(result, Direction.NORTH, shape.minZ - body.maxZ, shape.minZ);
+            }
+        }
+        return result;
+    }
+
+    static Map<Direction, Contact> findContacts(List<AABB> bodies, List<AABB> shapes) {
+        Map<Direction, Contact> result = new EnumMap<>(Direction.class);
+        for (AABB body : bodies) {
+            for (Contact contact : findContacts(body, shapes).values()) {
+                Contact previous = result.get(contact.normal());
+                if (previous == null || contact.gap() < previous.gap()) result.put(contact.normal(), contact);
             }
         }
         return result;

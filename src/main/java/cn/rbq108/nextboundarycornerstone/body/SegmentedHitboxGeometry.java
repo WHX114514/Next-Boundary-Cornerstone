@@ -24,12 +24,7 @@ public final class SegmentedHitboxGeometry {
     }
 
     public static void visitParts(SegmentedHitboxPose pose, float height, float scale, boolean swimming, PartConsumer consumer) {
-        float center = height * .5f;
-        Matrix4f root = new Matrix4f().translation(0, center, 0).rotate(pose.body())
-                .translate(0, -.9f + (swimming ? center : 0), 0).scale(scale)
-                .rotateY((float) Math.PI).rotateX(-pose.swim() * (float) Math.PI / 2);
-        if (swimming && pose.swim() > 0) root.translate(0, -1, .3f);
-        root.scale(-.9375f, -.9375f, .9375f).translate(0, -1.501f, 0);
+        Matrix4f root = root(pose, height, scale);
 
         // Model pixels, in the same order as the synchronized skeleton.
         visit(consumer, root, pose.joints().get(0), 0, -4, 0, 8, 8, 8, 1);
@@ -39,6 +34,16 @@ public final class SegmentedHitboxGeometry {
         visit(consumer, root, pose.joints().get(3), pose.slim() ? -.5f : -1, 4, 0, armWidth, 12, 4, 3);
         visit(consumer, root, pose.joints().get(4), 0, 6, 0, 4, 12, 4, 3);
         visit(consumer, root, pose.joints().get(5), 0, 6, 0, 4, 12, 4, 3);
+    }
+
+    public static Matrix4f root(SegmentedHitboxPose pose, float height, float scale) {
+        float center = height * .5f;
+        Matrix4f root = new Matrix4f().translation(0, center, 0).rotate(pose.body())
+                .translate(0, -.9f + (pose.swimming() ? center : 0), 0).scale(scale)
+                .rotateY((float) Math.PI).rotateX(-pose.swim() * (float) Math.PI / 2);
+        if (pose.swimming() && pose.swim() > 0) root.translate(0, -1, .3f);
+        root.scale(-.9375f, -.9375f, .9375f).translate(0, -1.501f, 0);
+        return root;
     }
 
     private static void visit(PartConsumer consumer, Matrix4f root, SegmentedHitboxPose.Joint joint,

@@ -1,14 +1,8 @@
 package cn.rbq108.nextboundarycornerstone.body;
 
-import cn.rbq108.nextboundarycornerstone.main;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.util.Mth;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
 
-@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class trunk {
 
     public static float smoothX, smoothY, smoothZ;
@@ -18,8 +12,18 @@ public class trunk {
     private static float cumulativeX, cumulativeY, cumulativeZ;
     private static boolean wasLowGravity = false;
 
-    @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void constrainTo(org.joml.Quaternionf body) {
+        var euler = body.getEulerAnglesYXZ(new org.joml.Vector3f());
+        cumulativeX = smoothX = prevSmoothX = (float) Math.toDegrees(euler.x);
+        cumulativeY = smoothY = prevSmoothY = (float) Math.toDegrees(-euler.y);
+        cumulativeZ = smoothZ = prevSmoothZ = (float) Math.toDegrees(euler.z);
+        GlobalVariables.B_Dx = lastRawX = smoothX;
+        GlobalVariables.B_Dy = lastRawY = smoothY;
+        GlobalVariables.B_Dz = lastRawZ = smoothZ;
+    }
+
+    // Called explicitly after camera/body intent and before collision approval and propulsion.
+    public static void update() {
 
         if (GlobalVariables.B_LowGravity) {
             // 初始化视觉坐标，只在开启瞬间执行一次，防止身子闪现

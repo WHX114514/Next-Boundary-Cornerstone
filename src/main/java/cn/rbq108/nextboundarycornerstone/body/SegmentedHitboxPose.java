@@ -6,7 +6,10 @@ import org.joml.Quaternionf;
 import java.util.List;
 
 /** Tick snapshot of the model skeleton, independent of client/render classes. */
-public record SegmentedHitboxPose(Quaternionf body, float swim, boolean slim, List<Joint> joints) {
+public record SegmentedHitboxPose(Quaternionf body, float swim, boolean slim, List<Joint> joints, boolean swimming) {
+    public SegmentedHitboxPose(Quaternionf body, float swim, boolean slim, List<Joint> joints) {
+        this(body, swim, slim, joints, swim > 0);
+    }
     public record Joint(float x, float y, float z, Quaternionf rotation) {
         public Joint {
             if (!Float.isFinite(x) || !Float.isFinite(y) || !Float.isFinite(z)
@@ -51,13 +54,14 @@ public record SegmentedHitboxPose(Quaternionf body, float swim, boolean slim, Li
                     new Quaternionf(a.rotation).slerp(b.rotation, t)));
         }
         return new SegmentedHitboxPose(new Quaternionf(from.body).slerp(to.body, t),
-                from.swim + (to.swim - from.swim) * t, to.slim, joints);
+                from.swim + (to.swim - from.swim) * t, to.slim, joints, t < 1 ? from.swimming : to.swimming);
     }
 
     public void write(FriendlyByteBuf buf) {
         writeQuaternion(buf, body);
         buf.writeFloat(swim);
         buf.writeBoolean(slim);
+        buf.writeBoolean(swimming);
         for (Joint joint : joints) {
             buf.writeFloat(joint.x());
             buf.writeFloat(joint.y());
@@ -70,11 +74,12 @@ public record SegmentedHitboxPose(Quaternionf body, float swim, boolean slim, Li
         Quaternionf body = readQuaternion(buf);
         float swim = buf.readFloat();
         boolean slim = buf.readBoolean();
+        boolean swimming = buf.readBoolean();
         var joints = new java.util.ArrayList<Joint>(6);
         for (int i = 0; i < 6; i++) {
             joints.add(new Joint(buf.readFloat(), buf.readFloat(), buf.readFloat(), readQuaternion(buf)));
         }
-        return new SegmentedHitboxPose(body, swim, slim, joints);
+        return new SegmentedHitboxPose(body, swim, slim, joints, swimming);
     }
 
     private static Quaternionf readQuaternion(FriendlyByteBuf buf) {
