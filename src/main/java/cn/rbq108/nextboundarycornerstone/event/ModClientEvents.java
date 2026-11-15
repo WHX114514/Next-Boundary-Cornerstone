@@ -47,6 +47,8 @@ public class ModClientEvents {
     //暂时用这个不依赖那个报错类
     @SubscribeEvent
     public static void onClientSetup(net.neoforged.fml.event.lifecycle.FMLClientSetupEvent event) {
-        // 那个Event怎么导不进去哇！导啊！导！
+        if (net.neoforged.fml.ModList.get().isLoaded("tacz")) {
+            event.enqueueWork(cn.rbq108.nextboundarycornerstone.TACZ.recoil::register);
+        }
     }
 }

@@ -132,7 +132,6 @@ public class MixinShellRender {
                 // ？
                 if (!isDuplicate) {
                     SpaceShellManager.SHELLS.add(proxy);
-                    cn.rbq108.nextboundarycornerstone.TACZ.recoil.applyWeaponBlowback();//这个负责触发后坐力啥啥啥的
                 }
             }); // 结束 ammoIndex 寻找
         }); // 结束 gunIndex 寻找
