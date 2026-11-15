@@ -24,6 +24,10 @@ public class PlayerSent {
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onPlayerTick(ClientTickEvent.Post event) {
+        sendRotation();
+    }
+
+    public static void sendRotation() {
         var mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null || mc.isPaused()) {
@@ -51,7 +55,7 @@ public class PlayerSent {
                 // 这里的 SyncRotationPayload 就是包
                 PacketDistributor.sendToServer(new SyncRotationPayload(
                         player.getUUID(),
-                        GlobalVariables.currentQuat,
+                        new org.joml.Quaternionf(GlobalVariables.currentQuat),
                         currentLowGravity,
                         pose
                 ));
