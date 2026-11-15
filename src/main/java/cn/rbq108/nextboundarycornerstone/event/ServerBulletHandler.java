@@ -1,6 +1,5 @@
 package cn.rbq108.nextboundarycornerstone.event;
 
-import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment;
 import cn.rbq108.nextboundarycornerstone.main;
 import net.minecraft.world.entity.Entity;
@@ -57,17 +56,8 @@ public class ServerBulletHandler {
                 bulletQuat.transform(velocityVec);
                 entity.setDeltaMovement(velocityVec.x, velocityVec.y, velocityVec.z);
 
-                // 修正位置
-                Vec3 eyePos = player.getEyePosition();
-                Vec3 currentPos = entity.position();
-                Vector3f posOffset = new Vector3f(
-                        (float) (currentPos.x - eyePos.x),
-                        (float) (currentPos.y - eyePos.y),
-                        (float) (currentPos.z - eyePos.z)
-                );
-                wrongRotation.transform(posOffset);
-                bulletQuat.transform(posOffset);
-                entity.setPos(eyePos.x + posOffset.x, eyePos.y + posOffset.y, eyePos.z + posOffset.z);
+                // The constructor now anchors position/startPos at the actual head eye.
+                // Only rotate velocity here; rotating the eye displacement again moves the origin.
 
                 // 修正视觉朝向
                 double d0 = Math.sqrt(velocityVec.x * velocityVec.x + velocityVec.z * velocityVec.z);

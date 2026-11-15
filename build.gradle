@@ -232,6 +232,10 @@ dependencies {
     compileOnly 'org.appliedenergistics.yoga:yoga:1.0.0'
     // Official TaCZ NeoForge 1.21.1 build; keep the integration optional at runtime.
     compileOnly "maven.modrinth:SzzJttH8:${tacz_modrinth_version}"
+    // Opt-in development/GameTest runtime; the dependency is not bundled in the mod JAR.
+    if (providers.gradleProperty('taczRuntime').getOrElse('false').toBoolean()) {
+        runtimeOnly "maven.modrinth:SzzJttH8:${tacz_modrinth_version}"
+    }
     // Example mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"

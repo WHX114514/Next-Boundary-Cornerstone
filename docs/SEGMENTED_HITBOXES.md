@@ -73,7 +73,8 @@ OBB 的配置、数学、构建及调试绘制均位于 `body/OOBB/`，文件夹
 服务端交互距离按最近小块计算。
 TACZ 的独立弹道入口也接入分段检测，爆头按头部小块判断；
 失重玩家在此入口使用当前同步骨架，不套用 TACZ 原有直立大盒子的延迟补偿。
-TACZ 编译依赖为官方 NeoForge 1.21.1 版 `1.2.0-hotfix`（Modrinth 项目 `SzzJttH8`，版本 `tJiZL0He`），保持可选依赖。已通过构建、现有测试及安装官方版的隔离客户端启动/进世界检查，确认弹壳与子弹渲染偏移 Mixin 加载；尚未做实机射击验证。
+TACZ 编译依赖为官方 NeoForge 1.21.1 版 `1.2.0-hotfix`（Modrinth 项目 `SzzJttH8`，版本 `tJiZL0He`），保持可选依赖。失重时，子弹在构造结束时将位置和伤害衰减起点同时设为完整头部眼睛坐标；生成事件只修正弹速方向，不再旋转位置差。第一人称曳光偏移交由官方版的完整相机四元数处理，移除了旧的额外翻滚和三倍缩放。
+已通过构建、现有测试及安装官方版的隔离客户端检查；新增服务端测试覆盖旋转、漂浮、独立转头、大世界坐标、生成事件和伤害起点。客户端测试确认翻滚时枪口偏移读取保持原值；尚未逐枪包做人工射击观感验收。
 其他绕开这两个入口、自行检测大盒子的模组需要单独适配。
 
 普通重力、旁观者的穿墙状态、乘坐实体时沿用原版物理路径；离开失重后清除受限姿态并恢复尺寸。
@@ -134,6 +135,8 @@ boolean touchesFeet = SegmentedPhysics.intersectsParts(player, deviceWorldBox, f
 - `gradlew.bat check`：包含 AABB、OBB、物理碰撞和原有表面辅助测试。
 - `gradlew.bat runGameTestServer --no-parallel`：按测试服务端实际文件选择模式；验证两条真实射线入口、包络角落的模式差异、完整头部、候选过滤、缓存、退出失重和同步包，以及真实移动包穿过包络空隙、一格宽通道、头部顶棚、转身让位和夹墙只转头。分别使用 AABB / OBB 文件运行以覆盖两种模式。
 - `gradlew.bat runSurfaceClient`：隐藏窗口、模拟按键的客户端 QA，检查第一人称采样、服务端收到骨架、六面吸附和既有退出/恢复行为。
+- `gradlew.bat runGameTestServer -PtaczRuntime=true --no-parallel`：在开发运行时加载官方 TaCZ，执行真实子弹构造及生成事件的头部起点回归；未指定此参数且未安装 TaCZ 时跳过该项。
+- `gradlew.bat runHitboxVisualClient -PtaczRuntime=true -PhitboxVisualScenario=tacz -PhitboxVisualDir=.local-artifacts/tacz-origin --no-parallel`：隐藏客户端验证第一人称翻滚时枪口偏移不会重复旋转或放大。`taczRuntime` 只用于选择开发运行时依赖，不将 TaCZ 打入本模组 JAR。
 - `gradlew.bat runHitboxVisualClient -PhitboxVisualScenario=physics --no-parallel`：后台真实客户端检查墙边转身让位、窄通道只转头、普通自由视角真实鼠标输入限位、跨多个第一人称渲染帧的稳定性、手动固定头部模式及移除障碍后自动恢复，并保存帧缓冲截图。与普通截图任务相同，可通过实际世界 SERVER 配置分别运行 AABB / OBB；不发送桌面键鼠输入。
 - `gradlew.bat runHitboxVisualClient -PhitboxVisualScenario=collision-hud --no-parallel`：复用真实墙边/窄通道物理场景，保存受限正、负滚转 HUD、移除障碍恢复后和手动 C 自由视角的截图，用于核对滚转读数和底部提示只在自动受限状态显示。
 - `gradlew.bat runHitboxVisualClient -PhitboxVisualScenario=posture --no-parallel`：真实客户端穿脱背包，检查站立→漂浮→站立时客户端、服务器和物理姿态一致，并截图保存。

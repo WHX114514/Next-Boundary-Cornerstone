@@ -13,7 +13,8 @@
     "SegmentedProjectileMixin",
     "SegmentedInteractionMixin",
     "SegmentedServerInteractionMixin",
-    "TACZSegmentedHitboxMixin"
+    "TACZSegmentedHitboxMixin",
+    "TACZBulletOriginMixin"
   ],
   "client": [
     "PhysicalPlayerRotationMixin",
@@ -34,7 +35,6 @@
     "MixinGui",
     "ParticleAccessor",
     "PhotonNetworkingMixin",
-    "FixTACZ",
     "MixinShellRender"
   ],
   "injectors": {

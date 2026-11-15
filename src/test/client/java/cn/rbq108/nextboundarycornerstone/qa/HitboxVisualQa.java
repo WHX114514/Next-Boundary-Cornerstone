@@ -40,6 +40,7 @@ public final class HitboxVisualQa {
     private static final long STARTED = System.currentTimeMillis();
     private static final boolean SIDE_ONLY = "side".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean ROLLED_ONLY = "rolled".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
+    private static final boolean TACZ_ONLY = "tacz".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean PHYSICS_ONLY = "physics".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean HUD_ONLY = "collision-hud".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean POSTURE_ONLY = "posture".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
@@ -115,7 +116,7 @@ public final class HitboxVisualQa {
                     mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                     mc.getEntityRenderDispatcher().setRenderHitBoxes(true);
                     if (SIDE_ONLY) posture(mc, 2);
-                    else if (ROLLED_ONLY) posture(mc, 1);
+                    else if (ROLLED_ONLY || TACZ_ONLY) posture(mc, 1);
                 }
                 if (EYE_WALL_ONLY) {
                     if (EyeWallClientQa.tick(mc, ticks)) finish(mc, "eye-wall-result.json");
@@ -140,7 +141,8 @@ public final class HitboxVisualQa {
                     else if (ticks == 200) posture(mc, 0);
                     else if (ticks == 280) { checkPosture(mc, false); capture(mc, "10-standing-restored"); }
                     else if (ticks == 300) finish(mc, "posture-result.json");
-                } else if (SIDE_ONLY || ROLLED_ONLY) {
+                } else if (SIDE_ONLY || ROLLED_ONLY || TACZ_ONLY) {
+                    if (TACZ_ONLY && ticks == 80) TACZClientQa.verify(mc);
                     if (SIDE_ONLY && ticks == 60) {
                         // Use the mod's free-camera separation: body stays horizontal, camera views its side.
                         GlobalVariables.B_Dx = GlobalVariables.B_Dy = GlobalVariables.B_Dz = 0;

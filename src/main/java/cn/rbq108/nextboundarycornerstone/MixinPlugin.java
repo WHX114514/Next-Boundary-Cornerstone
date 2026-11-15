@@ -47,7 +47,7 @@ public class MixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.TACZSegmentedHitboxMixin")) {
             return taczLoaded && isClassAvailable("com.tacz.guns.util.EntityUtil");
         }
-        if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.FixTACZ") ||
+        if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.TACZBulletOriginMixin") ||
             mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.MixinShellRender")) {
             return taczLoaded;
         }
