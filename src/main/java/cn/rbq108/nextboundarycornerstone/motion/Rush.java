@@ -1,7 +1,7 @@
 /*
 正如标题，这个是在失重条件下启停冲刺的
 
-双击w进入冲刺状态，亦或者在按w平移的时候按住左Ctrl（物理级读取，不干扰原版）进入冲刺
+双击w进入冲刺状态，亦或者在按w平移的时候按住专用冲刺键进入冲刺
 
 撞到东西让速度降到一定阈值、或者松开w、或者按s均会退出冲刺
 */
@@ -24,7 +24,7 @@ public class Rush {
         boolean isForwardDown = GlobalVariables.B_INz > 0;
 
         // 读取注册的专用冲刺键状态
-        // 使用 isDown() 直接获取物理按下状态，不触发原版疾跑逻辑
+        // 使用模组自己的按键状态，不触发原版疾跑逻辑
         boolean isRushKeyDown = cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler.isPressed(Keybinds.B_RUSH_BUTTON);
 
 

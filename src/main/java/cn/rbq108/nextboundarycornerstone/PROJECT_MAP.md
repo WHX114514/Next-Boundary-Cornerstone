@@ -208,7 +208,7 @@ test/
 
 KeyPollingHandler.java：这是一个“偷窥狂”。只要进入无重力状态，它每一帧都会去读取玩家当前绑定的推进器按键，然后把 B_INx、B_INy、B_INz（-1, 0, 1）写进记事本，并召唤 calculate。
 
-KeyInputHandler & KeyboardHandlerMixin：负责干脏活。它们负责在无重力下强行拦截原版的背包（E）和丢弃（Q），强迫玩家必须用 Shift 组合键才能触发，从而把纯净的 Q/E 留给滚转。
+KeyInputHandler & KeyboardHandlerMixin：失重时只清除原版背包/丢弃动作的点击，保留正常按键状态供滚转使用。按住组合键（默认 Tab）再按原版背包/丢弃键才触发对应动作；组合键按住期间不触发滚转。Keybinds.DISPLAY_ORDER 定义本模组按键分类的显示顺序，由 KeyMappingOrderMixin 应用。
 
 2. 物理结算层（大脑）
    calculate.java：这是一个纯粹的“黑盒数学家”。它读取 B_IN 系列输入，严格按照 Z轴1.2 : X轴1.0 : Y轴0.8 的权重比例，并且控制总向量不超过最大航速 B_Vmax。最后算出在玩家本地参考系下的三轴目标速度 B_Vx3 等。

@@ -3,6 +3,8 @@ package cn.rbq108.nextboundarycornerstone.event;
 import cn.rbq108.nextboundarycornerstone.main;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.motion.control;
+import cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler;
+import cn.rbq108.nextboundarycornerstone.core.Keybinds;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -13,7 +15,6 @@ import net.neoforged.neoforge.client.event.ViewportEvent;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
-import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.world.level.GameType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
@@ -229,14 +230,9 @@ public class ClientEvents {
 
         if (GlobalVariables.B_LowGravity) {
             //roll轴旋转逻辑
-            long window = mc.getWindow().getWindow();
-            boolean isShift = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);
-
-            if (!isShift && !GlobalVariables.B_FreeCameraActive) {
-                int keyRollLeft = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_ROLL_LEFT.getKey().getValue();
-                int keyRollRight = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_ROLL_RIGHT.getKey().getValue();
-                if (InputConstants.isKeyDown(window, keyRollLeft)) control.B_INroll = -1;
-                else if (InputConstants.isKeyDown(window, keyRollRight)) control.B_INroll = 1;
+            if (!KeyPollingHandler.isPressed(Keybinds.B_ACTION_MODIFIER) && !GlobalVariables.B_FreeCameraActive) {
+                if (KeyPollingHandler.isPressed(Keybinds.B_ROLL_LEFT)) control.B_INroll = -1;
+                else if (KeyPollingHandler.isPressed(Keybinds.B_ROLL_RIGHT)) control.B_INroll = 1;
                 else control.B_INroll = 0;
             } else {
                 control.B_INroll = 0;

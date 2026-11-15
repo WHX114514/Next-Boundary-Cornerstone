@@ -2,7 +2,6 @@ package cn.rbq108.nextboundarycornerstone.core;
 
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.client.Minecraft;
-import com.mojang.blaze3d.platform.InputConstants;
 
 public class KeyPollingHandler {
 
@@ -53,18 +52,10 @@ public class KeyPollingHandler {
         GlobalVariables.B_INz = inZ;
 
     }
-    /** Physical input survives the suppression of vanilla jump/sneak/sprint key states. */
+    /** Mod mappings keep their own state when vanilla jump/sneak/sprint are suppressed. */
     public static boolean isPressed(net.minecraft.client.KeyMapping mapping) {
         var mc = Minecraft.getInstance();
-        if (mc.screen != null || !mc.isWindowActive()) return false;
-        if (!mapping.isConflictContextAndModifierActive()) return false;
-        var key = mapping.getKey();
-        if (key.equals(InputConstants.UNKNOWN)) return false;
-        long window = mc.getWindow().getWindow();
-        if (key.getType() == InputConstants.Type.MOUSE) {
-            return org.lwjgl.glfw.GLFW.glfwGetMouseButton(window, key.getValue()) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
-        }
-        if (key.getType() == InputConstants.Type.KEYSYM) return InputConstants.isKeyDown(window, key.getValue());
-        return mapping.isDown();
+        return mc.screen == null && mc.getOverlay() == null && mc.isWindowActive()
+                && !mapping.isUnbound() && mapping.isDown();
     }
 }
