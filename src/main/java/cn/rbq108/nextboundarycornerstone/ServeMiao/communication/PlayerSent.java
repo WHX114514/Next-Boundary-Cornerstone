@@ -26,12 +26,19 @@ public class PlayerSent {
     public static void onPlayerTick(ClientTickEvent.Post event) {
         var mc = Minecraft.getInstance();
         Player player = mc.player;
-        if (player == null || mc.isPaused()) { if (player == null) lastLowGravity = false; return; }
+        if (player == null || mc.isPaused()) {
+            if (player == null) {
+                lastLowGravity = false;
+                cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.reset();
+            }
+            return;
+        }
 
         // 只有当前客户端控制的“本地玩家”才需要发包
         // 非常重要非常重要！不写等着服务器崩溃吧！
         if (player.level().isClientSide() && player.isLocalPlayer()) {
             boolean currentLowGravity = player.isNoGravity() && !NetworkHandler.isSpectatorAndRestored(player);
+            if (!currentLowGravity) cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.reset();
 
             // 如果处于失重状态，或者失重状态刚刚结束（发送最后一包重置远端重力与动作状态）
             if (currentLowGravity || lastLowGravity) {
@@ -59,6 +66,7 @@ public class PlayerSent {
         var desired = cn.rbq108.nextboundarycornerstone.body.ClientSegmentedHitboxes.sample(player);
         var result = SegmentedPhysics.acceptPose(player, desired);
         if (result.bodyBlocked()) trunk.constrainTo(result.pose().body());
+        cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.accept(result.pose(), result.bodyBlocked());
     }
 
     public static void acceptServerConstraint(cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose pose) {
@@ -67,5 +75,6 @@ public class PlayerSent {
         player.getData(main.PLAYER_ROTATION).setHitboxPose(pose);
         player.getData(main.PLAYER_ROTATION).setBodyBlocked(true);
         trunk.constrainTo(pose.body());
+        cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.accept(pose, true);
     }
 }

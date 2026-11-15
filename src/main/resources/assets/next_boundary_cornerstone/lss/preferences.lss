@@ -1,0 +1,11 @@
+/* Next Boundary shared client preferences. */
+.preferences-panel { padding-all: 0; }
+.preferences-panel label { text-color: #29393e; text-shadow: false; }
+.preferences-panel .preference-button {
+    height: 16;
+    padding-all: 2;
+    base-background: group(rect(#657c7d), rect(#d1d9d6) scale(0.96, 0.85));
+    hover-background: group(rect(#4caeb3), rect(#aecbcd) scale(0.96, 0.85));
+    pressed-background: rect(#4caeb3);
+}
+.preferences-panel .__button_text__ { text-color: #29393e; text-shadow: false; }

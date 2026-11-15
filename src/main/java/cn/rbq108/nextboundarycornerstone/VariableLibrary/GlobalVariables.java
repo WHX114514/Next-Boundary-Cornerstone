@@ -81,6 +81,9 @@ public class GlobalVariables {
 
     // 自由视角 (Free Look) 状态位
     public static boolean B_FreeCameraActive = false;
+    // Automatic collision free look is separate from the user's held/toggled C state.
+    public static boolean B_CollisionFreeLookActive = false;
+    public static float collisionLookYaw, collisionLookPitch, collisionLookRoll;
     public static boolean wasFreeCamera = false;
     
     // 锁定自由视角 (Toggle/Lock) 状态位

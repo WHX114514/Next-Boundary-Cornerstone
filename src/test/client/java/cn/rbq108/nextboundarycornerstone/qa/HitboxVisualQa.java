@@ -41,13 +41,18 @@ public final class HitboxVisualQa {
     private static final boolean SIDE_ONLY = "side".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean ROLLED_ONLY = "rolled".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean PHYSICS_ONLY = "physics".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
+    private static final boolean HUD_ONLY = "collision-hud".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean POSTURE_ONLY = "posture".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
     private static final boolean PERFORMANCE_ONLY = "performance".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
+    private static final boolean EYES_ONLY = "eyes".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
+    private static final boolean EYE_WALL_ONLY = "eye-wall".equals(System.getProperty("cornerstone.hitbox.visual.scenario"));
 
     private HitboxVisualQa() {}
 
     public static void start() {
         NeoForge.EVENT_BUS.addListener(HitboxVisualQa::tick);
+        if (EYES_ONLY) EyesClientQa.start();
+        if (EYE_WALL_ONLY) EyeWallClientQa.start();
     }
 
     private static void tick(ClientTickEvent.Post event) {
@@ -112,10 +117,22 @@ public final class HitboxVisualQa {
                     if (SIDE_ONLY) posture(mc, 2);
                     else if (ROLLED_ONLY) posture(mc, 1);
                 }
-                if (PERFORMANCE_ONLY) {
+                if (EYE_WALL_ONLY) {
+                    if (EyeWallClientQa.tick(mc, ticks)) finish(mc, "eye-wall-result.json");
+                } else if (EYES_ONLY) {
+                    EyesClientQa.tick(mc, ticks);
+                    if (ticks == 160) capture(mc, "11-eyes-upright");
+                    else if (ticks == 250) capture(mc, "12-eyes-rolled");
+                    else if (ticks == 360) capture(mc, "13-eyes-head-turn");
+                    else if (ticks == 500) capture(mc, "14-eyes-floating");
+                    else if (ticks == 650) capture(mc, "15-eyes-third-person");
+                    else if (ticks == 720) capture(mc, "16-eyes-wall");
+                    else if (ticks == 740) finish(mc, "eyes-result.json");
+                } else if (PERFORMANCE_ONLY) {
                     if (ticks >= 60 && PhysicsClientPerformance.tick(mc)) finish(mc, "performance-result.json");
-                } else if (PHYSICS_ONLY) {
+                } else if (PHYSICS_ONLY || HUD_ONLY) {
                     physicsScenario(mc);
+                    if (HUD_ONLY) collisionHudScenario(mc);
                 } else if (POSTURE_ONLY) {
                     if (ticks == 100) { checkPosture(mc, false); capture(mc, "08-standing"); }
                     else if (ticks == 110) posture(mc, 2);
@@ -165,7 +182,7 @@ public final class HitboxVisualQa {
         }
     }
 
-    private static void posture(Minecraft mc, int nextScenario) {
+    static void posture(Minecraft mc, int nextScenario) {
         scenario = nextScenario;
         GlobalVariables.currentQuat.identity();
         if (scenario == 1) GlobalVariables.currentQuat.rotateXYZ(.25f, .35f, .7f);
@@ -206,7 +223,7 @@ public final class HitboxVisualQa {
     private static void capture(Minecraft mc, String name) throws java.io.IOException {
         String expectation = System.getProperty("cornerstone.hitbox.visual.expectedMode", "");
         HitboxMode expected = expectation.isBlank() ? HitboxConfig.mode() : HitboxMode.valueOf(expectation);
-        if (mc.options.getCameraType().isFirstPerson() || !mc.player.isNoGravity()
+        if ((!EYES_ONLY && !HUD_ONLY && mc.options.getCameraType().isFirstPerson()) || !mc.player.isNoGravity()
                 || ((SegmentedAABB) SegmentedHitboxes.forHitQuery(mc.player)).pieces().size() != 16
                 || SegmentedPhysics.box(mc.player).pieces().size() != 10
                 || !HitboxConfig.SPEC.isLoaded() || HitboxConfig.mode() != expected
@@ -222,7 +239,8 @@ public final class HitboxVisualQa {
 
     private static void finish(Minecraft mc, String file) throws java.io.IOException {
         Files.writeString(mc.gameDirectory.toPath().resolve("../" + file),
-                "{\"capturesComplete\":true,\"language\":\"zh_cn\",\"camera\":\"THIRD_PERSON_BACK\",\"pieces\":16,\"collisionPieces\":10,\"desktopInput\":false,\"mode\":\"" + HitboxConfig.mode() + "\"}");
+                "{\"capturesComplete\":true,\"language\":\"zh_cn\",\"camera\":\"" + mc.options.getCameraType()
+                        + "\",\"pieces\":16,\"collisionPieces\":10,\"desktopInput\":false,\"mode\":\"" + HitboxConfig.mode() + "\"}");
         com.mojang.logging.LogUtils.getLogger().info("HITBOX_VISUAL_CAPTURES_COMPLETE mode={}", HitboxConfig.mode());
         phase = 99;
         mc.stop();
@@ -235,6 +253,12 @@ public final class HitboxVisualQa {
             GlobalVariables.currentQuat.identity().rotateZ((float) Math.PI / 4);
             GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
         } else if (ticks == 200) {
+            var diagnostic = mc.player.getData(main.PLAYER_ROTATION);
+            com.mojang.logging.LogUtils.getLogger().info("COLLISION_LOOK_NUDGE_DIAG body={} view={} head={} active={} look={},{},{} pos={} blocked={} trunk={},{},{}",
+                    diagnostic.poseOrDefault().body(), GlobalVariables.currentQuat, diagnostic.poseOrDefault().joints().getFirst().rotation(),
+                    GlobalVariables.B_CollisionFreeLookActive, GlobalVariables.collisionLookYaw, GlobalVariables.collisionLookPitch,
+                    GlobalVariables.collisionLookRoll, mc.player.position(), diagnostic.isBodyBlocked(),
+                    cn.rbq108.nextboundarycornerstone.body.trunk.smoothX, cn.rbq108.nextboundarycornerstone.body.trunk.smoothY, cn.rbq108.nextboundarycornerstone.body.trunk.smoothZ);
             require(mc.player.getX() > .7, "real client moved sideways to make room for body turn");
             require(!mc.player.getData(main.PLAYER_ROTATION).isBodyBlocked(), "body turn completes when there is space");
             require(mc.level.noCollision(mc.player), "nudged compound body is not penetrating wall");
@@ -269,13 +293,53 @@ public final class HitboxVisualQa {
             require(!GlobalVariables.B_FreeCameraToggle, "head-only fallback does not toggle user's C mode");
             require(mc.level.noCollision(mc.player), "blocked physical body is nonpenetrating");
             serverBodyCheck(mc, true);
-        } else if (ticks == 440) physicsScene(mc, 3);
-        else if (ticks == 550) {
+            exerciseLookInputs(mc);
+        } else if (ticks >= 425 && ticks <= 450) {
+            mc.options.setCameraType(CameraType.FIRST_PERSON);
+            mc.player.turn(0, 2000);
+            if (ticks == 450) {
+                require(GlobalVariables.B_CollisionFreeLookActive && Math.abs(GlobalVariables.collisionLookPitch - 90) < .001,
+                        "first-person pitch remains limited across real physics and rendering ticks");
+                require(!GlobalVariables.B_HeadRotationLocked && !GlobalVariables.B_FreeCameraToggle,
+                        "automatic look never enables manual fixed-head mode");
+                try (var frame = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                    frame.writeToFile(mc.gameDirectory.toPath().resolve("../08-limited-first-person.png"));
+                }
+                com.mojang.logging.LogUtils.getLogger().info("COLLISION_FREE_LOOK_FRAME_PASS pitch=90 ticks=26 headLocked=false");
+            }
+        } else if (ticks == 451) mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+        else if (ticks == 480) physicsScene(mc, 3);
+        else if (ticks == 590) {
             var pose = mc.player.getData(main.PLAYER_ROTATION).poseOrDefault();
             require(!mc.player.getData(main.PLAYER_ROTATION).isBodyBlocked()
                     && Math.abs(pose.body().dot(GlobalVariables.currentQuat)) > .999, "body resumes after obstruction removed");
+            require(!GlobalVariables.B_CollisionFreeLookActive, "automatic free look exits when body can turn again");
             capture(mc, "07-body-resumed");
-        } else if (ticks == 570) finish(mc, "physics-result.json");
+        } else if (ticks == 610 && !HUD_ONLY) finish(mc, "physics-result.json");
+    }
+
+    private static void collisionHudScenario(Minecraft mc) throws java.io.IOException {
+        if (ticks == 451) {
+            mc.options.setCameraType(CameraType.FIRST_PERSON);
+            require(cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.turn(0, -30,
+                    25 - GlobalVariables.collisionLookRoll), "real constrained view accepts roll input");
+        } else if (ticks == 459) {
+            require(GlobalVariables.B_CollisionFreeLookActive, "positive roll is shown in automatic collision look");
+            capture(mc, "09-hud-roll-positive");
+        } else if (ticks == 460) cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.turn(0, 0,
+                -25 - GlobalVariables.collisionLookRoll);
+        else if (ticks == 475) capture(mc, "10-hud-roll-negative");
+        else if (ticks == 480) mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+        else if (ticks == 595) mc.options.setCameraType(CameraType.FIRST_PERSON);
+        else if (ticks == 598) capture(mc, "11-hud-space-restored");
+        else if (ticks == 600) cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FREE_CAMERA.setDown(true);
+        else if (ticks == 615) mc.player.turn(30, 20);
+        else if (ticks == 640) {
+            require(GlobalVariables.B_FreeCameraActive && !GlobalVariables.B_CollisionFreeLookActive,
+                    "manual free look does not enter collision HUD mode");
+            capture(mc, "12-hud-manual-free-look");
+        } else if (ticks == 650) cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FREE_CAMERA.setDown(false);
+        else if (ticks == 680) finish(mc, "collision-hud-result.json");
     }
 
     private static void physicsScene(Minecraft mc, int scene) {
@@ -308,6 +372,49 @@ public final class HitboxVisualQa {
                 ready = true;
             } catch (Throwable error) { failure = error; }
         });
+    }
+
+    private static void exerciseLookInputs(Minecraft mc) {
+        require(GlobalVariables.B_CollisionFreeLookActive && !GlobalVariables.B_HeadRotationLocked,
+                "blocked body enters ordinary automatic free look, not fixed-head orbit");
+        var cameraType = mc.options.getCameraType();
+        var view = new org.joml.Quaternionf(GlobalVariables.currentQuat);
+        var previousView = new org.joml.Quaternionf(GlobalVariables.prevQuat);
+        float x = mc.player.getXRot(), y = mc.player.getYRot(), oldX = mc.player.xRotO, oldY = mc.player.yRotO;
+        float freeYaw = GlobalVariables.B_freeLookYaw, freePitch = GlobalVariables.B_freeLookPitch;
+        float mouseX = GlobalVariables.mouseDeltaX, mouseY = GlobalVariables.mouseDeltaY;
+        try {
+            mc.options.setCameraType(CameraType.FIRST_PERSON);
+            for (int i = 0; i < 20; i++) mc.player.turn(2000, 2000);
+            require(Math.abs(GlobalVariables.collisionLookYaw - 110) < .001
+                    && Math.abs(GlobalVariables.collisionLookPitch - 90) < .001, "actual mouse path saturates instead of orbiting without limits");
+            mc.player.turn(-20, -20);
+            require(Math.abs(GlobalVariables.collisionLookYaw - 107) < .001
+                    && Math.abs(GlobalVariables.collisionLookPitch - 87) < .001, "reverse mouse input immediately leaves collision look limit");
+            GlobalVariables.B_FreeCameraActive = true;
+            GlobalVariables.B_freeLookYaw = GlobalVariables.B_freeLookPitch = 0;
+            mc.player.turn(2000, 2000);
+            require(GlobalVariables.B_freeLookYaw == 110 && GlobalVariables.B_freeLookPitch == 90,
+                    "manual ordinary C look retains its existing limits");
+            GlobalVariables.B_HeadRotationLocked = true;
+            var expected = new org.joml.Quaternionf(GlobalVariables.currentQuat).rotateX((float) Math.toRadians(300));
+            mc.player.turn(0, 2000);
+            require(Math.abs(expected.dot(GlobalVariables.currentQuat)) > .99999,
+                    "explicit fixed-head mode still uses unrestricted quaternion camera rotation");
+            com.mojang.logging.LogUtils.getLogger().info("COLLISION_FREE_LOOK_INPUT_PASS firstPersonYaw=110 pitch=90 reverseYaw=107 reversePitch=87 manualModesPreserved=true");
+        } finally {
+            GlobalVariables.B_FreeCameraActive = false;
+            GlobalVariables.B_HeadRotationLocked = false;
+            GlobalVariables.B_freeLookYaw = freeYaw;
+            GlobalVariables.B_freeLookPitch = freePitch;
+            GlobalVariables.mouseDeltaX = mouseX;
+            GlobalVariables.mouseDeltaY = mouseY;
+            mc.player.setXRot(x); mc.player.setYRot(y); mc.player.xRotO = oldX; mc.player.yRotO = oldY;
+            mc.options.setCameraType(cameraType);
+            GlobalVariables.currentQuat.set(view);
+            GlobalVariables.prevQuat.set(previousView);
+            cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.accept(mc.player.getData(main.PLAYER_ROTATION).poseOrDefault(), true);
+        }
     }
 
     private static void serverBodyCheck(Minecraft mc, boolean constrained) {

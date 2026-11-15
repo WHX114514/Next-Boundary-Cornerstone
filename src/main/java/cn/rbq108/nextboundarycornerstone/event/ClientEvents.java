@@ -255,7 +255,7 @@ public class ClientEvents {
                 if (GlobalVariables.B_FreeCameraActive && !GlobalVariables.B_HeadRotationLocked) {
                     GlobalVariables.B_freeLookRoll += GlobalVariables.currentRollVelocity;
                     GlobalVariables.B_freeLookRoll = net.minecraft.util.Mth.wrapDegrees(GlobalVariables.B_freeLookRoll);
-                } else {
+                } else if (!cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.turn(0, 0, GlobalVariables.currentRollVelocity)) {
                     GlobalVariables.currentQuat.rotateZ((float) Math.toRadians(GlobalVariables.currentRollVelocity));
                 }
             }
@@ -285,11 +285,11 @@ public class ClientEvents {
                     targetRelQuat.set(GlobalVariables.lockedHeadRelQuat);
                 } else {
                     // 限制 Yaw/Pitch 在左右/上下 90 度内，Roll 在 60 度内
-                    float limit = 90.0f;
+                    float limit = cn.rbq108.nextboundarycornerstone.body.FreeLookMath.HEAD_YAW;
                     float clampedYaw = Math.max(-limit, Math.min(limit, GlobalVariables.B_freeLookYaw));
                     float clampedPitch = Math.max(-limit, Math.min(limit, GlobalVariables.B_freeLookPitch));
 
-                    float rollLimit = 60.0f;
+                    float rollLimit = cn.rbq108.nextboundarycornerstone.body.FreeLookMath.ROLL;
                     float clampedRoll = Math.max(-rollLimit, Math.min(rollLimit, GlobalVariables.B_freeLookRoll));
 
                     // 重建目标相对旋转四元数供头部渲染使用
@@ -299,7 +299,7 @@ public class ClientEvents {
                             (float) Math.toRadians(clampedRoll)
                     );
 
-                    // 更新当前视角的绝对四元数 (不受限位)
+                    // 相机使用输入阶段处理后的角度：第一人称 yaw/pitch 限位，第三人称 yaw 可环绕。
                     Quaternionf freeLookRelQuat = new Quaternionf().rotationYXZ(
                             (float) Math.toRadians(-GlobalVariables.B_freeLookYaw),
                             (float) Math.toRadians(GlobalVariables.B_freeLookPitch),
@@ -327,10 +327,17 @@ public class ClientEvents {
                 }
 
                 // 正常状态下，身体角度同步跟随视角四元数
-                Vector3f euler = GlobalVariables.currentQuat.getEulerAnglesYXZ(new Vector3f());
-                GlobalVariables.B_Dz = Math.toDegrees(euler.z);
-                GlobalVariables.B_Dx = Math.toDegrees(euler.x);
-                GlobalVariables.B_Dy = Math.toDegrees(-euler.y);
+                if (cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.isLimiting()) {
+                    var look = cn.rbq108.nextboundarycornerstone.body.FreeLookMath.relative(new Quaternionf(), GlobalVariables.currentQuat);
+                    GlobalVariables.B_Dz = look.roll();
+                    GlobalVariables.B_Dx = look.pitch();
+                    GlobalVariables.B_Dy = look.yaw();
+                } else {
+                    Vector3f euler = GlobalVariables.currentQuat.getEulerAnglesYXZ(new Vector3f());
+                    GlobalVariables.B_Dz = Math.toDegrees(euler.z);
+                    GlobalVariables.B_Dx = Math.toDegrees(euler.x);
+                    GlobalVariables.B_Dy = Math.toDegrees(-euler.y);
+                }
 
                 targetRelQuat.set(relQuat);
             }

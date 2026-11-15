@@ -91,3 +91,11 @@ side = "CLIENT"
 # stop your mod loading on the server for example.
 #[features."${mod_id}"]
 #openGLVersion="[3.2,)"//看不懂哇
+
+# Shared client preferences use LDLib2.
+[[dependencies."${mod_id}"]]
+modId = "ldlib2"
+type = "required"
+versionRange = "[2.2.42,)"
+ordering = "AFTER"
+side = "CLIENT"

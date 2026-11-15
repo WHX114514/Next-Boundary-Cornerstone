@@ -2,6 +2,7 @@ package cn.rbq108.nextboundarycornerstone.attachment;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedAABB;
 import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
+import cn.rbq108.nextboundarycornerstone.body.BodyEyes;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
 import cn.rbq108.nextboundarycornerstone.body.OOBB.HitboxConfig;
@@ -13,6 +14,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 
 public class PlayerRotationAttachment {
@@ -24,6 +26,8 @@ public class PlayerRotationAttachment {
     private SegmentedAABB hitbox;
     private SegmentedAABB aabbModel;
     private PhysicsBox collision;
+    private Vec3 eyeOffset, renderedEyeOffset;
+    private float eyePartialTick;
     private boolean bodyBlocked;
     private double boxX, boxY, boxZ;
     private float boxHeight, boxScale;
@@ -54,6 +58,7 @@ public class PlayerRotationAttachment {
         hitbox = null;
         collision = null;
         aabbModel = null;
+        eyeOffset = renderedEyeOffset = null;
     }
 
     public boolean isLowGravity() {
@@ -76,6 +81,7 @@ public class PlayerRotationAttachment {
         collision = null;
         renderedHitboxPose = null;
         aabbModel = null;
+        eyeOffset = renderedEyeOffset = null;
     }
 
     public SegmentedHitboxPose renderHitboxPose(float partialTick) {
@@ -98,6 +104,7 @@ public class PlayerRotationAttachment {
             hitbox = null;
             collision = null;
             aabbModel = null;
+            eyeOffset = renderedEyeOffset = null;
         }
     }
 
@@ -138,4 +145,20 @@ public class PlayerRotationAttachment {
 
     public boolean isBodyBlocked() { return bodyBlocked; }
     public void setBodyBlocked(boolean blocked) { bodyBlocked = blocked; }
+
+    public Vec3 eyeOffset(Player player) {
+        checkGeometryCache(player);
+        if (eyeOffset == null) eyeOffset = BodyEyes.offset(poseOrDefault(), boxHeight, boxScale);
+        return eyeOffset;
+    }
+
+    public Vec3 renderEyeOffset(Player player, float partialTick) {
+        checkGeometryCache(player);
+        if (renderedEyeOffset == null || eyePartialTick != partialTick) {
+            eyePartialTick = partialTick;
+            var pose = renderHitboxPose(partialTick);
+            renderedEyeOffset = BodyEyes.offset(pose != null ? pose : poseOrDefault(), boxHeight, boxScale);
+        }
+        return renderedEyeOffset;
+    }
 }

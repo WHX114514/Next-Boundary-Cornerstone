@@ -44,6 +44,24 @@ public final class SurfaceClientQa {
     private static volatile boolean serverReady;
     private static volatile Throwable serverFailure;
     private static boolean heldUp;
+    private static int passageCase;
+    private static double passageAnchorX;
+    private static Direction passageNormal;
+    private static double passageMaxDrift;
+    private static boolean passageNormalStable;
+    private static boolean passageFailed;
+    private static final List<Map<String, Object>> PASSAGE_RESULTS = new ArrayList<>();
+    private record PassageScenario(String name, boolean upright, boolean rightWall, float yaw, float pitch, float roll) {}
+    private static final float HALF_PI = (float) Math.PI / 2;
+    private static final List<PassageScenario> PASSAGES = List.of(
+            new PassageScenario("horizontal-small-turn", false, false, .2f, HALF_PI, 0),
+            new PassageScenario("horizontal-turn", false, false, .5f, HALF_PI, 0),
+            new PassageScenario("horizontal-reverse-turn", false, false, -.5f, HALF_PI, 0),
+            new PassageScenario("horizontal-roll", false, false, 0, HALF_PI, .4f),
+            new PassageScenario("stand-up", false, false, 0, 0, 0),
+            new PassageScenario("horizontal-right-wall", false, true, -.2f, HALF_PI, 0),
+            new PassageScenario("upright-left-wall", true, false, 0, 0, 0),
+            new PassageScenario("upright-right-wall", true, true, 0, 0, 0));
 
     public static boolean usesSimulatedInput() {
         return Boolean.getBoolean("cornerstone.surface.qa") && !Boolean.getBoolean("cornerstone.surface.physical");
@@ -163,6 +181,7 @@ public final class SurfaceClientQa {
             } else if (phase == 11 && serverReady && Math.abs(mc.player.getY() - 83) < .2) {
                 require(activeNormal() == null && rememberedNormal() == null && cooldown() == 0,
                         "teleport packet clears surface and cooldown before a new collision");
+                require(!GlobalVariables.B_CollisionFreeLookActive, "teleport clears automatic collision look");
                 CHECKS.add("teleport-packet-reset");
                 teleport(mc, .5, floorOriginY(), .5);
                 next(12);
@@ -171,6 +190,7 @@ public final class SurfaceClientQa {
                 next(13);
             } else if (phase == 13 && serverReady && !GlobalVariables.B_LowGravity) {
                 require(activeNormal() == null && rememberedNormal() == null, "exit from low gravity clears surface memory");
+                require(!GlobalVariables.B_CollisionFreeLookActive, "leaving low gravity clears automatic collision look");
                 CHECKS.add("exit-low-gravity-reset");
                 equipBackpack(mc, true);
                 next(14);
@@ -206,11 +226,82 @@ public final class SurfaceClientQa {
                 require(Math.hypot(GlobalVariables.B_Vx1, GlobalVariables.B_Vz1) < .0051,
                         "oblique landing parks horizontal drift after release");
                 CHECKS.add("oblique-landing-parking");
-                finish(mc, null);
+                startPassage(mc);
+            } else if (phase == 19 && serverReady && ticks > 20) {
+                var scenario = PASSAGES.get(passageCase);
+                GlobalVariables.currentQuat.rotationYXZ(scenario.yaw(), scenario.pitch(), scenario.roll());
+                GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
+                GlobalVariables.B_Vx1 = scenario.rightWall() ? .2f : -.2f;
+                next(20);
+            } else if (phase == 20) {
+                if (ticks % 10 == 0) LOG.info("SURFACE_PASSAGE_DIAG case={} tick={} position={} active={} remembered={} velocity={},{},{} bodyBlocked={} body={} view={}",
+                        passageCase, ticks, mc.player.position(), activeNormal(), rememberedNormal(), GlobalVariables.B_Vx1,
+                        GlobalVariables.B_Vy1, GlobalVariables.B_Vz1, mc.player.getData(main.PLAYER_ROTATION).isBodyBlocked(),
+                        mc.player.getData(main.PLAYER_ROTATION).poseOrDefault().body(), GlobalVariables.currentQuat);
+                if (ticks == 40) {
+                    passageAnchorX = mc.player.getX();
+                    passageNormal = activeNormal();
+                    passageMaxDrift = 0;
+                    passageNormalStable = true;
+                    require(passageNormal == (PASSAGES.get(passageCase).rightWall() ? Direction.WEST : Direction.EAST),
+                            "passage scenario establishes actual side-wall attachment case=" + passageCase);
+                    require(mc.player.level().noCollision(mc.player, mc.player.getBoundingBox().deflate(1.0e-6)),
+                            "physical pose solver recovers a shallow wall overlap within floating-point tolerance");
+                }
+                if (ticks > 40) {
+                    require(GlobalVariables.B_INx == 0 && GlobalVariables.B_INy == 0 && GlobalVariables.B_INz == 0,
+                            "stationary passage scenario has no movement input");
+                    passageMaxDrift = Math.max(passageMaxDrift, Math.abs(mc.player.getX() - passageAnchorX));
+                    passageNormalStable &= activeNormal() == passageNormal;
+                }
+                if (ticks > 120) {
+                    String name = PASSAGES.get(passageCase).name();
+                    boolean passed = passageMaxDrift < .005 && passageNormalStable;
+                    passageFailed |= !passed;
+                    PASSAGE_RESULTS.add(Map.of("scenario", name, "maxHorizontalDrift", passageMaxDrift,
+                            "normalStable", passageNormalStable, "passed", passed));
+                    LOG.info("SURFACE_PASSAGE_RESULT {}", PASSAGE_RESULTS.getLast());
+                    if (passed) CHECKS.add("stationary-passage-" + name);
+                    if (++passageCase < PASSAGES.size()) startPassage(mc);
+                    else finish(mc, passageFailed ? new AssertionError("stationary passage instability; see passageResults") : null);
+                }
             }
         } catch (Throwable error) {
             finish(mc, error);
         }
+    }
+
+    private static void startPassage(Minecraft mc) {
+        serverReady = false;
+        GlobalVariables.B_Vx1 = GlobalVariables.B_Vy1 = GlobalVariables.B_Vz1 = 0;
+        var scenario = PASSAGES.get(passageCase);
+        var rotation = new org.joml.Quaternionf().rotationX(scenario.upright() ? 0 : HALF_PI);
+        var pose = cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose.standing(rotation);
+        var bounds = cn.rbq108.nextboundarycornerstone.body.collision.CompoundCollisionMath.envelope(
+                cn.rbq108.nextboundarycornerstone.body.collision.RotationPlanner.boxes(pose, net.minecraft.world.phys.Vec3.ZERO, GlobalVariables.B_HitboxSize, 1));
+        GlobalVariables.currentQuat.set(rotation);
+        GlobalVariables.prevQuat.set(rotation);
+        cn.rbq108.nextboundarycornerstone.body.trunk.constrainTo(rotation);
+        mc.player.getData(main.PLAYER_ROTATION).setHitboxPose(pose);
+        var playerId = mc.player.getUUID();
+        mc.getSingleplayerServer().execute(() -> {
+            try {
+                var player = mc.getSingleplayerServer().getPlayerList().getPlayer(playerId);
+                var level = player.serverLevel();
+                for (BlockPos pos : BlockPos.betweenClosed(0, 80, -4, 2, 83, 4)) {
+                    boolean wall = pos.getX() != 1 || pos.getY() == 80 || pos.getY() == 83;
+                    level.setBlockAndUpdate(pos, wall ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
+                }
+                player.getData(main.PLAYER_ROTATION).setHitboxPose(pose);
+                double x = scenario.rightWall() ? 2 - bounds.maxX : 1 - bounds.minX;
+                // The upright cases also verify recovery from a genuine shallow overlap,
+                // using physical pose approval instead of vanilla's rectangular push-out.
+                if (scenario.upright()) x += scenario.rightWall() ? .02 : -.02;
+                player.connection.teleport(x, 81.4, .5, 0, 0);
+                serverReady = true;
+            } catch (Throwable error) { serverFailure = error; }
+        });
+        next(19);
     }
 
     private static void setupFace(Minecraft mc) {
@@ -362,7 +453,7 @@ public final class SurfaceClientQa {
             Files.writeString(result, new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(
                     Map.of("passed", error == null, "inputMode", usesSimulatedInput() ? "simulated" : "physical",
                             "physicalInputVerified", !usesSimulatedInput() && error == null,
-                            "checks", CHECKS, "failure", error == null ? "" : error.toString())));
+                            "checks", CHECKS, "passageResults", PASSAGE_RESULTS, "failure", error == null ? "" : error.toString())));
         } catch (Exception writeFailure) {
             LOG.error("SURFACE_QA_RESULT_WRITE_FAILED", writeFailure);
         }

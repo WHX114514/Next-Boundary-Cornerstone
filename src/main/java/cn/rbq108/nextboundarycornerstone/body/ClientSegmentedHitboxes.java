@@ -57,7 +57,9 @@ public final class ClientSegmentedHitboxes {
 
     public static Quaternionf headRotation(Quaternionf body, float partialTick, boolean swimming) {
         Quaternionf relative;
-        if (GlobalVariables.B_FreeCameraActive || GlobalVariables.headRelQuat.angle() > .001f) {
+        if (cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.isLimiting()) {
+            relative = FreeLookMath.relative(body, GlobalVariables.currentQuat).headRotation();
+        } else if (GlobalVariables.B_FreeCameraActive || GlobalVariables.headRelQuat.angle() > .001f) {
             relative = new Quaternionf(GlobalVariables.prevHeadRelQuat).slerp(GlobalVariables.headRelQuat, partialTick);
         } else {
             relative = new Quaternionf(body).invert().mul(new Quaternionf(GlobalVariables.prevQuat)

@@ -21,6 +21,7 @@ public final class CompoundPhysicsTests {
         translation();
         transforms();
         nudging();
+        embeddedBodyRecovery();
         crampedTurn();
         intermediateTurn();
         headAtArmContact();
@@ -92,6 +93,20 @@ public final class CompoundPhysicsTests {
         var thinWalls = List.of(new AABB(.25, -4, -4, .26, 4, 4), new AABB(-2, -4, -4, -.11, 4, 4));
         check(CompoundCollisionMath.findRotationOffset(narrowOld, longNew, shapes(thinWalls), thinWalls, 1).isEmpty(),
                 "a free endpoint across a thin wall cannot be reached by teleporting");
+    }
+
+    private static void embeddedBodyRecovery() {
+        var pose = SegmentedHitboxPose.standing(new Quaternionf());
+        var body = CompoundCollisionMath.envelope(RotationPlanner.boxes(pose, Vec3.ZERO, 1.2f, 1));
+        var origin = new Vec3(1 - body.minX - .02, 81.4, 0);
+        var walls = List.of(new AABB(0, 80, -10, 1, 84, 10), new AABB(2, 80, -10, 3, 84, 10));
+        check(!CompoundCollisionMath.clear(RotationPlanner.boxes(pose, origin, 1.2f, 1), walls, Vec3.ZERO),
+                "fixture starts with a real shallow wall overlap");
+        var result = RotationPlanner.plan(pose, pose, origin, 1.2f, 1, shapes(walls));
+        check(!result.bodyBlocked() && result.offset().x > .019 && result.offset().x < .021,
+                "physical pose solver supplies the minimal depenetration");
+        check(CompoundCollisionMath.clear(RotationPlanner.boxes(result.pose(), origin.add(result.offset()), 1.2f, 1), walls, Vec3.ZERO),
+                "physical depenetration clears the wall without a rectangular push impulse");
     }
 
     private static void crampedTurn() {

@@ -2,19 +2,39 @@ package cn.rbq108.nextboundarycornerstone.Mixin;
 
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.Config;
+import cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.network.chat.Component;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Gui.class)
 public class MixinGui {
+    @Shadow public int leftHeight;
+    @Shadow public int rightHeight;
+
+    @Inject(method = "renderOverlayMessage", at = @At("HEAD"), cancellable = true)
+    private void nextboundary$crampedLookMessage(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        var mc = Minecraft.getInstance();
+        if (mc.player == null || !mc.player.isNoGravity() || !CollisionFreeLook.isLimiting()) return;
+        // Match vanilla's action-bar anchor, including the shift above additional health rows.
+        var message = Component.literal("空间受限无法转身");
+        int width = mc.font.width(message);
+        int yShift = Math.max(Math.max(leftHeight, rightHeight) + 9, 68);
+        graphics.pose().pushPose();
+        graphics.pose().translate(graphics.guiWidth() / 2, graphics.guiHeight() - yShift, 0);
+        graphics.drawStringWithBackdrop(mc.font, message, -width / 2, -4, width, 0xFFFFCC66);
+        graphics.pose().popPose();
+        ci.cancel();
+    }
 
     @Inject(method = "renderCrosshair", at = @At("HEAD"))
     private void onRenderCrosshairHead(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
@@ -43,7 +63,7 @@ public class MixinGui {
             }
 
             // 自由视角专属逻辑：渲染视角数字指示器和偏移准星
-            if (GlobalVariables.B_FreeCameraActive && mc.options.getCameraType().isFirstPerson()) {
+            if (cn.rbq108.nextboundarycornerstone.api.FreeLookAPI.isFreeLookActive() && mc.options.getCameraType().isFirstPerson()) {
                 double fovDegrees = GlobalVariables.lastComputedFov;
 
                 // 获取渲染帧部分 tick (0.0 到 1.0 之间的当前 tick 内插值位置)
@@ -117,13 +137,18 @@ public class MixinGui {
                 drawHollowCircle(guiGraphics, centerX - 1, centerY - 1, 5, 0x80FFFFFF);
 
                 // 绘制相对偏航角 (Yaw) 与俯仰角 (Pitch) 数字指示
-                int yawVal = (int) Math.round(GlobalVariables.B_freeLookYaw);
-                int pitchVal = (int) Math.round(-GlobalVariables.B_freeLookPitch);
+                int yawVal = (int) Math.round(cn.rbq108.nextboundarycornerstone.api.FreeLookAPI.getCameraRelativeYaw());
+                int pitchVal = (int) Math.round(-cn.rbq108.nextboundarycornerstone.api.FreeLookAPI.getCameraRelativePitch());
                 String yawText = yawVal < 0 ? "L " + Math.abs(yawVal) + "°" : (yawVal > 0 ? "R " + yawVal + "°" : "0°");
                 String pitchText = pitchVal < 0 ? "D " + Math.abs(pitchVal) + "°" : (pitchVal > 0 ? "U " + pitchVal + "°" : "0°");
 
                 guiGraphics.drawCenteredString(mc.font, yawText, centerX, centerY - 16, 0x80FFFFFF);
                 guiGraphics.drawString(mc.font, pitchText, centerX + 10, centerY - 4, 0x80FFFFFF);
+                if (CollisionFreeLook.isLimiting()) {
+                    int rollVal = Math.round(cn.rbq108.nextboundarycornerstone.api.FreeLookAPI.getCameraRelativeRoll());
+                    String rollText = "Z " + (rollVal > 0 ? "+" : "") + rollVal + "°";
+                    guiGraphics.drawString(mc.font, rollText, centerX - 10 - mc.font.width(rollText), centerY - 4, 0x80FFFFFF);
+                }
 
                 // 当扭头角度达到 110° 极限时，在圆圈下方显示警告文本
                 if (Math.abs(yawVal) >= 110) {
@@ -151,7 +176,7 @@ public class MixinGui {
     @Inject(method = "renderCrosshair", at = @At("RETURN"))
     private void onRenderCrosshairReturn(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         net.minecraft.client.player.LocalPlayer localPlayer = Minecraft.getInstance().player;
-        if (localPlayer != null && localPlayer.isNoGravity() && GlobalVariables.B_FreeCameraActive && Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
+        if (localPlayer != null && localPlayer.isNoGravity() && cn.rbq108.nextboundarycornerstone.api.FreeLookAPI.isFreeLookActive() && Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
             guiGraphics.pose().popPose();
         }
     }

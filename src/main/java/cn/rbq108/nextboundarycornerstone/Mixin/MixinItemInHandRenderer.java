@@ -23,7 +23,7 @@ public class MixinItemInHandRenderer {
             int combinedLight, 
             CallbackInfo ci
     ) {
-        if (player.isNoGravity() && GlobalVariables.B_FreeCameraActive) {
+        if (player.isNoGravity() && cn.rbq108.nextboundarycornerstone.api.FreeLookAPI.isFreeLookActive()) {
             // 线性插值计算当前渲染帧视角和机体朝向的相对旋转关系，实现第一人称手部物理对齐机体
             Quaternionf smoothedCam = new Quaternionf(GlobalVariables.prevQuat)
                     .slerp(GlobalVariables.currentQuat, partialTicks);

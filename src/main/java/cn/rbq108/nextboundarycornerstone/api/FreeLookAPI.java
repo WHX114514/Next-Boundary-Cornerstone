@@ -11,13 +11,16 @@ import org.joml.Quaternionf;
 public class FreeLookAPI {
 
     /**
-     * 获取当前是否处于自由视角模式（包含长按C与Shift锁定状态）
+     * 获取当前是否处于自由视角模式（长按C、Shift锁定或碰撞受限的自动自由视角）
      * 
      * @return true 代表视角与身体已经解耦，物理推进方向对齐机体而非视角
      */
     public static boolean isFreeLookActive() {
-        return GlobalVariables.B_FreeCameraActive;
+        return GlobalVariables.B_FreeCameraActive || GlobalVariables.B_CollisionFreeLookActive;
     }
+
+    /** 自动碰撞限位状态；不代表玩家开启了固定头部视角。 */
+    public static boolean isCollisionFreeLookActive() { return GlobalVariables.B_CollisionFreeLookActive; }
 
     /**
      * 获取当前是否处于固定头部视角锁定状态（即释放了按键仍保持自由视角）
@@ -34,7 +37,8 @@ public class FreeLookAPI {
      * @return 相对 Yaw 角度值，通常在自由视角激活时有效
      */
     public static float getCameraRelativeYaw() {
-        return GlobalVariables.B_freeLookYaw;
+        return !GlobalVariables.B_FreeCameraActive && GlobalVariables.B_CollisionFreeLookActive
+                ? GlobalVariables.collisionLookYaw : GlobalVariables.B_freeLookYaw;
     }
 
     /**
@@ -43,7 +47,8 @@ public class FreeLookAPI {
      * @return 相对 Pitch 角度值，通常在自由视角激活时有效
      */
     public static float getCameraRelativePitch() {
-        return GlobalVariables.B_freeLookPitch;
+        return !GlobalVariables.B_FreeCameraActive && GlobalVariables.B_CollisionFreeLookActive
+                ? GlobalVariables.collisionLookPitch : GlobalVariables.B_freeLookPitch;
     }
 
     /**
@@ -52,7 +57,8 @@ public class FreeLookAPI {
      * @return 相对 Roll 角度值，通常在自由视角激活时有效
      */
     public static float getCameraRelativeRoll() {
-        return GlobalVariables.B_freeLookRoll;
+        return !GlobalVariables.B_FreeCameraActive && GlobalVariables.B_CollisionFreeLookActive
+                ? GlobalVariables.collisionLookRoll : GlobalVariables.B_freeLookRoll;
     }
 
     /**

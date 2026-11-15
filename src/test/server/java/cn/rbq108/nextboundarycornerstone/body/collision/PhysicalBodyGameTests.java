@@ -2,6 +2,7 @@ package cn.rbq108.nextboundarycornerstone.body.collision;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
 import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
+import cn.rbq108.nextboundarycornerstone.body.BodyEyes;
 import cn.rbq108.nextboundarycornerstone.main;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
@@ -158,6 +159,89 @@ public final class PhysicalBodyGameTests {
             helper.assertTrue(helper.getLevel().noCollision(player), "real world query ignores embedded arms");
             helper.assertTrue(!helper.getLevel().noCollision(player, new PhysicsBox(attachment.aabbModel(player).pieces())),
                     "the former sixteen-box movement body would collide with this wall");
+            helper.succeed();
+        }
+    }
+
+    @GameTest(template = "surface_empty")
+    public static void tinyRotationNudgeIsNotDroppedByVanillaMove(GameTestHelper helper) {
+        try (var fixture = player(helper, new Vec3(3.2343751, 3, 3.5))) {
+            var player = fixture.player();
+            for (int y = 1; y <= 6; y++) for (int z = 1; z <= 6; z++) helper.setBlock(new BlockPos(2, y, z), Blocks.STONE);
+            Vec3 before = player.position();
+            var result = SegmentedPhysics.acceptPose(player,
+                    SegmentedHitboxPose.standing(new Quaternionf().rotateZ(.0001f)));
+            helper.assertTrue(!result.bodyBlocked(), "tiny feasible nudge must not enter collision free look");
+            helper.assertTrue(result.offset().lengthSqr() > 0 && result.offset().lengthSqr() < 1.0e-7,
+                    "fixture requires a nudge smaller than vanilla's squared movement threshold");
+            helper.assertTrue(player.position().subtract(before).distanceToSqr(result.offset()) < 1.0e-16,
+                    "actual Entity.move retains the collision-checked sub-threshold movement");
+            helper.assertTrue(helper.getLevel().noCollision(player), "accepted tiny turn remains clear");
+            helper.succeed();
+        }
+    }
+
+    @GameTest(template = "surface_empty")
+    public static void eyeOccupancyIgnoresRetiredCubeAtWall(GameTestHelper helper) {
+        try (var fixture = player(helper, new Vec3(3.5, 3, 3.5))) {
+            var player = fixture.player();
+            for (int x = 2; x <= 4; x++) for (int y = 2; y <= 6; y++) helper.setBlock(new BlockPos(x, y, 4), Blocks.STONE);
+            player.move(MoverType.SELF, new Vec3(0, 0, 1));
+            Vec3 eye = player.getEyePosition();
+            helper.assertTrue(helper.getLevel().noCollision(player), "physical head touches front wall without penetrating");
+            helper.assertTrue(!player.isInWall(), "old cube width cannot cause false suffocation near wall");
+            helper.assertTrue(cn.rbq108.nextboundarycornerstone.body.EyeBlockChecks.viewBlocking(player.level(), eye, player.getScale()) == null,
+                    "clear eye has no block overlay");
+            // The former dimensions-based eye slab overlaps the wall, reproducing the old failure.
+            helper.assertTrue(eye.z + player.getBbWidth() * .4 > helper.absolutePos(new BlockPos(3, 4, 4)).getZ(),
+                    "fixture really overlaps legacy eye probe");
+            player.setPos(player.getX(), player.getY(), helper.absolutePos(new BlockPos(3, 4, 4)).getZ() + .5);
+            helper.assertTrue(player.isInWall(), "actual embedded eye still suffocates");
+            helper.assertTrue(cn.rbq108.nextboundarycornerstone.body.EyeBlockChecks.viewBlocking(player.level(), player.getEyePosition(), player.getScale()) != null,
+                    "actual embedded eye still receives block overlay");
+            player.setNoGravity(false); player.refreshDimensions();
+            helper.assertTrue(player.isInWall(), "ordinary gravity retains vanilla suffocation");
+            helper.succeed();
+        }
+    }
+
+    @GameTest(template = "surface_empty")
+    public static void eyeApisAndBlockPickingUseHeadGeometry(GameTestHelper helper) {
+        try (var fixture = player(helper, new Vec3(3.5, 3, 1.5))) {
+            var player = fixture.player();
+            var attachment = player.getData(main.PLAYER_ROTATION);
+            Vec3 eye = player.getEyePosition();
+            helper.assertTrue(Math.abs(eye.y - player.getY() - 1.3122656) < .00001, "server eye uses visible head eye row");
+            helper.assertTrue(Math.abs(player.getEyeY() - eye.y) < .00001
+                    && Math.abs(player.getEyeHeight() - (eye.y - player.getY())) < .00001, "eye APIs agree");
+            BlockPos target = helper.absolutePos(new BlockPos(3, 4, 4));
+            helper.getLevel().setBlockAndUpdate(target, Blocks.STONE.defaultBlockState());
+            player.setYRot(0); player.setXRot(0);
+            player.xo = player.getX(); player.yo = player.getY(); player.zo = player.getZ();
+            var picked = player.pick(5, 1, false);
+            helper.assertTrue(picked instanceof net.minecraft.world.phys.BlockHitResult block && block.getBlockPos().equals(target),
+                    "real Entity.pick ray hits head-level block which old center-height ray missed");
+            var from = attachment.poseOrDefault();
+            var tilted = new cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose(new Quaternionf().rotateZ(.7f),
+                    from.swim(), from.slim(), from.joints(), from.swimming());
+            attachment.setHitboxPose(tilted);
+            player.xo = player.getX() - 1; player.yo = player.getY() - .2; player.zo = player.getZ() - .4;
+            Vec3 expected = player.getPosition(.5f).add(BodyEyes.offset(
+                    cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose.interpolate(from, tilted, .5f), player.getBbHeight(), player.getScale()));
+            helper.assertTrue(player.getEyePosition(.5f).distanceTo(expected) < .00001, "partial eye position interpolates body motion and skeleton together");
+            helper.assertTrue(attachment.eyeOffset(player) == attachment.eyeOffset(player), "current eye offset is cached");
+            helper.assertTrue(attachment.renderEyeOffset(player, .5f) == attachment.renderEyeOffset(player, .5f), "frame eye offset is cached");
+            Vec3 oldOffset = attachment.eyeOffset(player);
+            player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.SCALE).setBaseValue(2);
+            player.refreshDimensions();
+            helper.assertTrue(player.getEyePosition().distanceTo(player.position().add(
+                            BodyEyes.offset(tilted, player.getBbHeight(), player.getScale()))) < .00001
+                            && attachment.eyeOffset(player).distanceTo(oldOffset) > .1,
+                    "eye geometry follows changed entity scale without stale cache");
+            player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.SCALE).setBaseValue(1);
+            player.setNoGravity(false); player.setPose(Pose.STANDING); player.refreshDimensions();
+            helper.assertTrue(Math.abs(player.getEyePosition().y - player.getY() - 1.62) < .00001,
+                    "ordinary gravity restores vanilla eye origin");
             helper.succeed();
         }
     }

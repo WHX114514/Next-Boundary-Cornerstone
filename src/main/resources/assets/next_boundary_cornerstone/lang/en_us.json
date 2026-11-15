@@ -1,4 +1,9 @@
 {
+  "ui.next_boundary_cornerstone.settings.button": "Next Boundary Preferences",
+  "ui.next_boundary_cornerstone.settings.title": "Next Boundary Preferences",
+  "ui.next_boundary_cornerstone.settings.ui": "UI",
+  "ui.next_boundary_cornerstone.settings.ui_empty": "No interface options available yet",
+
   "itemGroup.next_boundary_cornerstone": "NEXTBoundary cornerstone",
   "item.next_boundary_cornerstone.basic_backpack": "basic backpack"
 }

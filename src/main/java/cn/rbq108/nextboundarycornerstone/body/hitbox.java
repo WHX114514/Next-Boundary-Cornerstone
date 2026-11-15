@@ -19,8 +19,8 @@ public class hitbox {
     public static void onPlayerSize(EntityEvent.Size event) {
         if (event.getEntity() instanceof Player player && player.isNoGravity()) {
             float size = GlobalVariables.B_HitboxSize;
-            // Dimensions remain the camera/model anchor; physical contact uses the compound body.
-            event.setNewSize(EntityDimensions.scalable(size, size).withEyeHeight(size * 0.6f));
+            // Keep the model's existing body pivot; actual eyes follow its head skeleton.
+            event.setNewSize(EntityDimensions.scalable(size, size).withEyeHeight(BodyEyes.neutralHeight(size, player.getScale())));
         }
     }
 

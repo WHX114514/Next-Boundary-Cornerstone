@@ -46,7 +46,7 @@ bash gradlew runSurfaceClient
 
 默认输入由独立的 `cornerstone_surface_qa` 测试模组在 `KeyPollingHandler.isPressed` 入口注入，绕过窗口焦点检测；六面的捕获、松键停车与持续上升挣脱仍经过正常生产 tick 和实际方块碰撞。只有初始位置、身体姿态和切向漂移由 fixture 布置，挣脱阶段不会直接改坐标或最终速度。随后还检查服务器传送包清理吸附、退出及恢复失重、后坐力只消费一次。
 
-成功后自动写入 `build/surface-client-qa/surface-result.json` 并退出。后台结果必须同时具有 `passed=true`、`inputMode="simulated"`、六项 `capture-and-parking-*`、六项 `simulated-input-escape-*`、四项生命周期检查及 `oblique-landing-parking`，日志为 `SURFACE_CLIENT_QA_PASS inputMode=simulated checks=17`。其中 `physicalInputVerified=false` 明确表示**没有验证真实键盘输入或主观手感**。
+成功后自动写入 `build/surface-client-qa/surface-result.json` 并退出。后台结果必须同时具有 `passed=true`、`inputMode="simulated"`、六项 `capture-and-parking-*`、六项 `simulated-input-escape-*`、四项生命周期检查、`oblique-landing-parking` 及八项 `stationary-passage-*`，日志为 `SURFACE_CLIENT_QA_PASS inputMode=simulated checks=25`。窄通道检查包含直立靠左右墙、横向漂浮、转身与翻滚后松键静止，逐 tick 校验横向位置与吸附法线保持稳定。其中 `physicalInputVerified=false` 明确表示**没有验证真实键盘输入或主观手感**。
 
 ### 前台验收交接提示词
 

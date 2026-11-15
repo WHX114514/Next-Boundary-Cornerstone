@@ -2,12 +2,12 @@ package cn.rbq108.nextboundarycornerstone.body.collision;
 
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxGeometry;
 import cn.rbq108.nextboundarycornerstone.body.BodyBoxTag;
+import cn.rbq108.nextboundarycornerstone.body.FreeLookMath;
 import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -117,8 +117,8 @@ public final class RotationPlanner {
         Quaternionf newRoot = SegmentedHitboxGeometry.root(desired, 1.2f, 1).getUnnormalizedRotation(new Quaternionf()).normalize();
         Quaternionf head = oldRoot.conjugate().mul(newRoot).mul(desired.joints().getFirst().rotation()).normalize();
         Quaternionf neutral = new Quaternionf().rotateX(previous.swimming() ? -(float) Math.PI / 2 : 0);
-        Vector3f euler = new Quaternionf(neutral).conjugate().mul(head).getEulerAnglesYXZ(new Vector3f());
-        head.set(neutral).mul(new Quaternionf().rotationYXZ(clamp(euler.y, 110), clamp(euler.x, 90), clamp(euler.z, 60)));
+        var look = FreeLookMath.relative(new Quaternionf(), new Quaternionf(neutral).conjugate().mul(head));
+        head.set(neutral).mul(look.headRotation());
         var joints = new ArrayList<>(previous.joints());
         var neck = previous.joints().getFirst();
         joints.set(0, new SegmentedHitboxPose.Joint(neck.x(), neck.y(), neck.z(), head));
@@ -134,8 +134,4 @@ public final class RotationPlanner {
         return new SegmentedHitboxPose(safe.body(), safe.swim(), safe.slim(), joints, safe.swimming());
     }
 
-    private static float clamp(float angle, float degrees) {
-        float limit = (float) Math.toRadians(degrees);
-        return Math.max(-limit, Math.min(limit, angle));
-    }
 }

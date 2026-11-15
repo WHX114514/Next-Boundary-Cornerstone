@@ -6,6 +6,7 @@
   "plugin": "cn.rbq108.nextboundarycornerstone.MixinPlugin",
   "mixins": [
     "SegmentedPhysicsMixin",
+    "SegmentedEyeMixin",
     "CompoundShapeMixin",
     "CompoundBlockQueryMixin",
     "CompoundCollisionQueryMixin",
@@ -16,11 +17,14 @@
   ],
   "client": [
     "PhysicalPlayerRotationMixin",
+    "SegmentedEyeCameraMixin",
+    "SegmentedEyeOverlayMixin",
     "PlayerArmPoseAccessor",
     "SegmentedRemotePoseMixin",
     "SegmentedHitboxDebugMixin",
     "ClientPositionCorrectionMixin",
     "LocalPlayerCollisionMixin",
+    "SegmentedPushOutMixin",
     "CameraContral",
     "EntityMixin",
     "KeyboardHandlerMixin",

@@ -13,10 +13,21 @@ import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Entity.class)
 public abstract class SegmentedPhysicsMixin {
+    @ModifyConstant(method = "move", constant = @Constant(doubleValue = 1.0e-7, ordinal = 0),
+            slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;collide(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;")))
+    private double nextboundary$keepSmallResolvedMovement(double minimumSquaredDistance) {
+        // collide has already checked the complete body. Dropping a sub-0.000316
+        // nudge here would incorrectly make a feasible turn look body-blocked.
+        return (Object) this instanceof Player player && SegmentedPhysics.enabled(player) ? 0 : minimumSquaredDistance;
+    }
+
     @Inject(method = "getBoundingBox", at = @At("HEAD"), cancellable = true)
     private void nextboundary$physicalBody(CallbackInfoReturnable<AABB> cir) {
         if ((Object) this instanceof Player player && SegmentedPhysics.enabled(player)) cir.setReturnValue(SegmentedPhysics.box(player));

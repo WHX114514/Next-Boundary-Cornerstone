@@ -138,7 +138,7 @@ public abstract class EntityMixin implements RollEntity {
                     // 第一人称视角限位：左右各自限制 110 度，上下各自限制 90 度
                     if (net.minecraft.client.Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
                         cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw = 
-                            Math.max(-110.0f, Math.min(110.0f, cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw));
+                            cn.rbq108.nextboundarycornerstone.body.FreeLookMath.limitYaw(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw, true);
                     } else {
                         // 第三人称下可以 360° 循环看
                         cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw = 
@@ -147,9 +147,10 @@ public abstract class EntityMixin implements RollEntity {
                     
                     // Clamp pitch in [-90, 90]
                     cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch = 
-                        Math.max(-90.0f, Math.min(90.0f, cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch));
+                        cn.rbq108.nextboundarycornerstone.body.FreeLookMath.clamp(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch,
+                                cn.rbq108.nextboundarycornerstone.body.FreeLookMath.PITCH);
                 }
-            } else {
+            } else if (!cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.turn(dy, dx, 0)) {
                 // 绕x轴是俯仰(dx)，绕Y是偏航(dy)
                 cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
                 cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));

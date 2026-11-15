@@ -14,7 +14,7 @@ repositories {
     mavenCentral()
     maven {
         url = 'https://maven.firstdark.dev/snapshots'
-        content { includeGroup 'com.lowdragmc.photon'; includeGroup 'com.lowdragmc.ldlib2' }
+        content { includeGroup 'com.lowdragmc.photon'; includeGroup 'com.lowdragmc.ldlib2'; includeGroup 'dev.vfyjxf'; includeGroup 'org.appliedenergistics.yoga' }
     }
     exclusiveContent {
         forRepository {
@@ -87,6 +87,20 @@ tasks.register('physicsTest', JavaExec) {
     mainClass = 'cn.rbq108.nextboundarycornerstone.body.collision.CompoundPhysicsTests'
 }
 tasks.named('check') { dependsOn tasks.named('physicsTest') }
+
+tasks.register('freeLookTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'cn.rbq108.nextboundarycornerstone.body.FreeLookTests'
+}
+tasks.named('check') { dependsOn tasks.named('freeLookTest') }
+
+tasks.register('bodyEyesTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'cn.rbq108.nextboundarycornerstone.body.BodyEyesTests'
+}
+tasks.named('check') { dependsOn tasks.named('bodyEyesTest') }
 
 tasks.register('physicsProfile', JavaExec) {
     dependsOn tasks.named('testClasses')
@@ -213,7 +227,9 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     compileOnly('com.lowdragmc.photon:photon-neoforge-1.21.1:2.2.8:all') { transitive = false }
-    compileOnly('com.lowdragmc.ldlib2:ldlib2-neoforge-1.21.1:2.2.42:all') { transitive = false }
+    implementation('com.lowdragmc.ldlib2:ldlib2-neoforge-1.21.1:2.2.42:all') { transitive = false }
+    compileOnly 'dev.vfyjxf:taffy:1.1.5'
+    compileOnly 'org.appliedenergistics.yoga:yoga:1.0.0'
     compileOnly "maven.modrinth:OypNE65K:wPvGWIj9"
     // Example mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
@@ -286,4 +302,24 @@ idea {
 }
 kotlin {
     jvmToolchain(21)
+}
+
+// Isolated shared-preferences host check without Industry on the classpath.
+neoForge.runs {
+    preferencesClientQa {
+        client()
+        sourceSet = sourceSets.clientQa
+        loadedMods = [surfaceClientMainMod, surfaceClientQaMod]
+        gameDirectory = layout.projectDirectory.dir('.local-artifacts/preferences/game')
+        programArguments.addAll '--width', '1440', '--height', '1000'
+        systemProperty 'cornerstone.preferences.qa', 'true'
+    }
+}
+tasks.named('runPreferencesClientQa') {
+    def qaLog = layout.projectDirectory.file('.local-artifacts/preferences/game/logs/latest.log').asFile
+    doFirst { qaLog.delete() }
+    doLast {
+        if (!qaLog.isFile() || !qaLog.text.contains('PREFERENCES_STANDALONE_QA_PASS') || qaLog.text.contains('PREFERENCES_STANDALONE_QA_FAILED'))
+            throw new GradleException('Standalone preferences QA failed; inspect ' + qaLog)
+    }
 }

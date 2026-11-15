@@ -1,4 +1,9 @@
 {
+  "ui.next_boundary_cornerstone.settings.button": "“下一个边境”偏好设置",
+  "ui.next_boundary_cornerstone.settings.title": "“下一个边境”偏好设置",
+  "ui.next_boundary_cornerstone.settings.ui": "UI",
+  "ui.next_boundary_cornerstone.settings.ui_empty": "暂无可调整的界面选项",
+
   "itemGroup.next_boundary_cornerstone": "下一个边境-基石",
   "item.next_boundary_cornerstone.basic_backpack": "简易移动背包"
 }

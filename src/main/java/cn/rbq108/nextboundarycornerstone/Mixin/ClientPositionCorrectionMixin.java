@@ -14,5 +14,6 @@ public abstract class ClientPositionCorrectionMixin {
     private void nextboundary$resetSurfaceAfterTeleport(ClientboundPlayerPositionPacket packet, CallbackInfo ci) {
         // Includes short same-dimension teleports and server position corrections.
         SurfaceAdhesion.reset();
+        cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.reset();
     }
 }

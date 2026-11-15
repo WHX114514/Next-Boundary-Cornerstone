@@ -13,10 +13,10 @@ public class trunk {
     private static boolean wasLowGravity = false;
 
     public static void constrainTo(org.joml.Quaternionf body) {
-        var euler = body.getEulerAnglesYXZ(new org.joml.Vector3f());
-        cumulativeX = smoothX = prevSmoothX = (float) Math.toDegrees(euler.x);
-        cumulativeY = smoothY = prevSmoothY = (float) Math.toDegrees(-euler.y);
-        cumulativeZ = smoothZ = prevSmoothZ = (float) Math.toDegrees(euler.z);
+        var look = FreeLookMath.relative(new org.joml.Quaternionf(), body);
+        cumulativeX = smoothX = prevSmoothX = look.pitch();
+        cumulativeY = smoothY = prevSmoothY = look.yaw();
+        cumulativeZ = smoothZ = prevSmoothZ = look.roll();
         GlobalVariables.B_Dx = lastRawX = smoothX;
         GlobalVariables.B_Dy = lastRawY = smoothY;
         GlobalVariables.B_Dz = lastRawZ = smoothZ;
