@@ -230,7 +230,8 @@ dependencies {
     implementation('com.lowdragmc.ldlib2:ldlib2-neoforge-1.21.1:2.2.42:all') { transitive = false }
     compileOnly 'dev.vfyjxf:taffy:1.1.5'
     compileOnly 'org.appliedenergistics.yoga:yoga:1.0.0'
-    compileOnly "maven.modrinth:OypNE65K:wPvGWIj9"
+    // Official TaCZ NeoForge 1.21.1 build; keep the integration optional at runtime.
+    compileOnly "maven.modrinth:SzzJttH8:${tacz_modrinth_version}"
     // Example mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
@@ -266,7 +267,8 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
                              mod_license            : mod_license,
                              mod_version            : mod_version,
                              mod_authors            : mod_authors,
-                             mod_description        : mod_description]
+                             mod_description        : mod_description,
+                             tacz_version           : tacz_version]
     inputs.properties replaceProperties
     expand replaceProperties
     from "src/main/templates"

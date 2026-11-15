@@ -72,11 +72,11 @@ versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
 
-# 对 TACZ 模组的可选依赖
+# 对官方 TaCZ NeoForge 1.21.1 的可选依赖
 [[dependencies."${mod_id}"]]
 modId = "tacz"
 type = "optional"
-versionRange = "[1.1.7-hotfix2,)"
+versionRange = "[${tacz_version},)"
 ordering = "NONE"
 side = "BOTH"
 
