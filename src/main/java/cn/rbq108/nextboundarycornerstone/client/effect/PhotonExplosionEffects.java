@@ -15,7 +15,8 @@ import java.util.List;
 final class PhotonExplosionEffects {
     private static final ResourceLocation NEAR = ResourceLocation.fromNamespaceAndPath(main.MODID, "high_explosive");
     private static final ResourceLocation LIGHT = ResourceLocation.fromNamespaceAndPath(main.MODID, "high_explosive_lite");
-    private static final List<ResourceLocation> TEXTURES = List.of("glow", "spark", "shard", "smoke").stream()
+    private static final List<ResourceLocation> TEXTURES = List.of(
+            "glow", "spark", "smoke", "fire", "flare", "ring", "ember", "trail").stream()
             .map(name -> ResourceLocation.fromNamespaceAndPath(main.MODID, "textures/effect/blast_" + name + ".png"))
             .toList();
     private static FX nearFx;

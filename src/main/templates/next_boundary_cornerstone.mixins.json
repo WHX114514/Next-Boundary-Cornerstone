@@ -11,6 +11,10 @@
     "CompoundBlockQueryMixin",
     "CompoundCollisionQueryMixin",
     "SegmentedProjectileMixin",
+    "ProjectileLaunchMixin",
+    "ProjectileEyeOriginMixin",
+    "ThrowableEyeOriginMixin",
+    "CrossbowAimMixin",
     "SegmentedInteractionMixin",
     "SegmentedServerInteractionMixin",
     "TACZSegmentedHitboxMixin",
@@ -18,6 +22,7 @@
   ],
   "client": [
     "PhysicalPlayerRotationMixin",
+    "FlightItemUseMixin",
     "SegmentedEyeCameraMixin",
     "SegmentedEyeOverlayMixin",
     "PlayerArmPoseAccessor",
