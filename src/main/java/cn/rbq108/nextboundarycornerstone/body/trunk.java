@@ -22,7 +22,7 @@ public class trunk {
         GlobalVariables.B_Dz = lastRawZ = smoothZ;
     }
 
-    // Called explicitly after camera/body intent and before collision approval and propulsion.
+    // 在确定视角或者机身操作意图之后、执行碰撞判定与推进之前显式调用喵
     public static void update() {
 
         if (GlobalVariables.B_LowGravity) {

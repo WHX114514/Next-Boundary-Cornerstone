@@ -8,7 +8,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 import java.util.Optional;
 
-/** The inherited envelope is only for broad-phase queries; narrow-phase methods use OBBs. */
+/** 继承的包围盒仅用于粗检（粗略碰撞阶段）；精检（精确碰撞阶段）方法则使用 OBB（有向包围盒）。The inherited envelope is only for broad-phase queries; narrow-phase methods use OBBs. */
 public final class OBBHitbox extends SegmentedAABB {
     private final List<OrientedBox> boxes;
     private double cachedInflation;

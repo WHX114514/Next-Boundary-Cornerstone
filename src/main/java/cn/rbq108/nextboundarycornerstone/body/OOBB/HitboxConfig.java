@@ -2,7 +2,8 @@ package cn.rbq108.nextboundarycornerstone.body.OOBB;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-/** Registered as SERVER config; NeoForge supplies the connected server's file to clients. */
+/**作为 SERVER（服务端）配置注册；NeoForge 会将所连接服务端的配置文件下发给客户端。
+ * Registered as SERVER config; NeoForge supplies the connected server's file to clients. */
 public final class HitboxConfig {
     public static final String FILE_NAME = "next-boundary-hitbox-server.toml";
     public static final ModConfigSpec SPEC;

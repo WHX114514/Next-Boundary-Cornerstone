@@ -8,7 +8,7 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Quaternionf;
 
-/** Client-only caller, deliberately separate from server geometry/configuration. */
+/** 仅限客户端的调用方，刻意与服务端的几何及配置分离。  Client-only caller, deliberately separate from server geometry/configuration. */
 public final class OBBDebugRenderer {
     private OBBDebugRenderer() {}
 

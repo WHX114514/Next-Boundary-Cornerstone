@@ -17,6 +17,7 @@ import org.joml.Vector3f;
 public class model {
 
     // 🩺 动画冰冻锁：防止抽搐的核心
+    //我得了一种看到这种emoji就红温的病
     private static float oldXRot, oldYBodyRot, oldYHeadRot;
     private static float oldXRotO, oldYBodyRotO, oldYHeadRotO;
 
@@ -73,7 +74,7 @@ public class model {
             player.yBodyRot = 0f; player.yBodyRotO = 0f;
             player.yHeadRot = 0f; player.yHeadRotO = 0f;
 
-            //Mixin锁头
+            //mixly锁头
             GlobalVariables.isPlayerRendering = true;
             if (event.getRenderer() instanceof PlayerRenderer renderer) {
                 GlobalVariables.playerHead = renderer.getModel().head;
@@ -92,8 +93,10 @@ public class model {
             poseStack.translate(0, centerY, 0);
             poseStack.mulPose(bodyQuat);
             // 补偿：让原版 1.8 高的模型中心（0.9）对齐支点
+            //↑疑似手搓时期留下的远古注释，现已改成细化AABB碰撞箱
             if (physicalPose != null ? physicalPose.swimming() : player.hasPose(net.minecraft.world.entity.Pose.SWIMMING)) {
                 // 在游泳状态（漂浮）下，根据玩家局部参考系向上补偿半个当前碰撞箱的高度
+                //↑疑似手搓时期留下的远古注释，现已改成细化AABB碰撞箱
                 poseStack.translate(0, -0.9f + centerY, 0);
             } else {
                 poseStack.translate(0, -0.9f, 0);

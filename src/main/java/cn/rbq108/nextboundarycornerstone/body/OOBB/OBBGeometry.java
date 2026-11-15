@@ -18,7 +18,7 @@ public final class OBBGeometry {
             Vec3 basisY = new Vec3(transform.m10(), transform.m11(), transform.m12());
             Vec3 basisZ = new Vec3(transform.m20(), transform.m21(), transform.m22());
             Vec3 axisX = basisX.normalize();
-            // Remove float round-off so local/world distance and clipping use an orthonormal basis.
+            // ？？Remove float round-off so local/world distance and clipping use an orthonormal basis.
             Vec3 axisY = basisY.subtract(axisX.scale(basisY.dot(axisX))).normalize();
             Vec3 axisZ = axisX.cross(axisY).normalize();
             if (axisZ.dot(basisZ) < 0) axisZ = axisZ.scale(-1);

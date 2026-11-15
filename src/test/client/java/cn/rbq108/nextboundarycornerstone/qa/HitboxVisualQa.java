@@ -367,6 +367,7 @@ public final class HitboxVisualQa {
                             .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.WEST, true);
                     for (int x = -2; x <= 2; x++) for (int y = 82; y <= 87; y++) {
                         // Keep the prescribed east/west pane shape; neighbor updates must not bridge the corridor.
+                        //上下翻了大半天实在没看懂这是在干什么
                         level.setBlock(new BlockPos(x, y, -1), pane, 2 | 16);
                         level.setBlock(new BlockPos(x, y, 0), pane, 2 | 16);
                     }

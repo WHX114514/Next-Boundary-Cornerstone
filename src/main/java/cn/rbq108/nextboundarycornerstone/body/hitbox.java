@@ -19,7 +19,7 @@ public class hitbox {
     public static void onPlayerSize(EntityEvent.Size event) {
         if (event.getEntity() instanceof Player player && player.isNoGravity()) {
             float size = GlobalVariables.B_HitboxSize;
-            // Keep the model's existing body pivot; actual eyes follow its head skeleton.
+            // 除了眼睛跟随头部移动，其他的骨骼结构全部保留
             event.setNewSize(EntityDimensions.scalable(size, size).withEyeHeight(BodyEyes.neutralHeight(size, player.getScale())));
         }
     }

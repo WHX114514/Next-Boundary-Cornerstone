@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-/** Translation clipping and a bounded, shortest-first search for room to rotate. */
+/** 我不翻译辣！翻译了也看不懂Translation clipping and a bounded, shortest-first search for room to rotate. */
 public final class CompoundCollisionMath {
     public static final double EPSILON = 1.0e-7;
     private static final int MAX_SEARCH_NODES = 128;
@@ -32,7 +32,7 @@ public final class CompoundCollisionMath {
         double y = axis(Direction.Axis.Y, bodies, obstacles, offset, requested.y);
         offset = offset.add(0, y, 0);
         double x, z;
-        // Same axis ordering as Entity.collideWithShapes, with one shared limit for all pieces.
+        // 和Entity.collideWithShapes 采用一样的坐标轴处理顺序，且所有碰撞部件共享同一个移动限制。Same axis ordering as Entity.collideWithShapes, with one shared limit for all pieces.
         if (Math.abs(requested.x) < Math.abs(requested.z)) {
             z = axis(Direction.Axis.Z, bodies, obstacles, offset, requested.z);
             offset = offset.add(0, 0, z);
