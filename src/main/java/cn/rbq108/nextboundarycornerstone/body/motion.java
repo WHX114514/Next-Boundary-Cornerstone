@@ -100,8 +100,8 @@ import cn.rbq108.test.main;
 import cn.rbq108.test.VariableLibrary.GlobalVariables;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 
 
  //* 专门负责 6DOF 状态下的玩家姿态整形喵！
@@ -145,8 +145,8 @@ import cn.rbq108.test.main;
 import cn.rbq108.test.VariableLibrary.GlobalVariables;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 
 
  // 专门负责 6DOF 状态下的玩家姿态整形喵！
@@ -198,16 +198,14 @@ package cn.rbq108.nextboundarycornerstone.body;
 import cn.rbq108.nextboundarycornerstone.main;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-//import net.minecraftforge.fml.common.EventBusSubscriber;
-//import net.minecraftforge.common.client.event.RenderPlayerEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 
 
-// 专门负责 6DOF 状态下的玩家姿态整形喵！
+ // 专门负责 6DOF 状态下的玩家姿态整形喵！
 
-@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class motion {
 
     @SubscribeEvent
@@ -217,6 +215,11 @@ public class motion {
             //修正：通过 getRenderer() 拿模型喵
             var model = event.getRenderer().getModel();
             var player = event.getEntity();
+
+            // 如果当前玩家处于游泳/横躺悬浮姿态，跳过单手平举的骨架控制，避免污染姿态
+            if (player.getPose() == net.minecraft.world.entity.Pose.SWIMMING) {
+                return;
+            }
 
             // 左手前倾 25 度喵
             // -25度转换成弧度，负值是向前平举喵呜~

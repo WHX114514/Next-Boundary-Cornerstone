@@ -17,6 +17,7 @@ public class GlobalVariables {
     // 操纵相关 (核心状态位，千万别移走喵！)
     public static boolean B_LowGravity = false; // 当前是否处于无重力操作状态
     public static float B_HitboxSize = 1.2f;//碰撞箱尺寸！
+    public static boolean B_SpaceHelmet = false; // 玩家当前是否佩戴了宇航服头盔
 
     // 矩阵转换代码
     public static Quaternionf currentQuat = new Quaternionf();
@@ -60,9 +61,11 @@ public class GlobalVariables {
 
     public static float prevFovModifier = 0.0f;    // 上一逻辑帧的旧值
     public static float currentFovModifier = 0.0f; // 当前逻辑帧的新值
+    public static float lastComputedFov = 70.0f;    // 最终计算出的渲染帧实时 FOV 度数
+    public static float B_CrosshairScaleFactor = 0.87f; //自由视角准星移动比例调整 (默认 1.0f)
 
 
-    // 控制变量
+    // 🩺 飞船机身独立控制变量
 
     public static float B_bodyx = 0.0f; // 身体的 Pitch (俯仰)
     public static float B_bodyy = 0.0f; // 身体的 Yaw (偏航)
@@ -76,6 +79,52 @@ public class GlobalVariables {
     public static Object playerHat = null;           // 抓取原版的头盔对象
     public static org.joml.Quaternionf headFixQuat = new org.joml.Quaternionf(); // 抵消矩阵
 
+    // 自由视角 (Free Look) 状态位
+    public static boolean B_FreeCameraActive = false;
+    // Automatic collision free look is separate from the user's held/toggled C state.
+    public static boolean B_CollisionFreeLookActive = false;
+    public static float collisionLookYaw, collisionLookPitch, collisionLookRoll;
+    public static boolean wasFreeCamera = false;
+
+    // 锁定自由视角 (Toggle/Lock) 状态位
+    public static boolean B_FreeCameraToggle = false;
+    public static boolean B_HeadRotationLocked = false;
+    public static Quaternionf lockedHeadRelQuat = new Quaternionf();
+    public static boolean blockMovementUntilRelease = false;
+
+    // 按键上一帧状态记录 (用以检测 keyTapped)
+    public static boolean prevFreeCameraKeyDown = false;
+    public static boolean prevFixedCameraKeyDown = false;
+
+    // 自由视角下头部的平滑相对旋转四元数
+    public static Quaternionf headRelQuat = new Quaternionf();
+    public static Quaternionf prevHeadRelQuat = new Quaternionf();
+
+    // 自由视角下累积的相对角度 (以机体为基准)
+    public static float B_freeLookYaw = 0.0f;
+    public static float B_freeLookPitch = 0.0f;
+    public static float B_freeLookRoll = 0.0f;
+
+    // 上一帧的相对角度备份，用于在第一人称渲染帧执行线性插值，消除画面延迟
+    public static float prevFreeLookYaw = 0.0f;
+    public static float prevFreeLookPitch = 0.0f;
+
+    /**
+     * 获取玩家机体物理朝向四元数。
+     * 当处于自由视角时，机体朝向与相机四元数分离，由已冻结的 B_Dx, B_Dy, B_Dz 计算生成；
+     * 正常状态下，直接使用视角的 currentQuat。
+     */
+    public static Quaternionf getBodyQuat() {
+        if (B_LowGravity) {
+            return new Quaternionf().rotationYXZ(
+                    (float) Math.toRadians(-B_Dy),
+                    (float) Math.toRadians(B_Dx),
+                    (float) Math.toRadians(B_Dz)
+            );
+        }
+        return currentQuat;
+    }
+
 
     public static boolean B_CanBackpackGrantGravity = true;//负责控制“重力切换”这个功能是由本模组负责还是其他依依妖妖的附属模组负责，等加入附属模组的时候要把这个量设为false
 
@@ -83,6 +132,10 @@ public class GlobalVariables {
     //在（？）
     public static boolean prevLowGravity = false; // 用来记录上一帧是不是低重力喵
 
+    // 鼠标原始输入量（每 tick 更新，由 EntityMixin 的 turn() 拦截写入）
+    // 用于在失重模式下驱动手臂摆动，取代有万向节死锁隐患的欧拉角差值法
+    public static float mouseDeltaX = 0.0f; // 鼠标纵向增量（控制 Pitch，正数=往下看）
+    public static float mouseDeltaY = 0.0f; // 鼠标横向增量（控制 Yaw，正数=往右转）
 
     //负责存储是否安装tacz的变量喵
     public static int B_TACZ = 0;
@@ -90,6 +143,5 @@ public class GlobalVariables {
     public static float B_Vx5 = 0.0f;//x轴后坐力
     public static float B_Vy5 = 0.0f;
     public static float B_Vz5 = 0.0f;
-
 
 }

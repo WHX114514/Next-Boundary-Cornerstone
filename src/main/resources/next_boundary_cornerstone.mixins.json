@@ -3,24 +3,52 @@
   "minVersion": "0.8",
   "package": "cn.rbq108.nextboundarycornerstone.Mixin",
   "compatibilityLevel": "JAVA_17",
-  "refmap": "next_boundary_cornerstone.refmap.json",
   "plugin": "cn.rbq108.nextboundarycornerstone.MixinPlugin",
   "mixins": [
+    "SegmentedPhysicsMixin",
+    "SegmentedEyeMixin",
+    "CompoundShapeMixin",
+    "CompoundBlockQueryMixin",
+    "CompoundCollisionQueryMixin",
+    "SegmentedProjectileMixin",
+    "ProjectileLaunchMixin",
+    "ProjectileEyeOriginMixin",
+    "ThrowableEyeOriginMixin",
+    "CrossbowAimMixin",
+    "SegmentedInteractionMixin",
+    "SegmentedServerInteractionMixin",
+    "TACZSegmentedHitboxMixin",
+    "TACZBulletOriginMixin"
   ],
   "client": [
+    "PauseScreenPreferencesMixin",
+    "PhysicalPlayerRotationMixin",
+    "FlightItemUseMixin",
+    "SegmentedEyeCameraMixin",
+    "SegmentedEyeOverlayMixin",
+    "PlayerArmPoseAccessor",
+    "SegmentedRemotePoseMixin",
+    "SegmentedHitboxDebugMixin",
+    "ClientPositionCorrectionMixin",
+    "LocalPlayerCollisionMixin",
+    "SegmentedPushOutMixin",
     "CameraContral",
     "EntityMixin",
     "KeyboardHandlerMixin",
+    "KeyMappingOrderMixin",
     "MixinModelPart",
     "MixinRemotePlayerModel",
+    "MixinItemInHandRenderer",
+    "MixinGui",
+    "ParticleAccessor",
     "FixTACZ",
     "MixinShellRender"
-
   ],
   "injectors": {
     "defaultRequire": 1
   },
   "overwrites": {
     "requireAnnotations": true
-  }
+  },
+  "refmap": "next_boundary_cornerstone.refmap.json"
 }

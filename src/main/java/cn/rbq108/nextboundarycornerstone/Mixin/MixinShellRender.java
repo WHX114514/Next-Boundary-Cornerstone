@@ -25,11 +25,9 @@ public class MixinShellRender {
 
     @Inject(method = "addShell", at = @At("HEAD"), cancellable = true, remap = false)
     private void nextboundary$interceptShell(Vector3f randomVelocity, CallbackInfo ci) {
-        if (!GlobalVariables.B_LowGravity) return;
-        ci.cancel();
-
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
+        if (mc.player == null || !mc.player.isNoGravity()) return;
+        ci.cancel();
 
         ItemStack mainHandItem = mc.player.getMainHandItem();
         IGun iGun = IGun.getIGunOrNull(mainHandItem);
@@ -134,7 +132,6 @@ public class MixinShellRender {
                 // ？
                 if (!isDuplicate) {
                     SpaceShellManager.SHELLS.add(proxy);
-                    cn.rbq108.nextboundarycornerstone.TACZ.recoil.applyWeaponBlowback();//这个负责触发后坐力啥啥啥的
                 }
             }); // 结束 ammoIndex 寻找
         }); // 结束 gunIndex 寻找

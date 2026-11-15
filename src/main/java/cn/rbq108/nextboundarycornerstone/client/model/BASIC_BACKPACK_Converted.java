@@ -14,19 +14,14 @@ import net.minecraft.client.model.geom.ModelPart; // 治治治治治治治治
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*; // 这一行能治好下面那堆 LayerDefinitipn的报错喵
 
-@SuppressWarnings("deprecation")
+
 //把 EntityModel 换成 HumanoidModel，把 Entity 换成 LivingEntity 绕飞了
 public class BASIC_BACKPACK_Converted<T extends LivingEntity> extends HumanoidModel<T> {
 	// This layer location should be baked with EntityRendererProvider.Context in the entity renderer and passed into this model's constructor
     //这行不知道从哪抄来的，英文注释我怕删了到时候看不懂（虽然不删也看不懂）
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
-
-            new ResourceLocation("next_boundary_cornerstone", "basic_backpack"), "main"
+            new ResourceLocation("test", "basic_backpack"), "main"
     );
-    /*这个是1.21neof的代码，这版本用不了
-    public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
-            ResourceLocation.fromNamespaceAndPath("next_boundary_cornerstone", "basic_backpack"), "main"
-    );*/
 	private final ModelPart root2;
 	private final ModelPart waist2;
 	private final ModelPart body2;
@@ -293,10 +288,15 @@ public class BASIC_BACKPACK_Converted<T extends LivingEntity> extends HumanoidMo
 		return LayerDefinition.create(meshdefinition, 32, 32);
 	}
 
+    // 把原来的 Entity entity 改成 T entity
+    @Override
+    public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+        // 这里是我放旋转逻辑或者留空的地方喵（？）
+    }
+
     @Override
     public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
 
-        // 1.20.1 需要把四个颜色浮点数全传进去
         root2.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
         root.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
     }

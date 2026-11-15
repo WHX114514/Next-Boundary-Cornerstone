@@ -1,0 +1,96 @@
+package cn.rbq108.nextboundarycornerstone.body;
+
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+
+import java.util.List;
+import java.util.Optional;
+
+/** The envelope gathers candidates; the pieces decide hits. PhysicsBox adds movement-specific operations. */
+public class SegmentedAABB extends AABB {
+    private final List<AABB> pieces;
+    private final List<BodyBoxTag> tags;
+    private double cachedInflation;
+    private AABB inflated;
+
+    public SegmentedAABB(List<AABB> pieces) {
+        this(pieces, List.of());
+    }
+
+    public SegmentedAABB(List<AABB> pieces, List<BodyBoxTag> tags) {
+        this(pieces, tags, envelope(pieces));
+    }
+
+    private SegmentedAABB(List<AABB> pieces, List<BodyBoxTag> tags, AABB envelope) {
+        super(envelope.minX, envelope.minY, envelope.minZ, envelope.maxX, envelope.maxY, envelope.maxZ);
+        this.pieces = List.copyOf(pieces);
+        if (!tags.isEmpty() && tags.size() != pieces.size()) throw new IllegalArgumentException("Body tag count differs from box count");
+        this.tags = List.copyOf(tags);
+    }
+
+    private static AABB envelope(List<AABB> pieces) {
+        if (pieces.isEmpty()) throw new IllegalArgumentException("Empty hitbox");
+        AABB box = pieces.get(0);
+        for (int i = 1; i < pieces.size(); i++) box = box.minmax(pieces.get(i));
+        return box;
+    }
+
+    @Override
+    public AABB inflate(double amount) {
+        if (amount == 0) return this;
+        if (inflated == null || cachedInflation != amount) {
+            cachedInflation = amount;
+            inflated = new SegmentedAABB(pieces.stream().map(box -> box.inflate(amount)).toList(), tags);
+        }
+        return inflated;
+    }
+
+    @Override
+    public boolean contains(double x, double y, double z) {
+        for (AABB box : pieces) if (box.contains(x, y, z)) return true;
+        return false;
+    }
+
+    @Override
+    public Optional<Vec3> clip(Vec3 start, Vec3 end) {
+        Vec3 closest = null;
+        double distance = Double.POSITIVE_INFINITY;
+        for (AABB box : pieces) {
+            if (box.contains(start)) return Optional.of(start);
+            Optional<Vec3> hit = box.clip(start, end);
+            if (hit.isPresent()) {
+                double d = start.distanceToSqr(hit.get());
+                if (d < distance) { closest = hit.get(); distance = d; }
+            }
+        }
+        return Optional.ofNullable(closest);
+    }
+
+    @Override
+    public double distanceToSqr(Vec3 point) {
+        double distance = Double.POSITIVE_INFINITY;
+        for (AABB box : pieces) distance = Math.min(distance, box.distanceToSqr(point));
+        return distance;
+    }
+
+    public List<AABB> pieces() { return pieces; }
+    public List<BodyBoxTag> tags() { return tags; }
+
+    /** Geometry references are shared; callers choose a mask once for their own collision policy. */
+    public List<AABB> pieces(int tagMask) {
+        if (tags.isEmpty()) throw new IllegalStateException("This box has no anatomy tags");
+        var selected = new java.util.ArrayList<AABB>();
+        for (int i = 0; i < pieces.size(); i++) if (tags.get(i).matches(tagMask)) selected.add(pieces.get(i));
+        return List.copyOf(selected);
+    }
+
+    public Optional<Vec3> clipHead(Vec3 start, Vec3 end) {
+        var head = pieces.get(0);
+        return head.contains(start) ? Optional.of(start) : head.clip(start, end);
+    }
+
+    public boolean isHeadshot(Vec3 start, Vec3 end, Vec3 nearestHit) {
+        var headHit = clipHead(start, end);
+        return headHit.isPresent() && start.distanceToSqr(headHit.get()) <= start.distanceToSqr(nearestHit) + 1.0e-8;
+    }
+}

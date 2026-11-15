@@ -1,5 +1,6 @@
 package cn.rbq108.nextboundarycornerstone;
 
+import net.minecraftforge.fml.loading.FMLLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -36,8 +37,13 @@ public class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+
         // TACZ 相关的 Mixin 仅在 TACZ 已安装时启用
+        if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.TACZSegmentedHitboxMixin")) {
+            return taczLoaded && isClassAvailable("com.tacz.guns.util.EntityUtil");
+        }
         if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.FixTACZ") ||
+            mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.TACZBulletOriginMixin") ||
             mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.MixinShellRender")) {
             return taczLoaded;
         }

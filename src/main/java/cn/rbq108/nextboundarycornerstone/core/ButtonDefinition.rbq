@@ -2,7 +2,7 @@ ButtonDefinition.rbq
 按键定义文档
 
 注：
-1, “背包（无重力操作时）”这个键是在进入无重力操作时，开启玩家物品栏（E）的按键（因为在无重力/低重力区域内，无重力/低重力操纵系统会强制接管游戏原版的视角和操纵系统）
+1, 失重时按住“背包/丢弃组合键”（默认 Tab），再按原版背包键（默认 E）打开物品栏，或按原版丢弃键（默认 Q）丢弃物品。原版绑定和组合键均可在设置中修改。
 2, 本文档于2026.4.4 9：20重新规范，后续加入的按键请严格遵守全大写常量命名法！
 3, 所有按键常量前面都加一个“B_”前缀以防与保留名或者其他模组按键冲突，并且必须全部大写！
 
@@ -16,6 +16,10 @@ ButtonDefinition.rbq
 后                    B_BACK               S
 左桶滚                B_ROLL_LEFT          Q
 右桶滚                B_ROLL_RIGHT         E
-背包(无重力操作时)      B_BAG                Shift+E
+背包/丢弃组合键（按住） B_ACTION_MODIFIER    Tab
 制动                  B_BREAK             H
 疾跑                  B_RushButton        ctrl
+自由旋转视角            B_FreeCamera        C
+固定自由旋转视角         B_FixedCamera       shift
+固定自由视角左桶滚       B_FixedCameraleft   滚轮向上
+固定自由视角右桶滚       B_FixedCameraroll   滚轮向下

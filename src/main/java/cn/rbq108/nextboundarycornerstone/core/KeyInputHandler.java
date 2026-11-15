@@ -5,14 +5,12 @@ import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-//import net.minecraftforge.fml.common.EventBusSubscriber;
-//import net.minecraftforge.common.client.event.InputEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.InputEvent;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class KeyInputHandler {
 
     @SubscribeEvent
@@ -22,10 +20,8 @@ public class KeyInputHandler {
         if (mc.player == null || mc.screen != null || !GlobalVariables.B_LowGravity) return;
 
         if (event.getAction() == GLFW.GLFW_PRESS) {
-            boolean isShiftDown = (event.getModifiers() & GLFW.GLFW_MOD_SHIFT) != 0;
-
-            //只有在 Shift 按下时，我们才手动触发原版功能
-            if (isShiftDown) {
+            // 按住组合键（默认 Tab）时才触发；背包/丢弃键沿用玩家的原版绑定。
+            if (KeyPollingHandler.isPressed(Keybinds.B_ACTION_MODIFIER)) {
                 // 如果按的是背包键 (E)
                 if (mc.options.keyInventory.matches(event.getKey(), event.getScanCode())) {
                     mc.setScreen(new InventoryScreen(mc.player));

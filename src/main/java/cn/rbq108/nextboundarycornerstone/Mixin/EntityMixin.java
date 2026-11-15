@@ -1,18 +1,79 @@
 package cn.rbq108.nextboundarycornerstone.Mixin;
 
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import cn.rbq108.nextboundarycornerstone.api.RollEntity;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin implements RollEntity {
+
+    @Inject(method = "setDeltaMovement(DDD)V", at = @At("HEAD"))
+    private void doABarrelRoll$interceptExternalVelocity3D(double x, double y, double z, CallbackInfo ci) {
+        if ((Object)this instanceof Player player && player.isNoGravity()) {
+            if (isLocalPlayerClass_testMod(player)) {
+                StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+                if (stack.length > 3) {
+                    String caller = stack[3].getClassName();
+                    if (!caller.startsWith("net.minecraft.") &&
+                        !caller.startsWith("net.minecraftforge.") &&
+                        !caller.startsWith("cn.rbq108.nextboundarycornerstone.")) {
+                        // 捕获到第三方模组（例如航空学）强制施加的速度！将其吸收到惯性系统中！
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vx1 = (float) x * 0.91f;
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vy1 = (float) y * 0.80f;
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vz1 = (float) z * 0.91f;
+                    }
+                }
+            }
+        }
+    }
+
+    @Inject(method = "setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V", at = @At("HEAD"))
+    private void doABarrelRoll$interceptExternalVelocityVec(net.minecraft.world.phys.Vec3 vec, CallbackInfo ci) {
+        if ((Object)this instanceof Player player && player.isNoGravity()) {
+            if (isLocalPlayerClass_testMod(player)) {
+                StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+                if (stack.length > 3) {
+                    String caller = stack[3].getClassName();
+                    if (!caller.startsWith("net.minecraft.") &&
+                        !caller.startsWith("net.minecraftforge.") &&
+                        !caller.startsWith("cn.rbq108.nextboundarycornerstone.")) {
+                        // 捕获到第三方模组（例如航空学）强制施加的速度！将其吸收到惯性系统中！
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vx1 = (float) vec.x * 0.91f;
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vy1 = (float) vec.y * 0.80f;
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vz1 = (float) vec.z * 0.91f;
+                    }
+                }
+            }
+        }
+    }
+
+    @Unique
+    private static Class<?> localPlayerClass_testMod = null;
+    @Unique
+    private static boolean localPlayerClassChecked_testMod = false;
+
+    @Unique
+    private static boolean isLocalPlayerClass_testMod(Player player) {
+        return player.getClass().getName().equals("net.minecraft.client.player.LocalPlayer");
+    }
+
+    @Inject(method = "getViewVector(F)Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
+    private void doABarrelRoll$overrideGetViewVector(float partialTicks, CallbackInfoReturnable<net.minecraft.world.phys.Vec3> cir) {
+        if ((Object)this instanceof Player player && player.isNoGravity()) {
+            if (isLocalPlayerClass_testMod(player)) {
+                org.joml.Quaternionf smoothedQuat = new org.joml.Quaternionf(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.prevQuat)
+                        .slerp(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat, partialTicks);
+                org.joml.Vector3f fwd = new org.joml.Vector3f(0, 0, 1).rotate(smoothedQuat);
+                cir.setReturnValue(new net.minecraft.world.phys.Vec3(fwd.x, fwd.y, fwd.z));
+            }
+        }
+    }
 
     @Unique
     private boolean isRolling_testMod;
@@ -50,16 +111,50 @@ public abstract class EntityMixin implements RollEntity {
 
     @Inject(method = "turn(DD)V", at = @At("HEAD"), cancellable = true)
     private void doABarrelRoll$quaternionTurn(double yRot, double xRot, CallbackInfo ci) {
-        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && (Object)this instanceof Player player) {
+        if ((Object)this instanceof Player player && player.isNoGravity()) {
+            if (!isLocalPlayerClass_testMod(player)) {
+                return;
+            }
             ci.cancel();
 
             // 提取鼠标输入的增量
             float dy = (float) yRot * 0.15f; // 鼠标横向移动 (控制 Yaw)
             float dx = (float) xRot * 0.15f; // 鼠标纵向移动 (控制 Pitch)
 
-            // 绕x轴是俯仰(dx)，绕Y是偏航(dy)
-            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
-            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));
+            // 记录原始鼠标增量，供 GameRenderer.bobView 的 Mixin 使用
+            // 这样手臂摆动就能用干净的鼠标输入驱动，而不是有死锁隐患的欧拉角差值
+            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.mouseDeltaX = dx; // 纵向（俯仰）
+            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.mouseDeltaY = dy; // 横向（偏航）
+
+            if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_FreeCameraActive) {
+                if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_HeadRotationLocked) {
+                    // 如果头部已被锁定，视角自由随意转动（不受身体基准和限位束缚，绕自身相机轴）
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));
+                } else {
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw += dy;
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch += dx;
+
+                    // 第一人称视角限位：左右各自限制 110 度，上下各自限制 90 度
+                    if (net.minecraft.client.Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw =
+                            cn.rbq108.nextboundarycornerstone.body.FreeLookMath.limitYaw(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw, true);
+                    } else {
+                        // 第三人称下可以 360° 循环看
+                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw =
+                            net.minecraft.util.Mth.wrapDegrees(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookYaw);
+                    }
+
+                    // Clamp pitch in [-90, 90]
+                    cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch =
+                        cn.rbq108.nextboundarycornerstone.body.FreeLookMath.clamp(cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_freeLookPitch,
+                                cn.rbq108.nextboundarycornerstone.body.FreeLookMath.PITCH);
+                }
+            } else if (!cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.turn(dy, dx, 0)) {
+                // 绕x轴是俯仰(dx)，绕Y是偏航(dy)
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateX((float) Math.toRadians(dx));
+                cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));
+            }
 
             // === Yaw & Pitch ===
             // 绝对不能用四元数反推(asin/atan2)来设置 player 的 XRot 和 YRot！
@@ -69,18 +164,22 @@ public abstract class EntityMixin implements RollEntity {
             // 正确做法：直接将屏幕坐标系的鼠标原始增量 (dx, dy) 累加到 XRot 和 YRot 上。
             // 这样手部摆动增量就永远与玩家当前屏幕的鼠标操作方向保持一致，
             // 无论角色处于何种 roll 角度(0°, 90°, 180°)，手部上下左右摆动都完全正常。
+            player.xRotO += dx;
+            player.yRotO += dy;
+            player.xRotO = net.minecraft.util.Mth.clamp(player.xRotO, -90.0F, 90.0F);
+
             player.setYRot(player.getYRot() + dy);
             player.setXRot(player.getXRot() + dx);
         }
     }
 
-    @Inject(method = "getUpVector(F)Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
-    private void doABarrelRoll$injectUpVector(float partialTicks, CallbackInfoReturnable<Vec3> cir) {
-        Entity entity = (Entity) (Object) this;
-        if (cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_LowGravity && entity.getType() == net.minecraft.world.entity.EntityType.PLAYER) {
-            org.joml.Vector3f up = new org.joml.Vector3f(0.0f, 1.0f, 0.0f);
-            cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.transform(up);
-            cir.setReturnValue(new Vec3(up.x(), up.y(), up.z()));
+    @org.spongepowered.asm.mixin.injection.ModifyVariable(method = "setNoGravity(Z)V", at = @org.spongepowered.asm.mixin.injection.At("HEAD"), argsOnly = true)
+    private boolean nextboundary$modifyNoGravity(boolean noGravity) {
+        if ((Object)this instanceof Player player) {
+            if (cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler.isSpectatorAndRestored(player)) {
+                return false;
+            }
         }
+        return noGravity;
     }
 }

@@ -5,13 +5,10 @@ import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-//import net.minecraftforge.fml.common.EventBusSubscriber;
-//import net.minecraftforge.common.client.event.RenderPlayerEvent;
-//import net.minecraftforge.common.event.tick.PlayerTickEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 import org.joml.Quaternionf;
 
 
@@ -19,7 +16,7 @@ import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class OtherPlayer {
 
     private static final WeakHashMap<Player, Float[]> SAVED_ROTS = new WeakHashMap<>();
@@ -37,10 +34,9 @@ public class OtherPlayer {
     public static final ConcurrentHashMap<UUID, RotationData> ROTATION_SYNC_MAP = new ConcurrentHashMap<>();
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onPlayerTick(PlayerTickEvent event) {
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         Player player = event.player;
-        //Player player = event.getEntity();
         if (player.level().isClientSide() && player != Minecraft.getInstance().player) {
             UUID id = player.getUUID();
             if (NetworkHandler.REMOTE_GRAVITY_STATES.getOrDefault(id, false)) {
@@ -53,7 +49,9 @@ public class OtherPlayer {
 
                 Quaternionf currentBody = SMOOTH_BODY_QUATS.computeIfAbsent(id, k -> new Quaternionf(targetQuat));
                 SMOOTH_BODY_QUATS_O.put(id, new Quaternionf(currentBody));
-                currentBody.slerp(targetQuat, 0.15f);
+                var hitboxPose = cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.get(player).getHitboxPose();
+                if (hitboxPose != null) currentBody.set(hitboxPose.body());
+                else currentBody.slerp(targetQuat, 0.15f);
             }
         }
     }
@@ -72,7 +70,6 @@ public class OtherPlayer {
                 //float centerY = player.getBbHeight() * 0.5f;//这行是定义玩家模型偏离碰撞箱高度用的，用不着了
 
 
-                //float frameTime = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
                 float frameTime = Minecraft.getInstance().getFrameTime();
 
                 Quaternionf prevHead = NET_HEAD_QUATS_O.getOrDefault(id, headQuatNet);
@@ -82,18 +79,24 @@ public class OtherPlayer {
                 Quaternionf prevBody = SMOOTH_BODY_QUATS_O.getOrDefault(id, headQuatNet);
                 Quaternionf currBody = SMOOTH_BODY_QUATS.getOrDefault(id, headQuatNet);
                 Quaternionf smoothBodyQuatRender = new Quaternionf(prevBody).slerp(currBody, frameTime);
+                var hitboxPose = cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.get(player).renderHitboxPose(frameTime);
+                if (hitboxPose != null) smoothBodyQuatRender.set(hitboxPose.body());
+
+                float currentHitboxHeight = player.getBbHeight();
+                float centerY = currentHitboxHeight * 0.5f;
 
                 // 先把直立的存起来防止干扰到后面的计算
                 //
                 event.getPoseStack().pushPose();
 
                 // 更改旋转轴心
-                // 把旋转轴心从脚底 (0) 拔高到身体重心 (0.9 左右)
-                event.getPoseStack().translate(0.0D, 0.6D, 0.0D);
+                // 把旋转轴心从脚底 (0) 拔高到身体重心
+                event.getPoseStack().translate(0.0D, centerY, 0.0D);
                 //执行旋转
                 event.getPoseStack().mulPose(smoothBodyQuatRender);
                 // 旋转完后再把轴心降回脚底，居中
-                event.getPoseStack().translate(0.0D, -0.8D, 0.0D);
+                event.getPoseStack().translate(0.0D, -0.9D + ((hitboxPose != null ? hitboxPose.swimming()
+                        : player.hasPose(net.minecraft.world.entity.Pose.SWIMMING)) ? centerY : 0), 0.0D);
 
 
 
@@ -169,9 +172,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
-import net.minecraftforge.common.event.tick.PlayerTickEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -198,7 +201,8 @@ public class OtherPlayer {
 
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
+    public static void onPlayerTick(PlayerTickEvent event) {
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         Player player = event.getEntity();
         if (player.level().isClientSide() && player != Minecraft.getInstance().player) {
             UUID id = player.getUUID();
@@ -229,7 +233,7 @@ public class OtherPlayer {
             Quaternionf headQuatNet = NetworkHandler.REMOTE_ROTATIONS.get(id);
 
             if (headQuatNet != null) {
-                float frameTime = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
+                float frameTime = Minecraft.getInstance().getFrameTime();
 
 
                 Quaternionf prevHead = NET_HEAD_QUATS_O.getOrDefault(id, headQuatNet);
@@ -288,9 +292,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
-import net.minecraftforge.common.event.tick.PlayerTickEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -312,7 +316,8 @@ public class OtherPlayer {
     public static final ConcurrentHashMap<UUID, RotationData> ROTATION_SYNC_MAP = new ConcurrentHashMap<>();
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
+    public static void onPlayerTick(PlayerTickEvent event) {
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         Player player = event.getEntity();
         if (player.level().isClientSide() && player != Minecraft.getInstance().player) {
             UUID id = player.getUUID();
@@ -343,7 +348,7 @@ public class OtherPlayer {
             if (headQuatNet != null) {
 
                 //float frameTime = Minecraft.getInstance().getFrameTime();
-                float frameTime = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
+                float frameTime = Minecraft.getInstance().getFrameTime();
                 Quaternionf prevBody = SMOOTH_BODY_QUATS_O.getOrDefault(id, headQuatNet);
                 Quaternionf currBody = SMOOTH_BODY_QUATS.getOrDefault(id, headQuatNet);
 
@@ -400,9 +405,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
-import net.minecraftforge.common.event.tick.PlayerTickEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -421,7 +426,8 @@ public class OtherPlayer {
     public static final ConcurrentHashMap<UUID, Float> BODY_TWIST_MAP = new ConcurrentHashMap<>();
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
+    public static void onPlayerTick(PlayerTickEvent event) {
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         Player player = event.getEntity();
 
         if (player.level().isClientSide() && player != Minecraft.getInstance().player) {
@@ -503,8 +509,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -593,8 +599,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -669,8 +675,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;
@@ -750,8 +756,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 import java.util.UUID;
 
@@ -787,8 +793,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 import org.joml.Quaternionf;
 
 import java.util.UUID;

@@ -6,8 +6,8 @@ import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Pose;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.event.entity.EntityEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.entity.EntityEvent;
 
 @EventBusSubscriber(modid = cn.rbq108.test.main.MODID, value = Dist.CLIENT)
 public class hitbox {

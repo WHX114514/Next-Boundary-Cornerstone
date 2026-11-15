@@ -8,13 +8,11 @@ import cn.rbq108.nextboundarycornerstone.core.Keybinds;
 import cn.rbq108.nextboundarycornerstone.main;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-//import net.minecraftforge.fml.common.EventBusSubscriber;
-//import net.minecraftforge.common.client.event.ClientTickEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.TickEvent.ClientTickEvent;
 
-@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class control {
 
 
@@ -22,11 +20,10 @@ public class control {
     public static int B_INy = 0;
     public static int B_INz = 0;
     public static int B_INroll = 0;
-    public static boolean B_bag_pressed = false;
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onClientTick(ClientTickEvent event) {
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
@@ -47,11 +44,11 @@ public class control {
 
         // Roll-axis: Left Roll (+1) and Right Roll (-1)
         B_INroll = 0;
-        if (Keybinds.B_ROLL_LEFT.isDown()) B_INroll += 1;
-        if (Keybinds.B_ROLL_RIGHT.isDown()) B_INroll -= 1;
+        if (!cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler.isPressed(Keybinds.B_ACTION_MODIFIER)
+                && !cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_FreeCameraActive) {
+            if (Keybinds.B_ROLL_LEFT.isDown()) B_INroll += 1;
+            if (Keybinds.B_ROLL_RIGHT.isDown()) B_INroll -= 1;
+        }
 
-        // Bag shortcut detection
-        // Note: Using consumeClick() instead of isDown() to prevent UI spamming every tick
-        B_bag_pressed = Keybinds.B_BAG.consumeClick();
     }
 }

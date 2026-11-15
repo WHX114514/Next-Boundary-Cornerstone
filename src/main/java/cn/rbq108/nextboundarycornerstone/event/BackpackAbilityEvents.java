@@ -5,19 +5,16 @@ import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-//import net.minecraftforge.fml.common.EventBusSubscriber;
-//import net.minecraftforge.common.client.event.ClientTickEvent;
-//import net.minecraftforge.common.event.entity.living.LivingEquipmentChangeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.TickEvent.ClientTickEvent;
+import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
 
 /*
  * 无重力操作开关的主部分（由于来不及写失重判定，所以现在直接由穿戴“简易操作背包”进入失重
  * 负责检测穿脱状态，并控制 B_LowGravity 的生死大权呜~
  */
-@Mod.EventBusSubscriber(modid = main.MODID) // 这里不加Dist.CLIENT，因为重力状态通常需要同步
+@EventBusSubscriber(modid = main.MODID) // 这里不加Dist.CLIENT，因为重力状态通常需要同步
 public class BackpackAbilityEvents {
     @SubscribeEvent
     public static void onArmorChange(LivingEquipmentChangeEvent event) {
@@ -34,7 +31,8 @@ public class BackpackAbilityEvents {
     }
 //这个事件丢给ClientEvents了，现在不是这里负责
 //    @SubscribeEvent
-//    public static void onClientTick(ClientTickEvent.Post event) {
+//    public static void onClientTick(ClientTickEvent event) {
+//        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
 //        var mc = Minecraft.getInstance();
 //        var player = mc.player;
 //        if (player == null) return;
@@ -110,7 +108,8 @@ public class BackpackAbilityEvents {
 
 
 //    @SubscribeEvent
-//    public static void onClientTick(ClientTickEvent.Post event) {
+//    public static void onClientTick(ClientTickEvent event) {
+//        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
 //        var mc = Minecraft.getInstance();
 //        var player = mc.player;
 //        if (player == null) return;
@@ -132,7 +131,8 @@ public class BackpackAbilityEvents {
 //    }
 
 //    @SubscribeEvent
-//    public static void onClientTick(ClientTickEvent.Post event) {
+//    public static void onClientTick(ClientTickEvent event) {
+//        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
 //        var mc = Minecraft.getInstance();
 //        var player = mc.player;
 //        if (player == null) return;
@@ -160,5 +160,12 @@ public class BackpackAbilityEvents {
 //
 //
 //    }
-}
 
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            boolean value = cn.rbq108.nextboundarycornerstone.VariableLibrary.Config.PHYSICS.restoreVanillaSpectator.get();
+            cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler.sendToPlayer(serverPlayer, new cn.rbq108.nextboundarycornerstone.ServeMiao.communication.SyncConfigPayload(value));
+        }
+    }
+}

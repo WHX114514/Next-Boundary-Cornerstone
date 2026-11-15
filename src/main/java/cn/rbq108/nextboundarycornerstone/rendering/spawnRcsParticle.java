@@ -51,6 +51,21 @@ public class spawnRcsParticle {
      * 核心飞控侦测逻辑：在 onClientTick 里每帧调用喵！
      */
     public static void processRcs(Player player) {
+        // 【新增兼容】：如果玩家正在被外部物理设施（如铁把手）拉扯，说明加速度并非来自宇航服，跳过喷气渲染
+        if (cn.rbq108.nextboundarycornerstone.ModCompatible.isGrabbingAeronauticsHandle(player)) {
+            // 静默同步当前速度，防止松手瞬间由于积累的差值爆出一大团粒子
+            prevVelocity = player.getDeltaMovement();
+            return;
+        }
+
+        // 只有玩家穿着前置模组的“基础背包”时，才允许生成前置模组的喷气粒子！
+        net.minecraft.world.item.ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+        if (chest.isEmpty() || !chest.is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get())) {
+            // 静默同步当前速度，防止下次穿上背包时爆出一大团粒子
+            prevVelocity = player.getDeltaMovement();
+            return;
+        }
+
         Vec3 currentVelocity = player.getDeltaMovement();
 
         // 1. 算世界坐标系下的加速度 (A_world = V_current - V_prev)
@@ -67,7 +82,7 @@ public class spawnRcsParticle {
 
 
         // 把世界加速度“扭”回玩家的机体坐标系（Local Space）
-        Quaternionf inverseQuat = new Quaternionf(GlobalVariables.currentQuat).invert();
+        Quaternionf inverseQuat = new Quaternionf(GlobalVariables.getBodyQuat()).invert();
         Vector3f localAccel = worldAccel.rotate(inverseQuat);
 
         // 根据机体感受到的推力方向，点对应的喷口喵
@@ -90,7 +105,7 @@ public class spawnRcsParticle {
      * 粒子发射器：将局部喷口动态对齐到 3D 支架的当前旋转状态喵！
      */
     private static void fireNozzles(Player player, Vector3f[] nozzles, Vector3f localDirection) {
-        Quaternionf quat = GlobalVariables.currentQuat;
+        Quaternionf quat = GlobalVariables.getBodyQuat();
         // 拿到随机数生成器，让粒子别排成死板的一条线
         net.minecraft.util.RandomSource random = player.getRandom();
 
@@ -126,7 +141,7 @@ public class spawnRcsParticle {
         }
     }
     /*private static void fireNozzles(Player player, Vector3f[] nozzles, Vector3f localDirection) {
-        Quaternionf quat = GlobalVariables.currentQuat;
+        Quaternionf quat = GlobalVariables.getBodyQuat();
 
         for (Vector3f localOffset : nozzles) {
 

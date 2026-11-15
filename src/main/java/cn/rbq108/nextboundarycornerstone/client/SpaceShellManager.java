@@ -11,7 +11,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -19,7 +19,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@Mod.EventBusSubscriber(modid = "next_boundary_cornerstone", value = Dist.CLIENT)
+@EventBusSubscriber(modid = "next_boundary_cornerstone", value = Dist.CLIENT)
 public class SpaceShellManager {
 
     public static final List<SpaceShellProxy> SHELLS = new CopyOnWriteArrayList<>();

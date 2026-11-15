@@ -63,6 +63,9 @@ public abstract class MixinRemotePlayerModel<T extends LivingEntity> {
 
                     // 赋值！！！
                     model.head.xRot = euler.x;
+                    if (player.isSwimming()) {
+                        model.head.xRot -= (float) Math.toRadians(90.0f);
+                    }
                     model.head.yRot = -euler.y;
                     model.head.zRot = -euler.z;
 
@@ -70,10 +73,17 @@ public abstract class MixinRemotePlayerModel<T extends LivingEntity> {
                     model.hat.yRot = model.head.yRot;
                     model.hat.zRot = model.head.zRot;
 
-                    // 躯干和四肢依然保持 0（因为外面 PoseStack 已经完美平滑转过去了）
+                    // 躯干保持 0（因为外面 PoseStack 已经以四元数平滑旋转了）
                     model.body.yRot = 0;
-                    model.leftArm.yRot = 0; model.rightArm.yRot = 0;
-                    model.leftLeg.yRot = 0; model.rightLeg.yRot = 0;
+
+                    if (player.isSwimming()) {
+                        // 如果是游泳姿态，已经通过 setSwimming(true) 激活了原版划水/蹬腿动画，允许四肢自由偏航与摇摆，解决手臂卡死问题
+                    } else {
+                        model.leftArm.yRot = 0;
+                        model.rightArm.yRot = 0;
+                        model.leftLeg.yRot = 0;
+                        model.rightLeg.yRot = 0;
+                    }
                 }
 
                 /*这坨角度过大时还会有问题
@@ -93,7 +103,7 @@ public abstract class MixinRemotePlayerModel<T extends LivingEntity> {
                     float pitch = (float) Math.asin(-nose.y);
 
                     //
-                    // 这里继续用刚才自己摸索出来的正负号！(如果上下左右反了，加个负号就行)
+                    // 这里您继续用您刚才自己摸索出来的正负号！(如果上下左右反了，加个负号就行)
                     model.head.xRot = pitch;   // 比如您之前如果用了 -pitch 就继续用
                     model.head.yRot = yaw;     // 同上
 

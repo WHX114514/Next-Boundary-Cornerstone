@@ -5,19 +5,41 @@ import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.GameType;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-//import net.minecraftforge.fml.common.EventBusSubscriber;
-//import net.minecraftforge.common.event.tick.PlayerTickEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 
 
-@Mod.EventBusSubscriber(modid = main.MODID)
+
+
+@EventBusSubscriber(modid = main.MODID)
 public class AllowFly {
 
+    private static final String FLIGHT_GRANTED = main.MODID + ".flight_granted";
+
+    /** Restore only flight permission granted by this mod when leaving zero gravity. */
+    public static void updateFlightPermission(Player player, boolean granted) {
+        var data = player.getPersistentData();
+        var abilities = player.getAbilities();
+        boolean changed = false;
+        if (granted && !abilities.mayfly) {
+            data.putBoolean(FLIGHT_GRANTED, true);
+            abilities.mayfly = true;
+            changed = true;
+        } else if (!granted && data.getBoolean(FLIGHT_GRANTED)) {
+            data.remove(FLIGHT_GRANTED);
+            if (!player.isCreative() && !player.isSpectator()) {
+                abilities.mayfly = false;
+                abilities.flying = false;
+                changed = true;
+            }
+        }
+        if (changed) player.onUpdateAbilities();
+    }
+
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onPlayerTick(PlayerTickEvent event) {
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         Player player = event.player;
 
         /*不是这个if在这有任何卵用吗？
@@ -38,22 +60,41 @@ public class AllowFly {
         */
         //我写的这是啥？
 
+        // 核心同步：如果当前是在服务端，且重力控制权在核心前置手中，主动通过 setNoGravity 维持玩家重力状态
+        if (!player.level().isClientSide) {
+            boolean isSpectatorAndRestored = cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler.isSpectatorAndRestored(player);
+            if (GlobalVariables.B_CanBackpackGrantGravity && !isSpectatorAndRestored) {
+                boolean isWearingBackpack = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST)
+                        .is(cn.rbq108.nextboundarycornerstone.main.BASIC_BACKPACK.get());
+                boolean isInSpace = player.level().dimension().location().getPath().equals("space");
+                boolean shouldBeZeroG = cn.rbq108.nextboundarycornerstone.VariableLibrary.debug.FORCE_LOW_GRAVITY || isWearingBackpack || isInSpace;
+                if (player.isNoGravity() != shouldBeZeroG) {
+                    player.setNoGravity(shouldBeZeroG);
+                }
+            }
+        }
 
-        GameType gameMode = GameType.SURVIVAL;
-        // 1. 确定最终权限：开启低重力 OR 创造模式 OR 旁观模式
-        boolean canFly = GlobalVariables.B_LowGravity || player.isCreative() || player.isSpectator();
+        updateFlightPermission(player, player.isNoGravity());
+        /*GameType gameMode = GameType.SURVIVAL;
+        // 逻辑：(开启了低重力) 或者 (是创造模式) 或者 (是旁观者模式) → 这三种情况都必须能飞
+        boolean targetMayFly = GlobalVariables.B_LowGravity || player.isCreative() || player.isSpectator();
 
-// 2. 【关键】状态差异检查 (Dirty Check)
-// 只有当当前权限和目标不一致时才执行，解决时序问题和网络包冲突
-        if (player.getAbilities().mayfly != canFly) {
-            player.getAbilities().mayfly = canFly;
-
-            // 如果目标是关闭飞行权限（生存模式且关了重力），强制停止当前的飞行状态
-            if (!canFly) {
+        if (player.getAbilities().mayfly != targetMayFly) {
+            player.getAbilities().mayfly = targetMayFly;
+            if (!targetMayFly) {
                 player.getAbilities().flying = false;
             }
 
-            // 3. 同步能力修改
+            player.onUpdateAbilities();
+        }*/
+        /*
+        boolean canFly = GlobalVariables.B_LowGravity || player.isCreative() || player.isSpectator();
+
+        if (player.getAbilities().mayfly != canFly) {
+            player.getAbilities().mayfly = canFly;
+            // 如果失去了飞行权限，强制停止飞行状态，防止生存模式卡在半空
+            if (!canFly) player.getAbilities().flying = false;
+
             player.onUpdateAbilities();
         }/*
         if (player instanceof ServerPlayer serverPlayer) {
@@ -67,8 +108,8 @@ public class AllowFly {
 
             player.onUpdateAbilities();
         } else if (GlobalVariables.B_LowGravity == false && (gameMode == GameType.SURVIVAL || gameMode == GameType.ADVENTURE)) {
-            player.getAbilities().flying = false;
-            player.getAbilities().mayfly = false;
+            //player.getAbilities().flying = false;//false;刚注释掉的，我发现这行启用创造就会飞不了
+            player.getAbilities().mayfly = true;//false;
 
             //System.out.println("设置后(调用前)1: " + player.getAbilities().mayfly);
             //可能是时序问题？注释掉这两个println后就没用了，必须加一个sleep才能用，或者重新把这个println弄回来？
@@ -76,7 +117,7 @@ public class AllowFly {
             player.onUpdateAbilities();
             //System.out.println("调用后2: " + player.getAbilities().mayfly);
 
-        }
+        }*/
 
 
         /*
@@ -104,7 +145,8 @@ public class AllowFly {
      *
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent event) {
-        Player player = event.getEntity();
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
+        Player player = event.player;
 
 
         if (GlobalVariables.B_LowGravity) {
@@ -140,8 +182,8 @@ import cn.rbq108.test.main;
 import cn.rbq108.test.VariableLibrary.GlobalVariables;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
-import net.minecraftforge.common.event.tick.PlayerTickEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 
 
 @EventBusSubscriber(modid = main.MODID)
@@ -153,7 +195,8 @@ public class AllowFly {
      *
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent event) {
-        Player player = event.getEntity();
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
+        Player player = event.player;
 
 
         if (GlobalVariables.B_LowGravity) {

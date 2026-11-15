@@ -14,9 +14,9 @@ import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.EventBusSubscriber;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.common.client.event.RenderPlayerEvent;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 
 /**
  * 这个类专门负责处理玩家模型的渲染事件。

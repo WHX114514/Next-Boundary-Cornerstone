@@ -1,16 +1,8 @@
 package cn.rbq108.nextboundarycornerstone.body;
 
-import cn.rbq108.nextboundarycornerstone.main;
 import cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables;
 import net.minecraft.util.Mth;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-//import net.minecraftforge.fml.common.EventBusSubscriber;
-//import net.minecraftforge.common.client.event.ClientTickEvent;
 
-@Mod.EventBusSubscriber(modid = main.MODID, value = Dist.CLIENT)
 public class trunk {
 
     public static float smoothX, smoothY, smoothZ;
@@ -20,11 +12,18 @@ public class trunk {
     private static float cumulativeX, cumulativeY, cumulativeZ;
     private static boolean wasLowGravity = false;
 
-    @SubscribeEvent
-    //public static void onClientTick(TickEvent.ClientTickEvent.Post event) {
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
+    public static void constrainTo(org.joml.Quaternionf body) {
+        var look = FreeLookMath.relative(new org.joml.Quaternionf(), body);
+        cumulativeX = smoothX = prevSmoothX = look.pitch();
+        cumulativeY = smoothY = prevSmoothY = look.yaw();
+        cumulativeZ = smoothZ = prevSmoothZ = look.roll();
+        GlobalVariables.B_Dx = lastRawX = smoothX;
+        GlobalVariables.B_Dy = lastRawY = smoothY;
+        GlobalVariables.B_Dz = lastRawZ = smoothZ;
+    }
 
-        if (event.phase != TickEvent.Phase.END) return;
+    // 在确定视角或者机身操作意图之后、执行碰撞判定与推进之前显式调用喵
+    public static void update() {
 
         if (GlobalVariables.B_LowGravity) {
             // 初始化视觉坐标，只在开启瞬间执行一次，防止身子闪现

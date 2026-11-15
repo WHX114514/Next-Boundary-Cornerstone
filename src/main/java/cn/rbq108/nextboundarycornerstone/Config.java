@@ -1,23 +1,25 @@
 //这里好多代码和注释都是从桶滚模组搬过来的，我自己不会也不敢改（
 package cn.rbq108.nextboundarycornerstone;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-@SuppressWarnings("deprecation")
+
+// An example config class. This is not required, but it's a good idea to have one to keep your config organized.
+// Demonstrates how to use Neo's config APIs
+//@EventBusSubscriber(modid = main.MODID)
 public class Config
 {
+    // 私有化构造函数，防止被实例化
     private Config() {
         throw new UnsupportedOperationException("This class is disabled.");
-    }
-
-    // 全部将 ModConfigSpec 替换为 ForgeConfigSpec
+    }//显然这个私有化并没有解决报错的问题（
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
 
     private static final ForgeConfigSpec.BooleanValue LOG_DIRT_BLOCK = BUILDER
@@ -32,12 +34,12 @@ public class Config
             .comment("What you want the introduction message to be for the magic number")
             .define("magicNumberIntroduction", "The magic number is... ");
 
+    // a list of strings that are treated as resource locations for items
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_STRINGS = BUILDER
             .comment("A list of items to log on common setup.")
             .defineListAllowEmpty("items", List.of("minecraft:iron_ingot"), Config::validateItemName);
 
-    // 必须改成 public，否则 main.java 访问不到 Config.SPEC
-    public static final ForgeConfigSpec SPEC = BUILDER.build();
+    static final ForgeConfigSpec SPEC = BUILDER.build();
 
     public static boolean logDirtBlock;
     public static int magicNumber;
@@ -46,21 +48,19 @@ public class Config
 
     private static boolean validateItemName(final Object obj)
     {
-        // 1.20.1 使用 ForgeRegistries.ITEMS 和 new ResourceLocation()
-        return obj instanceof String itemName && ForgeRegistries.ITEMS.containsKey(new ResourceLocation(itemName));
+        return obj instanceof String itemName && BuiltInRegistries.ITEM.containsKey(ResourceLocation.parse(itemName));
     }
 
     //@SubscribeEvent
-    @SuppressWarnings("deprecation")
     static void onLoad(final ModConfigEvent event)
     {
         logDirtBlock = LOG_DIRT_BLOCK.get();
         magicNumber = MAGIC_NUMBER.get();
         magicNumberIntroduction = MAGIC_NUMBER_INTRODUCTION.get();
 
-        // 1.20.1 同样使用 ForgeRegistries.ITEMS.getValue() 和 new ResourceLocation()
+        // convert the list of strings into a set of items
         items = ITEM_STRINGS.get().stream()
-                .map(itemName -> ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemName)))
+                .map(itemName -> BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemName)))
                 .collect(Collectors.toSet());
     }
 }

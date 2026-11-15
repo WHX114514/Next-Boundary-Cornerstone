@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="AGPL-3.0-only"
+[[mods]]
+modId="cornerstone_forge_qa"
+version="1.0"
+displayName="Cornerstone Forge QA (test only)"
+[[dependencies.cornerstone_forge_qa]]
+modId="next_boundary_cornerstone"
+mandatory=true
+versionRange="[0,)"
+ordering="AFTER"
+side="CLIENT"

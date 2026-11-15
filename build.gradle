@@ -62,7 +62,7 @@ minecraft {
     // When true, this property will have all Eclipse/IntelliJ IDEA run configurations run the "prepareX" task for the given run configuration before launching the game.
     // In most cases, it is not necessary to enable.
     // enableEclipsePrepareRuns = true
-    // enableIdeaPrepareRuns = true
+    enableIdeaPrepareRuns = true
 
     // This property allows configuring Gradle's ProcessResources task(s) to run on IDE output locations before launching the game.
     // It is REQUIRED to be set to true for this template to function.
@@ -87,6 +87,9 @@ minecraft {
     runs {
         // applies to all the run configs below
         configureEach {
+            // Avoid the JVM reserving several gigabytes at startup on a machine
+            // already running IDEA and Gradle. Tests can set a smaller heap below.
+            jvmArgs '-Xms256m', '-Xmx1536m'
             workingDirectory project.file('run')
 
             // Recommended logging data for a userdev environment
@@ -203,6 +206,9 @@ dependencies {
         jarJar.ranged(it, "[0.3.6,)")
     })
     compileOnly fg.deobf("maven.modrinth:SzzJttH8:3NpuJ7TJ")
+    if (providers.gradleProperty('taczRuntime').getOrElse('false').toBoolean()) {
+        runtimeOnly fg.deobf("maven.modrinth:SzzJttH8:3NpuJ7TJ")
+    }
     // runtimeOnly fg.deobf("maven.modrinth:SzzJttH8:3NpuJ7TJ") // 联调测试需要解开注释，构建、提交时保持这行注释状态
 }
 
@@ -241,6 +247,96 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
+tasks.named('jarJar', Jar).configure {
+    archiveFileName = "${base.archivesName.get()}-forge${minecraft_version}-${version}-${gitCommitId}-all.jar"
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
+
+// Pure math regressions shared with the NeoForge implementation.
+sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
+sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
+['surfaceTest': 'motion.SurfaceAdhesionTests', 'hitboxTest': 'body.SegmentedHitboxTests',
+ 'obbTest': 'body.OOBB.OBBTests', 'physicsTest': 'body.collision.CompoundPhysicsTests',
+ 'freeLookTest': 'body.FreeLookTests', 'bodyEyesTest': 'body.BodyEyesTests'].each { taskName, entry ->
+    tasks.register(taskName, JavaExec) {
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'cn.rbq108.nextboundarycornerstone.' + entry
+    }
+    tasks.named('check') { dependsOn tasks.named(taskName) }
+}
+
+sourceSets.create('gameTest') {
+    java.srcDirs = ['src/test/server/java']
+    resources.srcDirs = ['src/test/server/resources']
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+}
+minecraft.runs.gameTestServer {
+    jvmArgs '-Xmx1G', '-XX:ActiveProcessorCount=4'
+    workingDirectory project.file('build/forge-game-test')
+    mods {
+        "${mod_id}" { source sourceSets.gameTest }
+    }
+}
+
+// IDEA Application runs otherwise inherit the project's JDK (which can still be
+// Java 21 after switching from the NeoForge branch). Keep generated Forge runs
+// on the same Java 17 toolchain as Gradle launches.
+tasks.matching { it.name == 'genIntellijRuns' }.configureEach {
+    doLast {
+        def runtimeHome = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(17)
+        }.get().metadata.installationPath.asFile.absolutePath
+        fileTree('.idea/runConfigurations').matching {
+            include 'runClient.xml', 'runServer.xml', 'runData.xml', 'runGameTestServer.xml', 'runForgeClientQa.xml'
+        }.each { configFile ->
+            def document = new XmlParser().parse(configFile)
+            def configuration = document.configuration[0]
+            configuration.option.findAll {
+                it.@name in ['ALTERNATIVE_JRE_PATH', 'ALTERNATIVE_JRE_PATH_ENABLED']
+            }.each { configuration.remove(it) }
+            configuration.appendNode('option', [name: 'ALTERNATIVE_JRE_PATH', value: runtimeHome])
+            configuration.appendNode('option', [name: 'ALTERNATIVE_JRE_PATH_ENABLED', value: 'true'])
+            configFile.setText(groovy.xml.XmlUtil.serialize(document), 'UTF-8')
+        }
+    }
+}
+
+sourceSets.create('clientQa') {
+    java.srcDirs = ['src/test/client/java']
+    resources.srcDirs = ['src/test/client/resources']
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+}
+tasks.register('prepareForgeClientQa') {
+    doLast {
+        def config = file('build/forge-client-qa/game/config/fml.toml')
+        config.parentFile.mkdirs()
+        config.setText('earlyWindowControl = false\n', 'UTF-8')
+    }
+}
+minecraft.runs {
+    forgeClientQa {
+        jvmArgs '-Xmx1G', '-XX:ActiveProcessorCount=4'
+        property 'cornerstone.qa.pauseOnly', providers.gradleProperty('pauseMenuQa').getOrElse('false')
+        parent minecraft.runs.client
+        workingDirectory project.file('build/forge-client-qa/game')
+        args '--width', '1440', '--height', '1000', '--mixin.config', 'cornerstone.forge.qa.mixins.json'
+        mods {
+            cornerstone_forge_qa { source sourceSets.clientQa }
+        }
+    }
+}
+tasks.matching { it.name == 'runForgeClientQa' }.configureEach {
+    dependsOn tasks.named('prepareForgeClientQa')
+    doFirst { file('build/forge-client-qa/client-report.txt').delete() }
+    doLast {
+        def report = file('build/forge-client-qa/client-report.txt')
+        if (!report.isFile() || !report.text.startsWith('PASS '))
+            throw new GradleException('Forge client QA failed; inspect build/forge-client-qa/game/logs/latest.log')
+    }
 }
