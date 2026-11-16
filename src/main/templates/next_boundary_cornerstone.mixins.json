@@ -26,6 +26,7 @@
     "SegmentedEyeCameraMixin",
     "SegmentedEyeOverlayMixin",
     "PlayerArmPoseAccessor",
+    "FirstPersonHandPoseMixin",
     "SegmentedRemotePoseMixin",
     "SegmentedHitboxDebugMixin",
     "ClientPositionCorrectionMixin",
