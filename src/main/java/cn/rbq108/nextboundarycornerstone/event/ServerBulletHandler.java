@@ -43,6 +43,7 @@ public class ServerBulletHandler {
         if (event.player.level().isClientSide()) return;
 
         Player player = event.player;
+        if (!cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)) return;
         PlayerRotationAttachment cap = cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.get(player);
         if (cap.isLowGravity()) {
             // System.out.println("[GravityDebug] 正在压制玩家Y速度 player=" + player.getName().getString());

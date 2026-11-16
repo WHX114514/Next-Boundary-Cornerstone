@@ -37,7 +37,7 @@ public class model {
 
     @SubscribeEvent
     public static void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
-        if (event.getEntity() instanceof LocalPlayer player && player.getClass().getName().equals("net.minecraft.client.player.LocalPlayer") && GlobalVariables.B_LowGravity) {
+        if (event.getEntity() instanceof LocalPlayer player && player.getClass().getName().equals("net.minecraft.client.player.LocalPlayer") && GlobalVariables.B_LowGravity && cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)) {
             PUSHED_PLAYERS.add(player); // 记录推入标记
 
             if (isRenderingInInventory()) {

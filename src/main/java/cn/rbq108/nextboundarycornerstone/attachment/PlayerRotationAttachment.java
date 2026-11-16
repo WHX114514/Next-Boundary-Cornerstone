@@ -18,6 +18,12 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 
 public class PlayerRotationAttachment {
+    /** Removed/dead players may remain camera targets while Forge invalidates their capabilities. */
+    public static boolean isAvailable(net.minecraft.world.entity.Entity entity) {
+        return entity instanceof Player && entity.isAlive() && !entity.isRemoved()
+                && entity.getCapability(cn.rbq108.nextboundarycornerstone.capability.PlayerRotationProvider.PLAYER_ROTATION).isPresent();
+    }
+
     public static PlayerRotationAttachment get(net.minecraft.world.entity.Entity entity) {
         return entity.getCapability(cn.rbq108.nextboundarycornerstone.capability.PlayerRotationProvider.PLAYER_ROTATION)
                 .orElseThrow(() -> new IllegalStateException("Missing player rotation capability: " + entity.getUUID()));

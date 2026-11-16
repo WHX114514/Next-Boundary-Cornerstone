@@ -339,6 +339,7 @@ minecraft.runs {
     forgeClientQa {
         jvmArgs '-Xmx1G', '-XX:ActiveProcessorCount=4', '-Dapple.awt.UIElement=true', '-Djava.awt.headless=true'
         property 'cornerstone.qa.pauseOnly', providers.gradleProperty('pauseMenuQa').getOrElse('false')
+        property 'cornerstone.qa.lifecycle', providers.gradleProperty('lifecycleQa').getOrElse('false')
         property 'cornerstone.qa.tacz', providers.gradleProperty('taczQa').getOrElse('false')
         property 'cornerstone.qa.taczCases', providers.gradleProperty('taczQaCases').getOrElse('32')
         property 'cornerstone.qa.hitboxMode', providers.gradleProperty('qaHitboxMode').getOrElse('AABB')

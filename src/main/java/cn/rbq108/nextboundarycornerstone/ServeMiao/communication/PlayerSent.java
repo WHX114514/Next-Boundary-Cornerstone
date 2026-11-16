@@ -31,8 +31,8 @@ public class PlayerSent {
     public static void sendRotation() {
         var mc = Minecraft.getInstance();
         Player player = mc.player;
-        if (player == null || mc.isPaused()) {
-            if (player == null) {
+        if (player == null || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player) || mc.isPaused()) {
+            if (player == null || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)) {
                 lastLowGravity = false;
                 cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.reset();
             }
@@ -67,7 +67,7 @@ public class PlayerSent {
 
     public static void updatePhysicalPose() {
         var player = Minecraft.getInstance().player;
-        if (player == null || !player.isNoGravity() || NetworkHandler.isSpectatorAndRestored(player)) return;
+        if (player == null || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player) || !player.isNoGravity() || NetworkHandler.isSpectatorAndRestored(player)) return;
         var desired = cn.rbq108.nextboundarycornerstone.body.ClientSegmentedHitboxes.sample(player);
         var result = SegmentedPhysics.acceptPose(player, desired);
         if (result.bodyBlocked()) trunk.constrainTo(result.pose().body());
@@ -76,7 +76,7 @@ public class PlayerSent {
 
     public static void acceptServerConstraint(cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxPose pose) {
         var player = Minecraft.getInstance().player;
-        if (player == null || !player.isNoGravity() || pose == null) return;
+        if (player == null || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player) || !player.isNoGravity() || pose == null) return;
         cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.get(player).setHitboxPose(pose);
         cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.get(player).setBodyBlocked(true);
         trunk.constrainTo(pose.body());

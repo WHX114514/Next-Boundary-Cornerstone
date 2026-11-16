@@ -115,3 +115,25 @@ bash gradlew runForgeClientQa -PtaczQa=true -PtaczRuntime=true -PtaczQaCases=4 -
 | 发布包 | Java class 61、32 个 refmap 条目、内置 MixinExtras；不含 QA、GameTest 或 TaCZ 实现类 |
 
 完整构建及无 TaCZ 验证日志为 `build/tacz-trajectory-final-build.log`，发布包审计为 `build/tacz-trajectory-release-audit.json`。本次未使用玩家完整整合包或独立服务器双客户端进行验收。
+
+## 失重死亡与进入末地崩溃修复：hotfix2
+
+玩家报告 `crash-2026-11-16_22.26.55-client.txt` 与 `crash-2026-11-16_22.33.04-server.txt` 的异常均为 `Missing player rotation capability`。死亡发生在旧客户端玩家的 `Camera.tick → getEyeHeight`；主世界进入末地发生在服务端玩家流体检测的 `getBoundingBox → SegmentedPhysics.box`。两者均因生命周期过渡时强制读取已经失效的旋转能力而崩溃，后者还暴露出恢复后能力仍缺失的问题。
+
+Forge 的 `reviveCaps()` 只恢复实体的外层访问权限，无法恢复本模组已失效的 `LazyOptional`。绑定玩家的 provider 现在在实体恢复访问后，为同一数据对象创建新的 optional，原先交给外部的 optional 保持失效；无玩家绑定的独立 provider 仍保持原有永久失效行为。克隆处理只临时恢复原本不可用的旧实体，并用 `try/finally` 恢复其有效性状态。
+
+统一增加存活、未移除及能力可用性检查，覆盖分段眼位/碰撞和相关客户端 tick、远端渲染、姿态发送及网络处理入口。过渡时使用原版眼位和碰撞路径，停止旧玩家采样/发送；正常玩家仍通过严格的 `get` 读取，不创建临时默认旋转对象掩盖缺失。临时骨架和缓存不跨克隆复制。NBT、网络协议和 TaCZ 弹道行为未修改。
+
+新增三项服务端 GameTest：失效玩家的眼位/碰撞安全回退；连续三轮能力失效与恢复（数据对象身份保持、旧引用保持失效）；死亡与非死亡克隆（旧能力有效/无效共四种情况）。修改前这三项均复现失败，修改后通过。
+
+后台真实客户端验证通过：穿基础背包进入失重后死亡并立即重生，随后对死亡旧玩家调用真实 `Camera.setup/tick`；通过真实末地传送门方块执行两轮主世界→末地→主世界，返回时通过游戏 API 关闭终末之诗。每次到达均检查客户端和服务端能力及服务端复合碰撞箱恢复，逐 tick 断言窗口不可见且未聚焦，不使用桌面键鼠。
+
+```sh
+bash gradlew runGameTestServer --no-parallel
+bash gradlew runForgeClientQa -PlifecycleQa=true --no-parallel
+bash gradlew build jarJar runGameTestServer -PtaczRuntime=true --no-parallel
+```
+
+原始回归日志为 `build/player-lifecycle-before.log`，服务端验证为 `build/player-lifecycle-validation.log`，完整客户端结果为 `build/player-lifecycle-client.log`，最终构建及 TaCZ 回归为 `build/player-lifecycle-final.log`。本次在项目 Forge 47.4.18 / Java 17 的隔离环境验证；玩家报告使用 Forge 47.4.23，尚未运行原完整整合包或独立服双客户端验收。客户端和服务端均应更新到 hotfix2。
+
+最终 `build / jarJar`、六组数学回归（13,490 项断言）及安装 TaCZ 时的全部 21 项 GameTest 通过，包含原有 52 个 TaCZ 弹道场景。不安装 TaCZ 的生命周期客户端，以及安装 TaCZ 1.2 + Player Animator 的生命周期客户端均通过真实死亡重生和四次末地传送。有效旧实体的克隆配对直接验证本处理器；完整事件总线另行检查状态复制，避免将第三方监听器对旧实体有效性的修改归于本处理器。

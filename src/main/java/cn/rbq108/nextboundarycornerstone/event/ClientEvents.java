@@ -83,7 +83,7 @@ public class ClientEvents {
     public static void onClientTickPre(ClientTickEvent event) {
         if (event.phase != net.minecraftforge.event.TickEvent.Phase.START) return;
         var mc = Minecraft.getInstance();
-        if (mc.player == null || !GlobalVariables.B_LowGravity) return;
+        if (mc.player == null || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(mc.player) || !GlobalVariables.B_LowGravity) return;
 
         //屏蔽原版按键动作
         while (mc.options.keyShift.consumeClick()) {}
@@ -155,7 +155,7 @@ public class ClientEvents {
         if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         var mc = Minecraft.getInstance();
         var player = mc.player;
-        if (player == null) {
+        if (player == null || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)) {
             cn.rbq108.nextboundarycornerstone.motion.SurfaceAdhesion.reset();
             cn.rbq108.nextboundarycornerstone.motion.Rush.reset();
             return;

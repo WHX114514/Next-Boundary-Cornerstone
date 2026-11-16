@@ -37,6 +37,7 @@ public class OtherPlayer {
     public static void onPlayerTick(PlayerTickEvent event) {
         if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         Player player = event.player;
+        if (!cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)) return;
         if (player.level().isClientSide() && player != Minecraft.getInstance().player) {
             UUID id = player.getUUID();
             if (NetworkHandler.REMOTE_GRAVITY_STATES.getOrDefault(id, false)) {
@@ -59,7 +60,7 @@ public class OtherPlayer {
     @SubscribeEvent
     public static void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
         Player player = event.getEntity();
-        if (player == Minecraft.getInstance().player) return;
+        if (player == Minecraft.getInstance().player || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)) return;
 
         UUID id = player.getUUID();
         if (NetworkHandler.REMOTE_GRAVITY_STATES.getOrDefault(id, false)) {

@@ -28,7 +28,8 @@ public final class ForgeClientQa {
     private final TitleScreen parent = new TitleScreen();
 
     public ForgeClientQa() {
-        if (Boolean.getBoolean("cornerstone.qa.tacz")) new TACZClientQa();
+        if (Boolean.getBoolean("cornerstone.qa.lifecycle")) new PlayerLifecycleClientQa();
+        else if (Boolean.getBoolean("cornerstone.qa.tacz")) new TACZClientQa();
         else MinecraftForge.EVENT_BUS.addListener(this::tick);
     }
     private static void check(boolean value, String message) { if (!value) throw new AssertionError(message); }

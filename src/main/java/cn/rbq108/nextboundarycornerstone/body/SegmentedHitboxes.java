@@ -16,6 +16,7 @@ public final class SegmentedHitboxes {
 
     public static boolean enabled(Entity entity) {
         return entity instanceof Player player && player.isNoGravity()
+                && cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)
                 && !NetworkHandler.isSpectatorAndRestored(player);
     }
 

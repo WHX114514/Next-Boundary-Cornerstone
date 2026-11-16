@@ -17,7 +17,7 @@ public class hitbox {
     // 尺寸定义
     @SubscribeEvent
     public static void onPlayerSize(EntityEvent.Size event) {
-        if (event.getEntity() instanceof Player player && player.isNoGravity()) {
+        if (event.getEntity() instanceof Player player && player.isNoGravity() && cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)) {
             float size = GlobalVariables.B_HitboxSize;
             // 除了眼睛跟随头部移动，其他的骨骼结构全部保留
             event.setNewSize(EntityDimensions.scalable(size, size));
@@ -31,6 +31,7 @@ public class hitbox {
     public static void onPlayerTick(PlayerTickEvent event) {
         if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         Player player = event.player;
+        if (!cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)) return;
 
         if (player.isNoGravity()) {
             net.minecraft.world.item.ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);

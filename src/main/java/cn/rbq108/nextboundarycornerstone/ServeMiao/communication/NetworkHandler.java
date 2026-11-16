@@ -78,7 +78,7 @@ public class NetworkHandler {
             var local = context.player();
             if (local == null) return;
             var target = local.level().getPlayerByUUID(payload.playerId());
-            if (target != null && target != local) {
+            if (target != null && target != local && cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(target)) {
                 var attachment = cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.get(target);
                 attachment.setQuaternion(payload.quat());
                 attachment.setLowGravity(payload.lowGravity());
@@ -94,7 +94,7 @@ public class NetworkHandler {
     public static void handleDataOnServer(final SyncRotationPayload payload, final PacketContext context) {
         context.enqueueWork(() -> {
             net.minecraft.world.entity.player.Player player = context.player();
-            if (player != null && player.getUUID().equals(payload.playerId())) {
+            if (player != null && cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player) && player.getUUID().equals(payload.playerId())) {
                 boolean lowGravity = player.isNoGravity() && !isSpectatorAndRestored(player);
                 if (lowGravity != payload.lowGravity()) return;
                 cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment attachment = cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.get(player);
