@@ -122,3 +122,7 @@ runs/
 # Eclipse launch configurations
 *.launch
 .eclipse/
+
+# Original Photon templates and local generator outputs
+tools/photon/gen/*.class
+tools/photon/gen/orig/
