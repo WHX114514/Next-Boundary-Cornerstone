@@ -15,4 +15,10 @@ public abstract class BackgroundWindowMixin {
         GLFW.glfwWindowHint(GLFW.GLFW_FOCUS_ON_SHOW,GLFW.GLFW_FALSE);
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE,GLFW.GLFW_FALSE);
     }
+
+    @Redirect(method={"<init>", "*"}, at=@At(value="INVOKE",target="Lorg/lwjgl/glfw/GLFW;glfwShowWindow(J)V",remap=false), require=0)
+    private void neverShow(long window) {}
+
+    @Redirect(method={"<init>", "*"}, at=@At(value="INVOKE",target="Lorg/lwjgl/glfw/GLFW;glfwFocusWindow(J)V",remap=false), require=0)
+    private void neverFocus(long window) {}
 }

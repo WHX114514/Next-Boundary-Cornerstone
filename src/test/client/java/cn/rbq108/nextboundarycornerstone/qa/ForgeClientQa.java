@@ -27,7 +27,10 @@ public final class ForgeClientQa {
     private java.util.concurrent.CompletableFuture<?> reload;
     private final TitleScreen parent = new TitleScreen();
 
-    public ForgeClientQa() { MinecraftForge.EVENT_BUS.addListener(this::tick); }
+    public ForgeClientQa() {
+        if (Boolean.getBoolean("cornerstone.qa.tacz")) new TACZClientQa();
+        else MinecraftForge.EVENT_BUS.addListener(this::tick);
+    }
     private static void check(boolean value, String message) { if (!value) throw new AssertionError(message); }
     private static void click(ModSettingsScreen screen, String label) {
         var button = screen.children().stream().filter(child -> child instanceof Button b && b.getMessage().getString().equals(label))

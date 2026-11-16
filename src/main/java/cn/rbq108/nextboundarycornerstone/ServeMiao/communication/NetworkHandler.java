@@ -12,7 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class NetworkHandler {
-    private static final String PROTOCOL = "compound-physics-forge-8";
+    private static final String PROTOCOL = "compound-physics-forge-9";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(main.MODID, "main_channel"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
 
