@@ -12,12 +12,24 @@ public record SegmentedHitboxPose(Quaternionf body, float swim, boolean slim, Li
     }
     public record Joint(float x, float y, float z, Quaternionf rotation) {
         public Joint {
-            if (!Float.isFinite(x) || !Float.isFinite(y) || !Float.isFinite(z)
-                    || Math.abs(x) > 8 || y < -2 || y > 16 || Math.abs(z) > 8) {
+            // Gun animations translate joints as well as rotating them (TaCZ's
+            // default rifle reload alone reaches |z| = 8.375 model pixels).
+            if (!validPivot(x, y, z)) {
                 throw new IllegalArgumentException("Invalid hitbox joint pivot");
             }
             rotation = normalized(rotation);
         }
+    }
+
+    static boolean validPivot(float x, float y, float z) {
+        return Float.isFinite(x) && Float.isFinite(y) && Float.isFinite(z)
+                && Math.abs(x) <= 16 && y >= -16 && y <= 32 && Math.abs(z) <= 16;
+    }
+
+    static Joint sampledJoint(float x, float y, float z, Quaternionf rotation, Joint fallback) {
+        if (!validPivot(x, y, z) || !Float.isFinite(rotation.lengthSquared())
+                || rotation.lengthSquared() < 1.0e-8f) return fallback;
+        return new Joint(x, y, z, rotation);
     }
 
     public SegmentedHitboxPose {

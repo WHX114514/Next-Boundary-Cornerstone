@@ -8,18 +8,22 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.resources.PlayerSkin;
+
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import java.util.List;
+import java.util.ArrayList;
 
 /** Sample vanilla animation once per tick, even in first person or when nobody renders the player. */
 public final class ClientSegmentedHitboxes {
     private static final PlayerModel<AbstractClientPlayer> NORMAL = create(false);
     private static final PlayerModel<AbstractClientPlayer> SLIM = create(true);
     private static boolean sampling;
+    private static final org.slf4j.Logger LOG = com.mojang.logging.LogUtils.getLogger();
+    private static long lastWarning = System.nanoTime() - 5_000_000_000L;
+    private static final String[] JOINT_NAMES = {"head", "torso", "left_arm", "right_arm", "left_leg", "right_leg"};
 
     private ClientSegmentedHitboxes() {}
 
@@ -30,6 +34,14 @@ public final class ClientSegmentedHitboxes {
     public static SegmentedHitboxPose sample(AbstractClientPlayer player) {
         boolean slim = player.getSkin().model() == PlayerSkin.Model.SLIM;
         PlayerModel<AbstractClientPlayer> model = slim ? SLIM : NORMAL;
+        // setupAnim does not reset every pivot/axis. Reused sampling models must
+        // not carry a previous animation or skin's transforms into the next tick.
+        for (ModelPart part : parts(model)) {
+            part.getAllParts().forEach(p -> {
+                p.resetPose();
+                p.xScale = p.yScale = p.zScale = 1;
+            });
+        }
         HumanoidModel.ArmPose main = PlayerArmPoseAccessor.nextboundary$armPose(player, InteractionHand.MAIN_HAND);
         HumanoidModel.ArmPose off = PlayerArmPoseAccessor.nextboundary$armPose(player, InteractionHand.OFF_HAND);
         if (main.isTwoHanded()) off = player.getOffhandItem().isEmpty() ? HumanoidModel.ArmPose.EMPTY : HumanoidModel.ArmPose.ITEM;
@@ -48,9 +60,31 @@ public final class ClientSegmentedHitboxes {
 
         Quaternionf body = new Quaternionf().rotateY((float) Math.toRadians(-trunk.smoothY))
                 .rotateX((float) Math.toRadians(trunk.smoothX)).rotateZ((float) Math.toRadians(trunk.smoothZ));
-        return new SegmentedHitboxPose(body, player.getSwimAmount(1), slim, List.of(
-                joint(model.head, headRotation(body, 1, player.isSwimming())), joint(model.body),
-                joint(model.leftArm), joint(model.rightArm), joint(model.leftLeg), joint(model.rightLeg)), player.hasPose(net.minecraft.world.entity.Pose.SWIMMING));
+        var previous = player.getData(cn.rbq108.nextboundarycornerstone.main.PLAYER_ROTATION).getHitboxPose();
+        if (previous != null && previous.slim() != slim) previous = null;
+        var parts = parts(model);
+        var joints = new ArrayList<SegmentedHitboxPose.Joint>(6);
+        for (int i = 0; i < parts.length; i++) {
+            var part = parts[i];
+            var initial = part.getInitialPose();
+            var fallback = previous == null ? new SegmentedHitboxPose.Joint(initial.x, initial.y, initial.z,
+                    new Quaternionf().rotationZYX(initial.zRot, initial.yRot, initial.xRot)) : previous.joints().get(i);
+            var rotation = i == 0 ? headRotation(body, 1, player.isSwimming())
+                    : new Quaternionf().rotationZYX(part.zRot, part.yRot, part.xRot);
+            var joint = SegmentedHitboxPose.sampledJoint(part.x, part.y, part.z, rotation, fallback);
+            long now = System.nanoTime();
+            if (joint == fallback && now - lastWarning >= 5_000_000_000L) {
+                lastWarning = now;
+                LOG.warn("Invalid sampled joint {}; pivot=({}, {}, {}), rotation={}, item={}, mods={}",
+                        JOINT_NAMES[i], part.x, part.y, part.z, rotation, player.getMainHandItem(),
+                        net.neoforged.fml.ModList.get().getMods().stream()
+                                .filter(m -> m.getModId().equals("tacz") || m.getModId().equals("playeranimator"))
+                                .map(m -> m.getModId() + "@" + m.getVersion()).toList());
+            }
+            joints.add(joint);
+        }
+        return new SegmentedHitboxPose(body, player.getSwimAmount(1), slim, joints,
+                player.hasPose(net.minecraft.world.entity.Pose.SWIMMING));
     }
 
     public static boolean isSampling() { return sampling; }
@@ -73,19 +107,15 @@ public final class ClientSegmentedHitboxes {
         return head;
     }
 
-    private static SegmentedHitboxPose.Joint joint(ModelPart part) {
-        return joint(part, new Quaternionf().rotationZYX(part.zRot, part.yRot, part.xRot));
-    }
-
-    private static SegmentedHitboxPose.Joint joint(ModelPart part, Quaternionf rotation) {
-        return new SegmentedHitboxPose.Joint(part.x, part.y, part.z, rotation);
+    private static ModelPart[] parts(HumanoidModel<?> model) {
+        return new ModelPart[] {model.head, model.body, model.leftArm, model.rightArm, model.leftLeg, model.rightLeg};
     }
 
     public static void apply(HumanoidModel<?> model, SegmentedHitboxPose pose) {
-        ModelPart[] parts = {model.head, model.body, model.leftArm, model.rightArm, model.leftLeg, model.rightLeg};
+        ModelPart[] parts = parts(model);
         for (int i = 0; i < parts.length; i++) {
             var joint = pose.joints().get(i);
-            Vector3f euler = joint.rotation().getEulerAnglesZYX(new Vector3f());
+            Vector3f euler = ModelPoseMath.eulerZYX(joint.rotation());
             parts[i].setPos(joint.x(), joint.y(), joint.z());
             parts[i].setRotation(euler.x, euler.y, euler.z);
         }
