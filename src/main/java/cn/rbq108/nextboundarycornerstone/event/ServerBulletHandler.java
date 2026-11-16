@@ -9,8 +9,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.TickEvent.PlayerTickEvent;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 @EventBusSubscriber(modid = main.MODID)
 public class ServerBulletHandler {
@@ -28,43 +26,11 @@ public class ServerBulletHandler {
             }
             if (!(owner instanceof Player player)) return;
 
-            PlayerRotationAttachment cap = cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.get(player);
             if (player.isNoGravity()) {
-
-                final Quaternionf bulletQuat = new Quaternionf(cap.getQuaternion());
-
-                float vanillaPitch = player.getXRot();
-                float vanillaYaw = player.getYRot();
-                Quaternionf wrongRotation = new Quaternionf().rotationYXZ(
-                        (float) Math.toRadians(-vanillaYaw),
-                        (float) Math.toRadians(vanillaPitch),
-                        0f
-                );
-                wrongRotation.invert();
-
-                // 修正方向
-                Vec3 currentMovement = entity.getDeltaMovement();
+                // Launch already uses FlightAim. Preserve TaCZ's legacy no-inertia behavior only.
                 Vec3 playerVel = player.getDeltaMovement();
-                double pVy = player.onGround() ? 0.0D : playerVel.y;
-
-                Vector3f velocityVec = new Vector3f(
-                        (float) (currentMovement.x - playerVel.x),
-                        (float) (currentMovement.y - pVy),
-                        (float) (currentMovement.z - playerVel.z)
-                );
-                wrongRotation.transform(velocityVec);
-                bulletQuat.transform(velocityVec);
-                entity.setDeltaMovement(velocityVec.x, velocityVec.y, velocityVec.z);
-
-                // The constructor now anchors position/startPos at the actual head eye.
-                // Only rotate velocity here; rotating the eye displacement again moves the origin.
-
-                // 修正视觉朝向
-                double d0 = Math.sqrt(velocityVec.x * velocityVec.x + velocityVec.z * velocityVec.z);
-                entity.setYRot((float) (Math.atan2(velocityVec.x, velocityVec.z) * (180F / Math.PI)));
-                entity.setXRot((float) (Math.atan2(velocityVec.y, d0) * (180F / Math.PI)));
-                entity.yRotO = entity.getYRot();
-                entity.xRotO = entity.getXRot();
+                entity.setDeltaMovement(entity.getDeltaMovement().subtract(
+                        playerVel.x, player.onGround() ? 0 : playerVel.y, playerVel.z));
             }
         } catch (Exception e) {
             e.printStackTrace();

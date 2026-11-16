@@ -22,6 +22,8 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.ModList;
 import org.lwjgl.glfw.GLFW;
 
@@ -40,6 +42,11 @@ public final class TACZClientQa {
     private boolean seenReload, seenAmmo, pastOldLimit;
     private CompletableFuture<?> serverSetup;
     private float minArmZ;
+    private int shotScenario;
+    private volatile java.util.UUID shooterId;
+    private volatile CompletableFuture<String> shotCheck;
+    private volatile boolean shotAiming;
+    private net.minecraft.world.phys.Vec3 shotLaunchVelocity;
 
     public TACZClientQa() {
         require(ModList.get().isLoaded("tacz"), "taczQa requires -PtaczRuntime=true");
@@ -47,6 +54,36 @@ public final class TACZClientQa {
         TACZQaState.active = true;
         MinecraftForge.EVENT_BUS.addListener(this::tick);
         MinecraftForge.EVENT_BUS.addListener(this::reload);
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, EntityJoinLevelEvent.class, event -> bullet(event, true));
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, EntityJoinLevelEvent.class, event -> bullet(event, false));
+    }
+
+    private void bullet(EntityJoinLevelEvent event, boolean beforeHandlers) {
+        var check = shotCheck;
+        if (check == null || check.isDone() || event.getLevel().isClientSide()
+                || !(event.getEntity() instanceof com.tacz.guns.entity.EntityKineticBullet bullet)
+                || !(bullet.getOwner() instanceof net.minecraft.world.entity.player.Player player)
+                || !player.getUUID().equals(shooterId)) return;
+        try {
+            if (beforeHandlers) {
+                var motion = player.getDeltaMovement();
+                shotLaunchVelocity = bullet.getDeltaMovement().subtract(motion.x, player.onGround() ? 0 : motion.y, motion.z);
+                return;
+            }
+            require(player.isNoGravity(), "trajectory shot remains in flight");
+            var operator = IGunOperator.fromLivingEntity(player);
+            require(operator.getSynIsAiming() == shotAiming, "actual server ADS/hip state synchronized");
+            var view = PlayerRotationAttachment.get(player).getQuaternion();
+            var expected = new net.minecraft.world.phys.Vec3(view.transform(new org.joml.Vector3f(0, 0, 1)));
+            var actual = bullet.getDeltaMovement();
+            double alignment = actual.normalize().dot(expected.normalize());
+            require(alignment > .98, "actual server bullet follows view: dot=" + alignment + " velocity=" + actual);
+            require(actual.distanceTo(shotLaunchVelocity) < 1e-6, "actual server bullet retains spread velocity without inherited motion");
+            check.complete("dot=" + alignment + " speed=" + actual.length() + " aimingProgress=" + operator.getSynAimingProgress()
+                    + " shooterMotion=" + player.getDeltaMovement());
+        } catch (Throwable failure) {
+            check.completeExceptionally(failure);
+        }
     }
 
     private void reload(GunReloadEvent event) {
@@ -77,6 +114,13 @@ public final class TACZClientQa {
             require(GLFW.glfwGetWindowAttrib(window, GLFW.GLFW_VISIBLE) == GLFW.GLFW_FALSE, "QA window became visible");
             require(GLFW.glfwGetWindowAttrib(window, GLFW.GLFW_FOCUSED) == GLFW.GLFW_FALSE, "QA window acquired focus");
             require(TACZQaState.failure == null, String.valueOf(TACZQaState.failure));
+            if ((phase == 5 || phase == 6) && mc.player != null) {
+                // Hold a deliberately different vanilla rotation while each real shot settles.
+                GlobalVariables.currentQuat.rotationYXZ(.7f, .4f, shotScenario < 2 ? 1.5707964f : 3.1415927f);
+                GlobalVariables.prevQuat.set(GlobalVariables.currentQuat);
+                mc.player.setXRot(47);
+                mc.player.setYRot(-123);
+            }
             if (mc.screen != null && mc.screen.getClass().getSimpleName().equals("AccessibilityOnboardingScreen"))
                 mc.setScreen(new TitleScreen());
             if (phase == 0 && mc.screen instanceof TitleScreen && mc.getOverlay() == null) {
@@ -133,15 +177,19 @@ public final class TACZClientQa {
                 }
                 require(ticks < 180, "reload failed to finish: " + label() + " seenReload=" + seenReload + " seenAmmo=" + seenAmmo);
             } else if (phase == 4) {
-                // Finish by returning to flight, shooting and aiming through the real client API.
+                // Real ADS/hip shots at two rolls; observe server bullet velocity after production handlers.
                 scenario = 0; setupScenario(); phase = 5; ticks = 0;
+                shooterId = mc.player.getUUID();
             } else if (phase == 5 && ++ticks > 40 && serverSetup.isDone()) {
-                IClientPlayerGunOperator.fromLocalPlayer(mc.player).aim(true);
+                serverSetup.join();
+                shotAiming = (shotScenario & 1) == 0;
+                com.tacz.guns.client.input.AimKey.AIM_KEY.setDown(shotAiming);
+                IClientPlayerGunOperator.fromLocalPlayer(mc.player).aim(shotAiming);
                 phase = 6; ticks = 0;
             } else if (phase == 6 && ++ticks > 20) {
+                shotCheck = new CompletableFuture<>();
                 var result = IClientPlayerGunOperator.fromLocalPlayer(mc.player).shoot();
-                require(result == ShootResult.SUCCESS, "real aimed shot: " + result);
-                IClientPlayerGunOperator.fromLocalPlayer(mc.player).aim(false);
+                require(result == ShootResult.SUCCESS, "real trajectory shot: " + result);
                 var id = mc.player.getUUID();
                 serverSetup = mc.getSingleplayerServer().submit(() -> {
                     var player = mc.getSingleplayerServer().getPlayerList().getPlayer(id);
@@ -151,8 +199,16 @@ public final class TACZClientQa {
                     require(PlayerRotationAttachment.get(player).collision(player).pieces().size() == 10, "arms remain excluded from movement");
                 });
                 phase = 7; ticks = 0;
-            } else if (phase == 7 && ++ticks > 20 && serverSetup.isDone()) {
+            } else if (phase == 7) {
+                require(++ticks < 160, "actual server bullet was not observed");
+                if (!serverSetup.isDone() || !shotCheck.isDone() || ticks <= 20) return;
                 serverSetup.join();
+                String shot = "trajectory-" + shotScenario + "-" + ((shotScenario & 1) == 0 ? "ads" : "hip") + " PASS " + shotCheck.join();
+                observations.add(shot);
+                LOG.info("TACZ_TRAJECTORY_QA_PASS {}", shot);
+                com.tacz.guns.client.input.AimKey.AIM_KEY.setDown(false);
+                IClientPlayerGunOperator.fromLocalPlayer(mc.player).aim(false);
+                if (++shotScenario < 4) { phase = 5; ticks = 0; return; }
                 boolean animator = ModList.get().isLoaded("playeranimator");
                 if (animator) require(pastOldLimit, "real reload exercised old |z| > 8 crash boundary, minZ=" + minArmZ);
                 require(thirdChecks > 0, "third-person synchronized skeleton checked");
@@ -160,12 +216,13 @@ public final class TACZClientQa {
                         + ", PlayerAnimator=" + animator + ", mode=" + HitboxConfig.mode() + ", reloadCases=" + scenarioCount + ", reloadEvents=" + reloadEvents
                         + ", leftHands=" + TACZQaState.leftHands + ", rightHands=" + TACZQaState.rightHands
                         + ", bodyChecks=" + thirdChecks + ", oldBoundaryExercised=" + pastOldLimit + ", minArmZ=" + minArmZ
-                        + ", hidden=true, focused=false, aimedShot=SUCCESS, serverSkeleton=16/10\n";
+                        + ", hidden=true, focused=false, trajectoryShots=" + shotScenario + ", serverSkeleton=16/10\n";
                 Files.writeString(Path.of("../client-report.txt"), report);
                 Files.writeString(Path.of("../tacz-scenarios.txt"), String.join("\n", observations));
                 LOG.info("TACZ_CLIENT_QA_PASS {}", report); phase = 99; mc.stop();
             }
         } catch (Throwable failure) {
+            com.tacz.guns.client.input.AimKey.AIM_KEY.setDown(false);
             LOG.error("TACZ_CLIENT_QA_FAILED phase={} scenario={}", phase, scenario, failure);
             try { Files.writeString(Path.of("../client-report.txt"), "FAIL " + failure + "\n"); } catch (Exception ignored) {}
             phase = 99; mc.stop();

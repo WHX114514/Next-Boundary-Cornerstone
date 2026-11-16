@@ -10,7 +10,7 @@
 
 - 玩家姿态通过 Forge capability 保存和恢复；保留旧的 PlayerRotationCapability 类型供附属模组使用，新代码可通过 PlayerRotationAttachment.get(player) 查询。兼容 0.0.4 的四元数 NBT，临时骨架与几何缓存不写入 NBT。
 - 使用 Forge SimpleChannel 传输姿态、服务端约束与旁观者配置。协议已升级，客户端与服务端需同时更新。
-- TaCZ 继续使用 Forge 1.20.1 的 1.1.7-hotfix2，可通过 -PtaczRuntime=true 加入开发运行环境；不打入基石 JAR。
+- TaCZ 默认对接官方 Forge 1.20.1 的 1.2.0-hotfix，可通过 -PtaczRuntime=true 加入开发运行环境；不打入基石 JAR。`-PtaczRuntimeVersion=3NpuJ7TJ` 可切回 1.1.7-hotfix2。
 - 设置窗口采用原版组件。附属页面返回 List<AbstractWidget>，详见 CLIENT_PREFERENCES.md。
 - 高爆视觉使用 Forge 原生粒子实现，保留 master 的贴图；不依赖 Photon 2 或 LDLib2。
 - 1.20.1 没有原版 SCALE 属性；运行时使用标准玩家尺寸。几何数学测试仍覆盖不同 scale。
@@ -56,7 +56,7 @@ bash gradlew runForgeClientQa -PtaczQa=true -PtaczRuntime=true -PtaczRuntimeVers
 bash gradlew runForgeClientQa -PtaczQa=true -PtaczRuntime=true -PtaczRuntimeVersion=4yAbMXbz -PplayerAnimatorRuntime=true -PqaHitboxMode=OBB --no-parallel
 ```
 
-`4yAbMXbz` 为官方 Forge TaCZ 1.2.0-hotfix；不传 `taczRuntimeVersion` 保留 1.1.7-hotfix2。`playerAnimatorRuntime` 只将官方 Forge Player Animator 1.0.2-rc1 加入开发运行环境。两者均不内置到基石发布包。
+`4yAbMXbz` 为官方 Forge TaCZ 1.2.0-hotfix；该轮换弹修复验证时默认仍为 1.1.7-hotfix2，下面的弹道修复将默认值切换至 1.2。`playerAnimatorRuntime` 只将官方 Forge Player Animator 1.0.2-rc1 加入开发运行环境。两者均不内置到基石发布包。
 
 场景通过真实客户端枪械接口执行 AK47/Glock 的战术与空仓换弹，覆盖第一/第三人称、普通/细手臂、重力切换，逐 tick 检查骨架并读取实际手臂渲染结果；另检查真实瞄准开火、服务端收到 16 个受击盒和 10 个运动盒。报告为 `build/forge-client-qa/client-report.txt`，场景记录为 `tacz-scenarios.txt`，游戏帧缓冲截图位于 `tacz-frames/`。
 
@@ -82,3 +82,36 @@ QA 禁用 Forge early window，GLFW 窗口不可见、禁止获取焦点，并�
 分组报告与截图保存在 `build/forge-client-qa/results/{aabb,obb,legacy,without-animator,standalone}/`；完整构建日志为 `build/final-verification.log`，发布包审计为 `build/release-audit.json`。`-PtaczQaCases=4` 可运行基础兼容场景，默认仍为完整 32 组。
 
 以上为隔离环境结果。尚未使用玩家原整合包中的全部扩展模组回归，也未执行独立服务器双客户端实机验收；姿态包编解码、服务端复核已由 GameTest 和集成服务器场景覆盖。
+
+## 失重 TaCZ 弹道重复旋转修复（2026-11-16）
+
+0.0.4 的 TaCZ 修正原本在子弹入场时撤销原版 yaw/pitch，再应用失重四元数。`39ea558` 新增的通用投射物修正通过 `9037984` 移植到 Forge 后，普通 TaCZ 子弹已在发射时按失重视角计算方向，旧入场处理又转换一次，造成偏弹。对照官方 1.1.7-hotfix2、1.2.0 和 1.2.0-hotfix，散布分发及子弹方向计算方法没有变化。
+
+普通散布继续使用通用 `ProjectileLaunchMixin`，无需修改。TaCZ 的 `Vector2d` 自定义散布重载绕过原版发射方法，在现有可选 Mixin 中增加入口适配：由 TaCZ 计算相对角度下的局部散布速度，再调用共用的 `FlightAim.rotate`。旧入场处理仅减去继承的玩家速度，保留既有去惯性行为；落地时不减 Y 速度。眼位、伤害衰减起点、曳光、后坐力及玩家 tick 逻辑保持原有行为。
+
+新增服务端回归通过真实枪械散布分发和自定义发射重载生成子弹，在入场后验证最终速度。52 个场景覆盖四种姿态、落地/离地、静止/移动、零散布/随机散布/自定义散布，以及退出失重后的普通重力对照。固定随机种子比较同一姿态的静止与移动弹道，保留原版随机散布产生的弹速波动。修改前该回归已失败：预期速度 `(0, 0, 3)`，入场后实际约为 `(1.195, -2.516, -1.114)`。
+
+后台客户端 QA 增加侧翻/倒立时的四次真实 ADS/腰射，在服务端入场事件前后记录速度，检查方向、同步瞄准状态和去惯性结果。旧 QA 的单次 `aim(true)` 会被 TaCZ 按键轮询取消；现在通过游戏内 KeyMapping 状态保持开镜，并确认服务端瞄准进度为 1、腰射为 0。继续逐 tick 断言窗口不可见且未聚焦，不操作桌面键鼠。
+
+```sh
+# 默认 TaCZ 1.2.0-hotfix；旧版验证追加 -PtaczRuntimeVersion=3NpuJ7TJ
+bash gradlew runGameTestServer -PtaczRuntime=true --no-parallel
+bash gradlew runForgeClientQa -PtaczQa=true -PtaczRuntime=true -PtaczQaCases=4 -PqaHitboxMode=AABB --no-parallel
+```
+
+服务端日志见 `build/tacz-trajectory-before.log`（修复前失败）、`build/tacz-trajectory-after.log`（1.2 通过）、`build/tacz-trajectory-legacy.log`（1.1.7 服务端通过；其后的首次客户端尝试暴露了上述 QA 开镜保持问题）。最终客户端日志为 `build/tacz-trajectory-client-1.2.log` 和 `build/tacz-trajectory-client-legacy.log`；分组报告保存在 `build/trajectory-results/`。
+
+本次最终验证（Java 17，macOS arm64）：
+
+| 检查 | 结果 |
+| --- | --- |
+| 修复前新增弹道回归 | 普通零散布入场后方向断言失败，确认可复现 |
+| TaCZ 1.2.0-hotfix / OBB 独立服务端 | 18 项 GameTest 通过，包括 52 个弹道场景、9 个眼位场景及原有 70 个通用投射物场景 |
+| TaCZ 1.1.7-hotfix2 / OBB 独立服务端 | 同样 18 项 GameTest 通过，52 个弹道场景通过 |
+| TaCZ 1.2 + Player Animator / AABB 隐藏客户端 | 4 组换弹、侧翻/倒立的 2 次 ADS 和 2 次腰射通过，服务端 ADS 进度为 1、腰射为 0 |
+| TaCZ 1.1.7，不装 Player Animator / OBB 隐藏客户端 | 同样 4 组换弹及 4 次实射通过，服务端瞄准状态和实际弹道通过 |
+| 不安装 TaCZ | 18 项 GameTest 通过（TaCZ 两项按未安装跳过），隐藏客户端完整基础验收通过 |
+| 默认依赖下 build / jarJar | 通过；六组数学回归共 13,490 项断言通过 |
+| 发布包 | Java class 61、32 个 refmap 条目、内置 MixinExtras；不含 QA、GameTest 或 TaCZ 实现类 |
+
+完整构建及无 TaCZ 验证日志为 `build/tacz-trajectory-final-build.log`，发布包审计为 `build/tacz-trajectory-release-audit.json`。本次未使用玩家完整整合包或独立服务器双客户端进行验收。

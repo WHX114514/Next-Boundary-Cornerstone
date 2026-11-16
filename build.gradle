@@ -176,7 +176,7 @@ repositories {
     }
 }
 
-def taczDevVersion = providers.gradleProperty('taczRuntimeVersion').getOrElse('3NpuJ7TJ')
+def taczDevVersion = providers.gradleProperty('taczRuntimeVersion').getOrElse('4yAbMXbz')
 
 dependencies {
     // Specify the version of Minecraft to use.
@@ -214,7 +214,6 @@ dependencies {
     if (providers.gradleProperty('playerAnimatorRuntime').getOrElse('false').toBoolean()) {
         runtimeOnly fg.deobf('maven.modrinth:gedNE4y2:xe2EVE6q')
     }
-    // runtimeOnly fg.deobf("maven.modrinth:SzzJttH8:3NpuJ7TJ") // 联调测试需要解开注释，构建、提交时保持这行注释状态
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
