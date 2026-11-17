@@ -142,6 +142,7 @@ public final class HitboxVisualQa {
                     else if (ticks == 280) { checkPosture(mc, false); capture(mc, "10-standing-restored"); }
                     else if (ticks == 300) finish(mc, "posture-result.json");
                 } else if (SIDE_ONLY || ROLLED_ONLY || TACZ_ONLY) {
+                    if (TACZ_ONLY && ticks == 45) TACZClientQa.prepare(mc);
                     if (TACZ_ONLY && ticks == 80) TACZClientQa.verify(mc);
                     if (SIDE_ONLY && ticks == 60) {
                         // Use the mod's free-camera separation: body stays horizontal, camera views its side.

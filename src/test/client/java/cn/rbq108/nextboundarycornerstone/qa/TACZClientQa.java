@@ -7,6 +7,17 @@ import org.joml.Vector3f;
 
 /** Run only in the opt-in tacz visual scenario with the official mod on the runtime classpath. */
 final class TACZClientQa {
+    static void prepare(Minecraft mc) {
+        var id = mc.player.getUUID();
+        mc.getSingleplayerServer().execute(() -> {
+            var player = mc.getSingleplayerServer().getPlayerList().getPlayer(id);
+            var stack = com.tacz.guns.api.item.builder.GunItemBuilder.create()
+                    .setId(net.minecraft.resources.ResourceLocation.parse("tacz:ak47")).setAmmoCount(30).setAmmoInBarrel(true).build();
+            player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
+            com.tacz.guns.api.entity.IGunOperator.fromLivingEntity(player).draw(player::getMainHandItem);
+        });
+    }
+
     static void verify(Minecraft mc) {
         mc.options.setCameraType(CameraType.FIRST_PERSON);
         if (!mc.player.isNoGravity()) throw new AssertionError("TaCZ QA needs a rotating low-gravity camera");
@@ -21,6 +32,8 @@ final class TACZClientQa {
         }
         com.mojang.logging.LogUtils.getLogger().info("TACZ_FIRST_PERSON_OFFSET_QA_PASS");
         verifyRecoil(mc);
+        try { TACZCameraQa.verify(); }
+        catch (Exception e) { throw new RuntimeException("TaCZ camera QA", e); }
         mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
     }
 

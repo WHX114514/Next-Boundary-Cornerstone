@@ -42,6 +42,7 @@
     "MixinGui",
     "ParticleAccessor",
     "PhotonNetworkingMixin",
+    "TACZCameraAnimationMixin",
     "MixinShellRender"
   ],
   "injectors": {

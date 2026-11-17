@@ -102,6 +102,13 @@ tasks.register('bodyEyesTest', JavaExec) {
 }
 tasks.named('check') { dependsOn tasks.named('bodyEyesTest') }
 
+tasks.register('cameraRotationTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'cn.rbq108.nextboundarycornerstone.camera.CameraRotationTests'
+}
+tasks.named('check') { dependsOn tasks.named('cameraRotationTest') }
+
 tasks.register('physicsProfile', JavaExec) {
     dependsOn tasks.named('testClasses')
     classpath = sourceSets.test.runtimeClasspath

@@ -48,6 +48,7 @@ public class MixinPlugin implements IMixinConfigPlugin {
             return taczLoaded && isClassAvailable("com.tacz.guns.util.EntityUtil");
         }
         if (mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.TACZBulletOriginMixin") ||
+            mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.TACZCameraAnimationMixin") ||
             mixinClassName.equals("cn.rbq108.nextboundarycornerstone.Mixin.MixinShellRender")) {
             return taczLoaded;
         }
