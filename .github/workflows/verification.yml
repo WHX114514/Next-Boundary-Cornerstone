@@ -1,4 +1,4 @@
-name: 核心逻辑与物理回归验证 (1.21.1 NeoForge)
+name: 验证 (1.21.1)
 
 on:
   push:
@@ -21,44 +21,44 @@ concurrency:
 
 jobs:
   verify:
-    name: 物理模型与服务端集成验证
+    name: 运行验证
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
-      - name: 检出代码仓库
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 配置 JDK 21 运行环境
+      - name: 替换 Gradle 官方源
+        run: |
+          sed -i -E 's|https\\://mirrors.aliyun.com/github/releases/gradle/gradle-distributions/v[^/]+|https\\://services.gradle.org/distributions|' gradle/wrapper/gradle-wrapper.properties
+
+      - name: 配置 JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: 初始化 Gradle 缓存与环境
+      - name: 配置 Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: 赋予 gradlew 执行权限
+      - name: 赋予 gradlew 权限
         run: chmod +x gradlew
 
-      # 运行纯数学/几何/物理回归测试（表面吸附、16段受击盒、OBB、复合物理碰撞、自由观察、视点与镜头旋转）
-      - name: 运行数值几何与物理模型回归
+      - name: 运行单元测试 (check)
         run: ./gradlew check --no-daemon
 
-      # 运行纯净服务端 GameTestServer（验证贴壁运行时、真实半砖/楼梯接缝碰撞与受击盒结构）
-      - name: 运行独立服务端运行时验证 (GameTestServer)
+      - name: 运行独立 GameTest
         run: ./gradlew runGameTestServer --no-parallel --no-daemon
 
-      # 运行包含 TaCZ 运行时的服务端 GameTestServer（覆盖 52 个失重弹道场景与镜头动效兼容性）
-      - name: 运行 TaCZ 弹道与镜头兼容验证 (GameTestServer)
+      - name: 运行 TaCZ GameTest
         run: ./gradlew runGameTestServer -PtaczRuntime=true --no-parallel --no-daemon
 
-      # 验证失败时自动归档服务端日志供排查
-      - name: 验证失败时归档服务端日志
+      - name: 上传失败日志
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: gametest-server-logs
+          name: gametest-logs
           path: build/surface-game-test/logs/
           if-no-files-found: ignore
           retention-days: 7

@@ -1,4 +1,4 @@
-name: 开发版构建与归档 (1.21.1 NeoForge)
+name: 构建 Dev (1.21.1)
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       custom_version:
-        description: '自定义版本号（留空则自动生成形如 0.0.6-dev.b12.7794d06 的版本）'
+        description: '自定义版本号（留空自动生成）'
         required: false
         default: ''
         type: string
@@ -21,27 +21,31 @@ concurrency:
 
 jobs:
   build:
-    name: 构建并上传开发版产物
+    name: 构建并上传
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
-      - name: 检出代码仓库
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 配置 JDK 21 运行环境
+      - name: 替换 Gradle 官方源
+        run: |
+          sed -i -E 's|https\\://mirrors.aliyun.com/github/releases/gradle/gradle-distributions/v[^/]+|https\\://services.gradle.org/distributions|' gradle/wrapper/gradle-wrapper.properties
+
+      - name: 配置 JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: 初始化 Gradle 缓存与环境
+      - name: 配置 Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: 赋予 gradlew 执行权限
+      - name: 赋予 gradlew 权限
         run: chmod +x gradlew
 
-      - name: 解析开发版构建版本号
+      - name: 计算版本号
         id: resolve-version
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
@@ -55,14 +59,12 @@ jobs:
           
           echo "version=${RESOLVED_VERSION}" >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "本次构建目标版本号: ${RESOLVED_VERSION}"
+          echo "Target version: ${RESOLVED_VERSION}"
 
-      # 执行构建，传入解析后的 dev 版本号（同时注入产物文件名与 neoforge.mods.toml）
-      - name: 执行模组构建与产物打包
+      - name: 构建 jar
         run: ./gradlew build -Pmod_version=${{ steps.resolve-version.outputs.version }} --no-daemon
 
-      # 上传构建生成的 JAR 到 GitHub Actions 构建结果归档
-      - name: 上传开发版构建结果
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: next-boundary-cornerstone-neoforge1.21.1-${{ steps.resolve-version.outputs.version }}
