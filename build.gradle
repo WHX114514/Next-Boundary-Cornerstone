@@ -264,7 +264,8 @@ sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
 sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
 ['surfaceTest': 'motion.SurfaceAdhesionTests', 'hitboxTest': 'body.SegmentedHitboxTests',
  'obbTest': 'body.OOBB.OBBTests', 'physicsTest': 'body.collision.CompoundPhysicsTests',
- 'freeLookTest': 'body.FreeLookTests', 'bodyEyesTest': 'body.BodyEyesTests'].each { taskName, entry ->
+ 'freeLookTest': 'body.FreeLookTests', 'bodyEyesTest': 'body.BodyEyesTests',
+ 'cameraRotationTest': 'camera.CameraRotationTests'].each { taskName, entry ->
     tasks.register(taskName, JavaExec) {
         dependsOn tasks.named('testClasses')
         classpath = sourceSets.test.runtimeClasspath

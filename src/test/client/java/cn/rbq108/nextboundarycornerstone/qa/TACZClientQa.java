@@ -52,6 +52,8 @@ public final class TACZClientQa {
         require(ModList.get().isLoaded("tacz"), "taczQa requires -PtaczRuntime=true");
         require(scenarioCount >= 2 && scenarioCount <= 32, "taczQaCases must be between 2 and 32");
         TACZQaState.active = true;
+        if (Boolean.getBoolean("cornerstone.qa.camera"))
+            TACZCameraQa.start(() -> phase, () -> ticks, () -> shotScenario);
         MinecraftForge.EVENT_BUS.addListener(this::tick);
         MinecraftForge.EVENT_BUS.addListener(this::reload);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, EntityJoinLevelEvent.class, event -> bullet(event, true));

@@ -137,3 +137,23 @@ bash gradlew build jarJar runGameTestServer -PtaczRuntime=true --no-parallel
 原始回归日志为 `build/player-lifecycle-before.log`，服务端验证为 `build/player-lifecycle-validation.log`，完整客户端结果为 `build/player-lifecycle-client.log`，最终构建及 TaCZ 回归为 `build/player-lifecycle-final.log`。本次在项目 Forge 47.4.18 / Java 17 的隔离环境验证；玩家报告使用 Forge 47.4.23，尚未运行原完整整合包或独立服双客户端验收。客户端和服务端均应更新到 hotfix2。
 
 最终 `build / jarJar`、六组数学回归（13,490 项断言）及安装 TaCZ 时的全部 21 项 GameTest 通过，包含原有 52 个 TaCZ 弹道场景。不安装 TaCZ 的生命周期客户端，以及安装 TaCZ 1.2 + Player Animator 的生命周期客户端均通过真实死亡重生和四次末地传送。有效旧实体的克隆配对直接验证本处理器；完整事件总线另行检查状态复制，避免将第三方监听器对旧实体有效性的修改归于本处理器。
+
+## 失重镜头与 TaCZ 原生动效适配（2026-11-17）
+
+相机保留垂直防翻转思路，但不再在 `horiz=0.001` 附近切回原版 yaw。原版 yaw 已用于手部输入累计，与失重真实视角可能不同，切换会造成姿态跳变。渲染现在从归一化四元数的前向和上向基向量恢复等价角度，俯仰使用 `atan2`，以双精度中间计算避免极点精度损失；不会把这些渲染角度写回玩家输入。
+
+基础视角在最高事件优先级确定。可选 TaCZ Mixin 调用一次原始世界镜头动画，采样相同俯仰、零翻滚下的相对旋转，再完整搬到当前镜头局部坐标系。保留原生动画的幅度、曲线与开火滚转，不修改 FOV、手部动画、后坐力数值或弹道；普通重力和非本地镜头直接走原始调用。
+
+`CameraRotationTests` 检查随机姿态、非单位四元数、符号等价及正负垂直附近的 42,006 项往返断言。可选后台 QA 通过原始 renderer 方法生成独立参考，绕过适配 Mixin；检查 100 组镜头事件、2,000 步连续扫描，以及真实换弹和 ADS/腰射。可选探针不进入发布包：
+
+```sh
+JAVA_TOOL_OPTIONS='-Dcornerstone.qa.camera=true' bash gradlew runForgeClientQa -PtaczQa=true -PtaczRuntime=true -PtaczQaCases=4 -PplayerAnimatorRuntime=true -PqaHitboxMode=AABB --no-parallel
+```
+
+修复前输入每步约 `0.00038°`，跨垂直判断阈值时基础画面跳约 `0.119°`，固定 TaCZ 俯仰动效下跳约 `0.854°`。修复后连续扫描最大输出步长约 `0.00044°`，与输入步长一致；100 组样本的最大局部动效误差约 `0.000022°`，普通重力对原始 TaCZ 方法的偏差为 0。真实 AK 换弹局部动效误差由约 `1.015°` 降至约 `0.000013°`。
+
+原始 QA 保存在 `build/camera-qa/`；修复后分组结果在 `build/camera-fix-qa/`。测试使用隔离隐藏窗口，不操作桌面键鼠；玩家完整整合包中的其他随机抖动仍需现场确认。
+
+最终验证：TaCZ 1.2 + Player Animator / AABB、TaCZ 1.1.7 / OBB 的镜头对照、连续扫描、真实换弹与四次 ADS/腰射均通过；1.1.7 独立服务端 21 项 GameTest（含 52 个弹道场景）通过。不安装 TaCZ 的独立服务端 21 项及隐藏客户端基础验收通过。完整 `build` / `jarJar` 和七组数学测试共 55,496 项断言通过。
+
+测试包版本为 `0.0.6-test-26.11.17-hotfix1`。日志为 `build/tacz-camera-fix-client.log`、`build/tacz-camera-fix-legacy.log` 和 `build/tacz-camera-fix-final-build.log`；结果汇总与发布包审计为 `build/camera-fix-qa/summary.json`。

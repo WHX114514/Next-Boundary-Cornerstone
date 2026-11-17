@@ -43,6 +43,7 @@
     "MixinGui",
     "ParticleAccessor",
     "FixTACZ",
+    "TACZCameraAnimationMixin",
     "MixinShellRender"
   ],
   "injectors": {

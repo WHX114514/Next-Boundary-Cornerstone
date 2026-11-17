@@ -42,35 +42,17 @@ public class ClientEvents {
         cn.rbq108.nextboundarycornerstone.motion.Rush.reset();
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
     public static void onComputeCameraAngles(ViewportEvent.ComputeCameraAngles event) {
         float partialTicks = (float) event.getPartialTick();
 
         if (GlobalVariables.B_LowGravity) {
             Quaternionf smoothedQuat = new Quaternionf(GlobalVariables.prevQuat)
-                    .slerp(GlobalVariables.currentQuat, partialTicks);
-
-            // 提取前向向量以避免欧拉角万向节死锁导致的相机翻转（防止光影动态模糊等效果抽搐）
-            Vector3f fwd = new Vector3f(0, 0, 1).rotate(smoothedQuat);
-            double horiz = Math.sqrt(fwd.x * fwd.x + fwd.z * fwd.z);
-            float yaw = event.getYaw();
-            if (horiz > 0.001) {
-                yaw = (float) Math.toDegrees(-Math.atan2(fwd.x, fwd.z));
-            }
-            float pitch = (float) Math.toDegrees(Math.asin(Math.max(-1.0, Math.min(1.0, -fwd.y))));
-
-            // 还原 roll (去除 yaw 和 pitch 的影响)
-            Quaternionf qLook = new Quaternionf().rotationYXZ(
-                    (float) Math.toRadians(-yaw),
-                    (float) Math.toRadians(pitch),
-                    0.0f
-            );
-            Quaternionf qRoll = qLook.conjugate().mul(smoothedQuat);
-            float roll = (float) Math.toDegrees(qRoll.getEulerAnglesYXZ(new Vector3f()).z);
-
-            event.setYaw(yaw);
-            event.setPitch(pitch);
-            event.setRoll(roll);
+                    .slerp(GlobalVariables.currentQuat, partialTicks).normalize();
+            var angles = cn.rbq108.nextboundarycornerstone.camera.CameraRotation.angles(smoothedQuat);
+            event.setYaw(angles.yaw());
+            event.setPitch(angles.pitch());
+            event.setRoll(angles.roll());
         } else {
             if (Math.abs(GlobalVariables.B_Dz) > 0.001) {
                 float smoothedRoll = (float) (GlobalVariables.prev_B_Dz + (GlobalVariables.B_Dz - GlobalVariables.prev_B_Dz) * partialTicks);
