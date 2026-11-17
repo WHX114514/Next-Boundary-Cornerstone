@@ -13,50 +13,11 @@ import org.spongepowered.asm.mixin.Unique;
 @Mixin(Entity.class)
 public abstract class EntityMixin implements RollEntity {
 
-    @Inject(method = "setDeltaMovement(DDD)V", at = @At("HEAD"))
-    private void doABarrelRoll$interceptExternalVelocity3D(double x, double y, double z, CallbackInfo ci) {
-        if ((Object)this instanceof Player player && player.isNoGravity()) {
-            if (isLocalPlayerClass_testMod(player)) {
-                StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-                if (stack.length > 3) {
-                    String caller = stack[3].getClassName();
-                    if (!caller.startsWith("net.minecraft.") &&
-                        !caller.startsWith("net.minecraftforge.") &&
-                        !caller.startsWith("cn.rbq108.nextboundarycornerstone.")) {
-                        // 捕获到第三方模组（例如航空学）强制施加的速度！将其吸收到惯性系统中！
-                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vx1 = (float) x * 0.91f;
-                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vy1 = (float) y * 0.80f;
-                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vz1 = (float) z * 0.91f;
-                    }
-                }
-            }
-        }
+    // DDD, push and lerpMotion all delegate to this setter. Capture the final value once.
+    @Inject(method = "setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V", at = @At("TAIL"))
+    private void cornerstone$externalVelocity(net.minecraft.world.phys.Vec3 velocity, CallbackInfo ci) {
+        cn.rbq108.nextboundarycornerstone.motion.FlightVelocity.capture((Entity)(Object)this, velocity);
     }
-
-    @Inject(method = "setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V", at = @At("HEAD"))
-    private void doABarrelRoll$interceptExternalVelocityVec(net.minecraft.world.phys.Vec3 vec, CallbackInfo ci) {
-        if ((Object)this instanceof Player player && player.isNoGravity()) {
-            if (isLocalPlayerClass_testMod(player)) {
-                StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-                if (stack.length > 3) {
-                    String caller = stack[3].getClassName();
-                    if (!caller.startsWith("net.minecraft.") &&
-                        !caller.startsWith("net.minecraftforge.") &&
-                        !caller.startsWith("cn.rbq108.nextboundarycornerstone.")) {
-                        // 捕获到第三方模组（例如航空学）强制施加的速度！将其吸收到惯性系统中！
-                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vx1 = (float) vec.x * 0.91f;
-                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vy1 = (float) vec.y * 0.80f;
-                        cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.B_Vz1 = (float) vec.z * 0.91f;
-                    }
-                }
-            }
-        }
-    }
-
-    @Unique
-    private static Class<?> localPlayerClass_testMod = null;
-    @Unique
-    private static boolean localPlayerClassChecked_testMod = false;
 
     @Unique
     private static boolean isLocalPlayerClass_testMod(Player player) {
@@ -156,20 +117,8 @@ public abstract class EntityMixin implements RollEntity {
                 cn.rbq108.nextboundarycornerstone.VariableLibrary.GlobalVariables.currentQuat.rotateY((float) Math.toRadians(-dy));
             }
 
-            // === Yaw & Pitch ===
-            // 绝对不能用四元数反推(asin/atan2)来设置 player 的 XRot 和 YRot！
-            // 因为在倒立(roll=180°)或跨越±90°俯仰角时，四元数在世界坐标系下的分量会反转/停滞，
-            // 导致原版手部摆动(ItemInHandRenderer)接收到反向或为零的视角增量。
-            //
-            // 正确做法：直接将屏幕坐标系的鼠标原始增量 (dx, dy) 累加到 XRot 和 YRot 上。
-            // 这样手部摆动增量就永远与玩家当前屏幕的鼠标操作方向保持一致，
-            // 无论角色处于何种 roll 角度(0°, 90°, 180°)，手部上下左右摆动都完全正常。
-            player.xRotO += dx;
-            player.yRotO += dy;
-            player.xRotO = net.minecraft.util.Mth.clamp(player.xRotO, -90.0F, 90.0F);
-
-            player.setYRot(player.getYRot() + dy);
-            player.setXRot(player.getXRot() + dx);
+            cn.rbq108.nextboundarycornerstone.camera.HandSway.turn((net.minecraft.client.player.LocalPlayer)player, dx, dy);
+            cn.rbq108.nextboundarycornerstone.motion.FlightAim.publishAngles(player);
         }
     }
 

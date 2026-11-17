@@ -1,26 +1,19 @@
 package cn.rbq108.nextboundarycornerstone.Mixin;
 
 import cn.rbq108.nextboundarycornerstone.ServeMiao.communication.PlayerSent;
-import net.minecraft.client.multiplayer.MultiPlayerGameMode;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.network.Connection;
+import net.minecraft.network.PacketSendListener;
+import net.minecraft.network.protocol.Packet;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Queue the current view before the use/release packet, including turns since the last tick. */
-@Mixin(MultiPlayerGameMode.class)
+/** Queue the current view before vanilla and custom-mod gameplay packets alike. */
+@Mixin(Connection.class)
 public abstract class FlightItemUseMixin {
-    @Inject(method = "useItem", at = @At("HEAD"))
-    private void cornerstone$syncBeforeUse(Player player, InteractionHand hand, CallbackInfoReturnable<InteractionResult> cir) {
-        PlayerSent.sendRotation();
-    }
-
-    @Inject(method = "releaseUsingItem", at = @At("HEAD"))
-    private void cornerstone$syncBeforeRelease(Player player, CallbackInfo ci) {
-        PlayerSent.sendRotation();
+    @Inject(method = "send(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;)V", at = @At("HEAD"))
+    private void cornerstone$syncBeforeAction(Packet<?> packet, PacketSendListener listener, CallbackInfo ci) {
+        PlayerSent.beforePacket((Connection)(Object)this);
     }
 }

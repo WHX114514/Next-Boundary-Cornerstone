@@ -157,3 +157,7 @@ JAVA_TOOL_OPTIONS='-Dcornerstone.qa.camera=true' bash gradlew runForgeClientQa -
 最终验证：TaCZ 1.2 + Player Animator / AABB、TaCZ 1.1.7 / OBB 的镜头对照、连续扫描、真实换弹与四次 ADS/腰射均通过；1.1.7 独立服务端 21 项 GameTest（含 52 个弹道场景）通过。不安装 TaCZ 的独立服务端 21 项及隐藏客户端基础验收通过。完整 `build` / `jarJar` 和七组数学测试共 55,496 项断言通过。
 
 测试包版本为 `0.0.6-test-26.11.17-hotfix1`。日志为 `build/tacz-camera-fix-client.log`、`build/tacz-camera-fix-legacy.log` 和 `build/tacz-camera-fix-final-build.log`；结果汇总与发布包审计为 `build/camera-fix-qa/summary.json`。
+
+## 失重通用发射与牵引兼容（2026-11-17，hotfix2）
+
+公开世界朝向统一复用 `FlightAim`，手部输入累计独立保存；公共速度写入接入原有推进缓存，取消伪飞行和对公共输入的清空。未新增五个样本模组的生产适配器。测试版本、实现边界、独立运行对照、专服防飞行验证与复现命令见 [通用兼容验收说明](GENERIC_FLIGHT_COMPATIBILITY.md)。

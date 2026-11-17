@@ -119,6 +119,7 @@ public class NetworkHandler {
                     attachment.setBodyBlocked(false);
                 }
                 attachment.setQuaternion(payload.quat());
+                if (lowGravity) cn.rbq108.nextboundarycornerstone.motion.FlightAim.publishAngles(player);
                 cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler.sendToAllPlayers(
                         new SyncRotationPayload(player.getUUID(), payload.quat(), lowGravity, accepted, constrained));
             }

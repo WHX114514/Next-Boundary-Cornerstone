@@ -40,6 +40,7 @@ public class ClientEvents {
         cn.rbq108.nextboundarycornerstone.ServeMiao.communication.NetworkHandler.SERVER_RESTORE_VANILLA_SPECTATOR = false;
         cn.rbq108.nextboundarycornerstone.motion.SurfaceAdhesion.reset();
         cn.rbq108.nextboundarycornerstone.motion.Rush.reset();
+        cn.rbq108.nextboundarycornerstone.camera.HandSway.reset(null);
     }
 
     @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
@@ -66,18 +67,6 @@ public class ClientEvents {
         if (event.phase != net.minecraftforge.event.TickEvent.Phase.START) return;
         var mc = Minecraft.getInstance();
         if (mc.player == null || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(mc.player) || !GlobalVariables.B_LowGravity) return;
-
-        //屏蔽原版按键动作
-        while (mc.options.keyShift.consumeClick()) {}
-        while (mc.options.keySprint.consumeClick()) {}
-        while (mc.options.keyJump.consumeClick()) {}
-
-        mc.options.keyShift.setDown(false);
-        mc.options.keySprint.setDown(false);
-        mc.options.keyJump.setDown(false);
-
-        mc.player.input.shiftKeyDown = false;
-        mc.player.input.jumping = false;
 
         // 自由视角与锁定逻辑按键状态更新 (在 Pre-tick 运行以完全消除竞态条件)
         boolean freeCameraKeyDown = cn.rbq108.nextboundarycornerstone.core.Keybinds.B_FREE_CAMERA.isDown();
@@ -190,6 +179,8 @@ public class ClientEvents {
             GlobalVariables.B_Vx1 = (float) currentMotion.x * 0.91f;
             GlobalVariables.B_Vy1 = (float) currentMotion.y * 0.80f;
             GlobalVariables.B_Vz1 = (float) currentMotion.z * 0.91f;
+
+            cn.rbq108.nextboundarycornerstone.camera.HandSway.reset(player);
 
             // 初始化四元数起点
             GlobalVariables.currentQuat.rotationYXZ(
@@ -348,6 +339,8 @@ public class ClientEvents {
                 GlobalVariables.headRelQuat.set(targetRelQuat);
             }
 
+            cn.rbq108.nextboundarycornerstone.motion.FlightAim.publishAngles(player);
+
             // One ordered movement update per tick, after body orientation is finalized.
             cn.rbq108.nextboundarycornerstone.body.trunk.update();
             cn.rbq108.nextboundarycornerstone.ServeMiao.communication.PlayerSent.updatePhysicalPose();
@@ -361,29 +354,11 @@ public class ClientEvents {
             GlobalVariables.currentFovModifier += (targetFovMod - GlobalVariables.currentFovModifier) * 0.4f;
             if (Math.abs(GlobalVariables.currentFovModifier) < 0.01f) GlobalVariables.currentFovModifier = 0;
 
-            //阻断与物理注入
-            player.xxa = 0.0f; player.yya = 0.0f; player.zza = 0.0f;
-            mc.options.keyShift.setDown(false);
-            mc.options.keySprint.setDown(false);
-            mc.options.keyJump.setDown(false);
-
-            player.setShiftKeyDown(false);
             player.setSprinting(false);
 
-            // 接入兼容逻辑：如果玩家正在抓取航空学铁把手，临时撤销飞行状态以允许物理位移
-            if (grabbingHandle) {
-                player.getAbilities().flying = false;
-            } else {
-                cn.rbq108.nextboundarycornerstone.ServeMiao.AllowFly.updateFlightPermission(player, true);
-                player.getAbilities().flying = true;
-                player.getAbilities().setFlyingSpeed(0.0f);
-            }
-
-            player.setDeltaMovement(
-                    GlobalVariables.B_Vx1 / 0.91f,
-                    GlobalVariables.B_Vy1 / 0.80f,
-                    GlobalVariables.B_Vz1 / 0.91f
-            );
+            // Preserve public input and genuine flight abilities for other mods.
+            cn.rbq108.nextboundarycornerstone.ServeMiao.AllowFly.updateFlightPermission(player, false);
+            cn.rbq108.nextboundarycornerstone.motion.FlightVelocity.apply(player);
 
             //这个应该得加在player.setDeltaMovement后面
             if (GlobalVariables.B_LowGravity) {
@@ -395,7 +370,7 @@ public class ClientEvents {
             cn.rbq108.nextboundarycornerstone.motion.SurfaceAdhesion.reset();
             cn.rbq108.nextboundarycornerstone.motion.Rush.reset();
             cn.rbq108.nextboundarycornerstone.core.KeyPollingHandler.pollInput();
-            player.getAbilities().setFlyingSpeed(0.05f);
+
             //player.getAbilities().mayfly = false;
             //player.getAbilities().flying = false;
             GameType gameMode = null;

@@ -28,7 +28,9 @@ public final class ForgeClientQa {
     private final TitleScreen parent = new TitleScreen();
 
     public ForgeClientQa() {
-        if (Boolean.getBoolean("cornerstone.qa.lifecycle")) new PlayerLifecycleClientQa();
+        if (Boolean.getBoolean("cornerstone.qa.dedicated")) new DedicatedFlightClientQa();
+        else if (Boolean.getBoolean("cornerstone.qa.compat")) new FlightCompatibilityClientQa();
+        else if (Boolean.getBoolean("cornerstone.qa.lifecycle")) new PlayerLifecycleClientQa();
         else if (Boolean.getBoolean("cornerstone.qa.tacz")) new TACZClientQa();
         else MinecraftForge.EVENT_BUS.addListener(this::tick);
     }

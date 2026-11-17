@@ -18,7 +18,9 @@
     "SegmentedInteractionMixin",
     "SegmentedServerInteractionMixin",
     "TACZSegmentedHitboxMixin",
-    "TACZBulletOriginMixin"
+    "TACZBulletOriginMixin",
+    "FlightViewMixin",
+    "FlightFloatingMixin"
   ],
   "client": [
     "PauseScreenPreferencesMixin",
@@ -44,7 +46,11 @@
     "ParticleAccessor",
     "FixTACZ",
     "TACZCameraAnimationMixin",
-    "MixinShellRender"
+    "MixinShellRender",
+    "FlightMotionMixin",
+    "FlightPlayerMotionMixin",
+    "FlightInputMixin",
+    "FlightFovMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -18,6 +18,25 @@ import net.minecraftforge.network.PacketDistributor;
 public class PlayerSent {
 
     private static boolean lastLowGravity = false;
+    private static boolean sendingRotation;
+    private static java.util.UUID lastSender;
+    private static final org.joml.Quaternionf lastSentView = new org.joml.Quaternionf();
+
+    /** Flush before any gameplay packet, including optional mods' custom key packets. */
+    public static void beforePacket(net.minecraft.network.Connection connection) {
+        var mc = Minecraft.getInstance();
+        var player = mc.player;
+        if (sendingRotation || !mc.isSameThread() || player == null || mc.getConnection() == null
+                || connection != mc.getConnection().getConnection() || !cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxes.enabled(player)) return;
+        if (player.getUUID().equals(lastSender) && lastSentView.equals(GlobalVariables.currentQuat)) return;
+        sendingRotation = true;
+        try {
+            cn.rbq108.nextboundarycornerstone.motion.FlightAim.publishAngles(player);
+            connection.send(new net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.Rot(
+                    player.getYRot(), player.getXRot(), player.onGround()));
+            sendRotation();
+        } finally { sendingRotation = false; }
+    }
 
     /*
      *  姿态变了就全体广播
@@ -34,6 +53,7 @@ public class PlayerSent {
         if (player == null || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player) || mc.isPaused()) {
             if (player == null || !cn.rbq108.nextboundarycornerstone.attachment.PlayerRotationAttachment.isAvailable(player)) {
                 lastLowGravity = false;
+                lastSender = null;
                 cn.rbq108.nextboundarycornerstone.camera.CollisionFreeLook.reset();
             }
             return;
@@ -54,12 +74,18 @@ public class PlayerSent {
                 }
                 //将四元数、UUID 和开关状态打包扔给服务器
                 // 这里的 SyncRotationPayload 就是包
-                NetworkHandler.CHANNEL.sendToServer(new SyncRotationPayload(
+                boolean wasSending = sendingRotation;
+                sendingRotation = true;
+                try {
+                    NetworkHandler.CHANNEL.sendToServer(new SyncRotationPayload(
                         player.getUUID(),
                         new org.joml.Quaternionf(GlobalVariables.currentQuat),
                         currentLowGravity,
                         pose
-                ));
+                    ));
+                    lastSender = player.getUUID();
+                    lastSentView.set(GlobalVariables.currentQuat);
+                } finally { sendingRotation = wasSending; }
             }
             lastLowGravity = currentLowGravity;
         }
