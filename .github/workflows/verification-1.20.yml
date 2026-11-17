@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: verify-${{ github.ref }}
+  group: verify-1.20-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -46,13 +46,13 @@ jobs:
         run: chmod +x gradlew
 
       - name: 运行单元测试 (check)
-        run: ./gradlew check --no-daemon
+        run: ./gradlew check -x downloadAssets --no-daemon
 
       - name: 运行独立 GameTest
-        run: ./gradlew runGameTestServer --no-parallel --no-daemon
+        run: ./gradlew runGameTestServer -x downloadAssets --no-parallel --no-daemon
 
       - name: 运行 TaCZ GameTest
-        run: ./gradlew runGameTestServer -PtaczRuntime=true --no-parallel --no-daemon
+        run: ./gradlew runGameTestServer -PtaczRuntime=true -x downloadAssets --no-parallel --no-daemon
 
       - name: 上传失败日志
         if: failure()
