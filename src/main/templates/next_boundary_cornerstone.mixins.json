@@ -45,6 +45,7 @@
     "ParticleAccessor",
     "PhotonNetworkingMixin",
     "TACZCameraAnimationMixin",
+    "TACZGunSwayMixin",
     "MixinShellRender",
     "FlightMotionMixin",
     "FlightPlayerMotionMixin",

@@ -44,3 +44,27 @@ JAVA_TOOL_OPTIONS='-Dapple.awt.UIElement=true -Djava.awt.headless=true' bash gra
 测试包版本为 `0.0.6-test-26.11.17-hotfix1`。结果为 `build/camera-neoforge-fix-client/camera-qa-matrix.json`、`camera-qa-sweep.json`；日志为 `build/camera-neoforge-fix-build.log`、`build/camera-neoforge-fix-client.log`。本轮没有重复 NeoForge 客户端实际开火/换弹全过程采样或玩家完整整合包验收。
 
 无 TaCZ 的 17 项 GameTest（TaCZ 两项按未安装跳过）和隐藏客户端基础场景通过，日志为 `build/camera-neoforge-fix-standalone.log`。发布包审计为 `build/camera-neoforge-fix-audit.json`：Java class 65，新镜头 Mixin 仅在客户端注册，不含 QA、测试类或 TaCZ 本体。
+
+## 第一人称枪模抖动回归（hotfix3）
+
+master 的通用发射兼容同样把玩家公开角度改为世界朝向，而 TaCZ 的基类与 wrapper 第一人称渲染仍将其与屏幕轴 `xBob/yBob` 相减。移植 Forge 的最小修复：新增可选 `TACZGunSwayMixin`，两条渲染路径复用现有 `HandSway`；同时让原版手持渲染保留 `LocalPlayer` 的取值时序（pitch 取当前帧，yaw 仅在乘坐时插值）。公开世界角度、相机、弹道及通用牵引逻辑不变。
+
+后台回归也移植到 NeoForge 事件和 1.21.1 建世界 API。它直接调用两条真实 TaCZ 渲染路径，在摆动旋转后读取矩阵；探针不替换角度读数。覆盖 yaw 跨界、俯仰极点、混合翻滚、静止和普通重力，共 450 个样本，与 Forge 修复前正常版本 `e669ea8` 的记录比较。已核对 1.21.1 的原生 view getter 与 1.20.1 具有相同取值时序。
+
+```sh
+bash gradlew runFlightCompatibilityClient -PtaczRuntime=true -PgunModelQa=true -PqaDirectory=build/gun-model-121-fix-qa/after
+# 实际换弹、四次 ADS/腰射及子弹入场后的方向/速度
+bash gradlew runFlightCompatibilityClient -PtaczRuntime=true -PqaDirectory=build/gun-model-121-fix-qa/live
+bash gradlew build runGameTestServer -PtaczRuntime=true
+# 不安装 TaCZ
+bash gradlew runFlightCompatibilityClient runGameTestServer -PqaDirectory=build/gun-model-121-fix-qa/standalone
+```
+
+本次实际验证（Java 21，NeoForge 21.1.238，TaCZ `tJiZL0He`）：
+
+- 修改前相同回归在 `yaw-wrap / step 3 / partial 0` 失败，四元数分量偏差约 `0.3091`；修改后两条真实渲染路径的 450 个样本全部通过，与历史正常样本的最大分量误差为 0。基础镜头及逻辑瞄准不变，普通重力对照通过。
+- 实际换弹及两次 ADS、两次腰射通过，检查服务端真实瞄准状态、子弹加入世界后的方向/速度与去惯性行为；连同公共入口共 48 条断言通过。曳光、后坐力、100 组镜头对照和 2,000 步连续扫描通过。
+- 安装和不安装 TaCZ 的服务端各 19 项 GameTest 通过；无 TaCZ 的隐藏客户端 31 条公共功能断言通过，TaCZ 专项按未安装跳过。
+- `build` 与七组共 55,496 项数学断言通过。发布包为 `0.0.6-test-26.11.17-hotfix3`、Java class 65；新 Mixin 仅在客户端注册且可选启用，不含 QA、历史样本或 TaCZ 实现类。
+
+日志、结果和包审计见 `build/gun-model-121-fix-qa/`。后台窗口不可见且不聚焦，不使用桌面键鼠；未验证玩家完整整合包。已清理隔离游戏目录、测试世界及临时反汇编文件，保留正式回归源码与报告。修改仅在 master，未提交或推送。

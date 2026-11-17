@@ -360,6 +360,7 @@ neoForge.runs {
         gameDirectory = compatibilityQaDirectory.toPath().resolve('game').toFile()
         jvmArguments.addAll '-Xms256m', '-Xmx1536m', '-XX:ActiveProcessorCount=4', '-Dapple.awt.UIElement=true'
         systemProperty 'cornerstone.qa.compat', providers.gradleProperty('dedicatedQa').getOrElse('false') == 'true' ? 'false' : 'true'
+        systemProperty 'cornerstone.qa.gunModel', providers.gradleProperty('gunModelQa').getOrElse('false')
         systemProperty 'cornerstone.qa.dedicated', providers.gradleProperty('dedicatedQa').getOrElse('false')
         systemProperty 'cornerstone.qa.baseline', providers.gradleProperty('compatQaBaseline').getOrElse('false')
         systemProperty 'cornerstone.qa.transitions', providers.gradleProperty('transitionQa').getOrElse('false')

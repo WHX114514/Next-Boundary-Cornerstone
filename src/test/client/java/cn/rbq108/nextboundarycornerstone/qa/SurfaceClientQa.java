@@ -72,6 +72,7 @@ public final class SurfaceClientQa {
     }
 
     public SurfaceClientQa() {
+        if (Boolean.getBoolean("cornerstone.qa.gunModel")) { new GunModelJitterQa(); return; }
         if (Boolean.getBoolean("cornerstone.qa.compat")) { new FlightCompatibilityClientQa(); return; }
         if (Boolean.getBoolean("cornerstone.qa.dedicated")) { new DedicatedFlightClientQa(); return; }
         if (Boolean.getBoolean("cornerstone.hitbox.visual")) HitboxVisualQa.start();
