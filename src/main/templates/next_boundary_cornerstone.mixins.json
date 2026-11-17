@@ -18,7 +18,9 @@
     "SegmentedInteractionMixin",
     "SegmentedServerInteractionMixin",
     "TACZSegmentedHitboxMixin",
-    "TACZBulletOriginMixin"
+    "TACZBulletOriginMixin",
+    "FlightViewMixin",
+    "FlightFloatingMixin"
   ],
   "client": [
     "PhysicalPlayerRotationMixin",
@@ -43,7 +45,11 @@
     "ParticleAccessor",
     "PhotonNetworkingMixin",
     "TACZCameraAnimationMixin",
-    "MixinShellRender"
+    "MixinShellRender",
+    "FlightMotionMixin",
+    "FlightPlayerMotionMixin",
+    "FlightInputMixin",
+    "FlightFovMixin"
   ],
   "injectors": {
     "defaultRequire": 1

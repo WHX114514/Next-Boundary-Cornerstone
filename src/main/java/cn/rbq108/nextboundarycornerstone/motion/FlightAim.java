@@ -7,7 +7,7 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-/** Launches use the flight view, never the mouse increments retained for vanilla hand sway. */
+/** Shared world-space view and local launch offsets. Hand sway never owns logical angles. */
 public final class FlightAim {
     private FlightAim() {}
 
@@ -20,7 +20,21 @@ public final class FlightAim {
         return new Vec3(rotation(player).transform(new Vector3f((float) x, (float) y, (float) z)));
     }
 
+    public static void publishAngles(Player player) {
+        var forward = rotate(player, 0, 0, 1);
+        double horizontal = forward.horizontalDistance();
+        // Keep yaw at the exact pole: it is undefined there, while the quaternion remains authoritative.
+        if (horizontal > 1e-7) player.setYRot((float) Math.toDegrees(Math.atan2(-forward.x, forward.z)));
+        player.setXRot((float) Math.toDegrees(Math.atan2(-forward.y, horizontal)));
+    }
+
     public static Vec3 launchDirection(Player player, float pitch, float yaw, float pitchOffset) {
+        // Some items explicitly shoot from xRotO/yRotO. Those are already world angles,
+        // not a local spread relative to the current frame (e.g. throwing weapons).
+        if ((pitch != player.getXRot() || yaw != player.getYRot())
+                && pitch == player.xRotO && yaw == player.yRotO && pitchOffset == 0) {
+            return Vec3.directionFromRotation(pitch, yaw);
+        }
         // Preserve bow spread and the upward potion/XP-bottle lob in the shooter's local frame.
         double localPitch = Math.toRadians(pitch - player.getXRot());
         double localYaw = Math.toRadians(yaw - player.getYRot());

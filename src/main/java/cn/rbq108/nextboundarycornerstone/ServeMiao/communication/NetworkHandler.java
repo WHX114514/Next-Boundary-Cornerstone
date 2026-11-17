@@ -82,6 +82,7 @@ public class NetworkHandler {
                     attachment.setBodyBlocked(false);
                 }
                 attachment.setQuaternion(payload.quat());
+                if (lowGravity) cn.rbq108.nextboundarycornerstone.motion.FlightAim.publishAngles(player);
                 net.neoforged.neoforge.network.PacketDistributor.sendToAllPlayers(
                         new SyncRotationPayload(player.getUUID(), payload.quat(), lowGravity, accepted, constrained));
             }

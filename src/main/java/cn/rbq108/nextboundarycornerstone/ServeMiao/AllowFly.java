@@ -74,7 +74,7 @@ public class AllowFly {
             }
         }
 
-        updateFlightPermission(player, player.isNoGravity());
+        updateFlightPermission(player, false);
         /*GameType gameMode = GameType.SURVIVAL;
         // 逻辑：(开启了低重力) 或者 (是创造模式) 或者 (是旁观者模式) → 这三种情况都必须能飞
         boolean targetMayFly = GlobalVariables.B_LowGravity || player.isCreative() || player.isSpectator();

@@ -11,8 +11,38 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import cn.rbq108.nextboundarycornerstone.camera.HandSway;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
+
+    @WrapOperation(method = "renderHandsWithItems", at = @At(value = "INVOKE", target =
+            "Lnet/minecraft/client/player/LocalPlayer;getViewXRot(F)F"))
+    private float cornerstone$screenPitch(LocalPlayer player, float partialTick, Operation<Float> original) {
+        return player.isNoGravity() ? HandSway.pitch(partialTick) : original.call(player, partialTick);
+    }
+
+    @WrapOperation(method = "renderHandsWithItems", at = @At(value = "INVOKE", target =
+            "Lnet/minecraft/client/player/LocalPlayer;getViewYRot(F)F"))
+    private float cornerstone$screenYaw(LocalPlayer player, float partialTick, Operation<Float> original) {
+        return player.isNoGravity() ? HandSway.yaw(partialTick) : original.call(player, partialTick);
+    }
+
+    @WrapOperation(method = "renderHandsWithItems", at = @At(value = "INVOKE", target =
+            "Lnet/minecraft/client/player/LocalPlayer;getXRot()F"))
+    private float cornerstone$handPitch(LocalPlayer player, Operation<Float> original) {
+        return player.isNoGravity() ? HandSway.pitch(1) : original.call(player);
+    }
+
+    @ModifyExpressionValue(method = "renderHandsWithItems", at = @At(value = "FIELD", target =
+            "Lnet/minecraft/client/player/LocalPlayer;xRotO:F"))
+    private float cornerstone$previousHandPitch(float original) {
+        var player = net.minecraft.client.Minecraft.getInstance().player;
+        return player != null && player.isNoGravity() ? HandSway.pitch(0) : original;
+    }
 
     @Inject(method = "renderHandsWithItems", at = @At("HEAD"))
     private void onRenderHandsWithItems(

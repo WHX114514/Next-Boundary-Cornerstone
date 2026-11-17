@@ -336,3 +336,92 @@ tasks.named('runPreferencesClientQa') {
             throw new GradleException('Standalone preferences QA failed; inspect ' + qaLog)
     }
 }
+
+// Optional compatibility QA loads local official jars only for the requested run.
+if (providers.gradleProperty('compatQaModsDir').isPresent()) {
+    dependencies { runtimeOnly fileTree(providers.gradleProperty('compatQaModsDir').get()) { include '*.jar' } }
+}
+def compatibilityQaDirectory = file(providers.gradleProperty('qaDirectory').getOrElse('build/general-compat-121-qa/client'))
+tasks.register('prepareFlightCompatibilityQa') {
+    doLast {
+        new File(compatibilityQaDirectory, 'game/config').mkdirs()
+        new File(compatibilityQaDirectory, 'game/config/fml.toml').text = 'earlyWindowControl = false\n'
+        new File(compatibilityQaDirectory, 'game/options.txt').text = 'fullscreen:false\nsoundCategory_master:0.0\n'
+        def defaults = new File(compatibilityQaDirectory, 'game/defaultconfigs/next-boundary-hitbox-server.toml')
+        defaults.parentFile.mkdirs()
+        defaults.text = '[Zero_Gravity_Hitboxes]\nMode = "' + providers.gradleProperty('qaHitboxMode').getOrElse('AABB') + '"\n'
+    }
+}
+neoForge.runs {
+    flightCompatibilityClient {
+        client()
+        sourceSet = sourceSets.clientQa
+        loadedMods = [surfaceClientMainMod, surfaceClientQaMod]
+        gameDirectory = compatibilityQaDirectory.toPath().resolve('game').toFile()
+        jvmArguments.addAll '-Xms256m', '-Xmx1536m', '-XX:ActiveProcessorCount=4', '-Dapple.awt.UIElement=true'
+        systemProperty 'cornerstone.qa.compat', providers.gradleProperty('dedicatedQa').getOrElse('false') == 'true' ? 'false' : 'true'
+        systemProperty 'cornerstone.qa.dedicated', providers.gradleProperty('dedicatedQa').getOrElse('false')
+        systemProperty 'cornerstone.qa.baseline', providers.gradleProperty('compatQaBaseline').getOrElse('false')
+        systemProperty 'cornerstone.qa.transitions', providers.gradleProperty('transitionQa').getOrElse('false')
+    }
+}
+tasks.named('runFlightCompatibilityClient') {
+    dependsOn tasks.named('prepareFlightCompatibilityQa')
+    doFirst { new File(compatibilityQaDirectory,'client-report.txt').delete() }
+    doLast {
+        def report = new File(compatibilityQaDirectory,'client-report.txt')
+        if (!report.isFile() || !report.text.startsWith('PASS '))
+            throw new GradleException('Flight compatibility QA failed: ' + compatibilityQaDirectory)
+    }
+}
+
+tasks.register('prepareDedicatedFlightQa') {
+    doLast {
+        def directory = file('build/general-compat-121-qa/dedicated-server')
+        directory.mkdirs()
+        new File(directory.parentFile, 'dedicated-server-report.txt').delete()
+        new File(directory, 'eula.txt').text = 'eula=true\n'
+        new File(directory, 'server.properties').text = 'server-ip=127.0.0.1\nserver-port=25579\nonline-mode=false\nallow-flight=false\nview-distance=3\nsimulation-distance=3\nspawn-protection=0\nlevel-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1}],"biome":"minecraft:plains"}\ngenerate-structures=false\nmax-tick-time=0\n'
+    }
+}
+neoForge.runs {
+    flightCompatibilityServer {
+        server()
+        sourceSet = sourceSets.gameTest
+        loadedMods = [surfaceGameTestMod]
+        gameDirectory = file('build/general-compat-121-qa/dedicated-server')
+        programArgument '--nogui'
+        systemProperty 'cornerstone.qa.dedicated', 'true'
+    }
+}
+tasks.named('runFlightCompatibilityServer') { dependsOn tasks.named('prepareDedicatedFlightQa') }
+
+// Reuse the existing standalone surface/preferences suites in disposable hidden profiles.
+neoForge.runs {
+    flightSurfaceClient {
+        client()
+        sourceSet = sourceSets.clientQa
+        loadedMods = [surfaceClientMainMod, surfaceClientQaMod]
+        gameDirectory = compatibilityQaDirectory.toPath().resolve('game').toFile()
+        jvmArguments.addAll '-Xms256m', '-Xmx1536m', '-XX:ActiveProcessorCount=4', '-Dapple.awt.UIElement=true'
+        systemProperty 'cornerstone.surface.qa', 'true'
+    }
+    flightPreferencesClient {
+        client()
+        sourceSet = sourceSets.clientQa
+        loadedMods = [surfaceClientMainMod, surfaceClientQaMod]
+        gameDirectory = compatibilityQaDirectory.toPath().resolve('game').toFile()
+        jvmArguments.addAll '-Xms256m', '-Xmx1536m', '-XX:ActiveProcessorCount=4', '-Dapple.awt.UIElement=true'
+        systemProperty 'cornerstone.preferences.qa', 'true'
+    }
+}
+[runFlightSurfaceClient:'SURFACE_CLIENT_QA_PASS',runFlightPreferencesClient:'PREFERENCES_STANDALONE_QA_PASS'].each { taskName, marker ->
+    tasks.named(taskName) {
+        dependsOn tasks.named('prepareFlightCompatibilityQa')
+        doFirst { new File(compatibilityQaDirectory,'game/logs/latest.log').delete() }
+        doLast {
+            def log=new File(compatibilityQaDirectory,'game/logs/latest.log')
+            if(!log.isFile() || !log.text.contains(marker))throw new GradleException('Missing QA success marker '+marker)
+        }
+    }
+}

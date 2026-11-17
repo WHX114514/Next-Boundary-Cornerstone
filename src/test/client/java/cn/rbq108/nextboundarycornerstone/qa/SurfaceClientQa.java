@@ -72,6 +72,8 @@ public final class SurfaceClientQa {
     }
 
     public SurfaceClientQa() {
+        if (Boolean.getBoolean("cornerstone.qa.compat")) { new FlightCompatibilityClientQa(); return; }
+        if (Boolean.getBoolean("cornerstone.qa.dedicated")) { new DedicatedFlightClientQa(); return; }
         if (Boolean.getBoolean("cornerstone.hitbox.visual")) HitboxVisualQa.start();
         if (Boolean.getBoolean("cornerstone.surface.qa")) NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST, SurfaceClientQa::tick);
     }

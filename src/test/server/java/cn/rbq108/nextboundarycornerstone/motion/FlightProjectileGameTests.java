@@ -57,6 +57,29 @@ public final class FlightProjectileGameTests {
     }
 
     @GameTest(template = "surface_empty")
+    public static void publicAnglesAndPreviousFrameLaunchesAgree(GameTestHelper helper) {
+        var player = player(helper);
+        for (var view : List.of(new Quaternionf().rotationYXZ(.7f,.4f,1.5707964f),
+                new Quaternionf().rotationYXZ(-.8f,2.1f,3.1415927f),
+                new Quaternionf().rotationYXZ(.3f,1.5707f,.8f))) {
+            aim(player, view);
+            FlightAim.publishAngles(player);
+            var forward = rotated(view,0,0,1);
+            helper.assertTrue(player.getLookAngle().distanceTo(forward) < 1e-6, "server look vector follows quaternion");
+            helper.assertTrue(Vec3.directionFromRotation(player.getXRot(),player.getYRot()).distanceTo(forward) < 1.75e-4,
+                    "public angles agree within vanilla sine-table precision");
+            player.xRotO = -27; player.yRotO = 63;
+            var shot = new Snowball(helper.getLevel(),player);
+            shot.shootFromRotation(player,player.xRotO,player.yRotO,0,2,0);
+            helper.getLevel().addFreshEntity(shot);
+            helper.assertTrue(shot.getDeltaMovement().distanceTo(Vec3.directionFromRotation(-27,63).scale(2)) < 1e-5,
+                    "explicit previous-frame angles are not rotated again after join");
+            shot.discard();
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "surface_empty")
     public static void realLaunchesFollowViewWithRolledOffsetsAndInheritedVelocity(GameTestHelper helper) {
         var player = player(helper);
         var views = List.of(new Quaternionf(), new Quaternionf().rotateY(90 * RAD),
