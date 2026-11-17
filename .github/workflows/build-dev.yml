@@ -1,0 +1,71 @@
+name: 开发版构建与归档 (1.21.1 NeoForge)
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      custom_version:
+        description: '自定义版本号（留空则自动生成形如 0.0.6-dev.b12.7794d06 的版本）'
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: build-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: 构建并上传开发版产物
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: 检出代码仓库
+        uses: actions/checkout@v4
+
+      - name: 配置 JDK 21 运行环境
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: 初始化 Gradle 缓存与环境
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 赋予 gradlew 执行权限
+        run: chmod +x gradlew
+
+      - name: 解析开发版构建版本号
+        id: resolve-version
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          BASE_VERSION=$(grep "^mod_version=" gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          
+          if [ -n "${{ inputs.custom_version }}" ]; then
+            RESOLVED_VERSION="${{ inputs.custom_version }}"
+          else
+            RESOLVED_VERSION="${BASE_VERSION}-dev.b${{ github.run_number }}.${SHORT_SHA}"
+          fi
+          
+          echo "version=${RESOLVED_VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "本次构建目标版本号: ${RESOLVED_VERSION}"
+
+      # 执行构建，传入解析后的 dev 版本号（同时注入产物文件名与 neoforge.mods.toml）
+      - name: 执行模组构建与产物打包
+        run: ./gradlew build -Pmod_version=${{ steps.resolve-version.outputs.version }} --no-daemon
+
+      # 上传构建生成的 JAR 到 GitHub Actions 构建结果归档
+      - name: 上传开发版构建结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-boundary-cornerstone-neoforge1.21.1-${{ steps.resolve-version.outputs.version }}
+          path: build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
