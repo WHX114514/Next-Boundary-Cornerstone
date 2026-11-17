@@ -31,6 +31,7 @@ public final class ForgeClientQa {
         if (Boolean.getBoolean("cornerstone.qa.dedicated")) new DedicatedFlightClientQa();
         else if (Boolean.getBoolean("cornerstone.qa.compat")) new FlightCompatibilityClientQa();
         else if (Boolean.getBoolean("cornerstone.qa.lifecycle")) new PlayerLifecycleClientQa();
+        else if (Boolean.getBoolean("cornerstone.qa.gunModel")) new GunModelJitterQa();
         else if (Boolean.getBoolean("cornerstone.qa.tacz")) new TACZClientQa();
         else MinecraftForge.EVENT_BUS.addListener(this::tick);
     }

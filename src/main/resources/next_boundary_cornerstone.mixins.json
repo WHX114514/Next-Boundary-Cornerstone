@@ -46,6 +46,7 @@
     "ParticleAccessor",
     "FixTACZ",
     "TACZCameraAnimationMixin",
+    "TACZGunSwayMixin",
     "MixinShellRender",
     "FlightMotionMixin",
     "FlightPlayerMotionMixin",

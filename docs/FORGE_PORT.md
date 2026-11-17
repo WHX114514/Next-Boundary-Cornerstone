@@ -161,3 +161,29 @@ JAVA_TOOL_OPTIONS='-Dcornerstone.qa.camera=true' bash gradlew runForgeClientQa -
 ## 失重通用发射与牵引兼容（2026-11-17，hotfix2）
 
 公开世界朝向统一复用 `FlightAim`，手部输入累计独立保存；公共速度写入接入原有推进缓存，取消伪飞行和对公共输入的清空。未新增五个样本模组的生产适配器。测试版本、实现边界、独立运行对照、专服防飞行验证与复现命令见 [通用兼容验收说明](GENERIC_FLIGHT_COMPATIBILITY.md)。
+
+## TaCZ 第一人称枪模抖动回归（hotfix3）
+
+`8e34322` 将玩家公开角度改为真实世界朝向，供通用发射入口使用；但 TaCZ 两条第一人称渲染路径仍将该角度与屏幕轴的 `xBob/yBob` 相减。跨世界欧拉角分支时，枪模因此突跳，四元数镜头本身保持连续。与修改前 `e669ea8` 的同序列对照确认：yaw 跨界最大枪模步长从约 `0.06°` 增至 `35.94°`，跨俯仰极点增至约 `18°`。
+
+新增可选 `TACZGunSwayMixin`，仅在失重能力有效时让这两处摆动读取现有 `HandSway`，不改公开世界角度、相机、弹道或牵引逻辑。同时修正原版手持渲染的两处读取时序：`LocalPlayer.getViewXRot` 使用当前帧角度，yaw 仅在乘坐时插值。TaCZ 的摆动幅度、后续根节点变换及动画继续使用原方法。
+
+新增 opt-in 后台回归，实际调用 TaCZ wrapper 和基类渲染方法，在原始两次摆动旋转后采样矩阵；探针不替换角度读数。每条路径覆盖 yaw 跨界、俯仰极点、侧翻混合转动、侧翻静止、普通重力五组输入及五个 partial tick，共 450 个样本，与 `e669ea8` 记录的变换逐分量比较，另外检查逻辑瞄准和基础镜头未变。资源中的历史记录来自修复前对照，不按修复公式生成。探针和数据均不进入发布包。
+
+```sh
+bash gradlew runForgeClientQa -PtaczRuntime=true -PgunModelQa=true -PqaDirectory=build/gun-model-fix-qa/tacz12-model
+bash gradlew runForgeClientQa -PtaczRuntime=true -PtaczRuntimeVersion=3NpuJ7TJ -PgunModelQa=true -PqaHitboxMode=OBB -PqaDirectory=build/gun-model-fix-qa/tacz117-model
+bash gradlew runForgeClientQa -PtaczRuntime=true -PtaczQa=true -PtaczQaCases=4 -PcameraQa=true -PplayerAnimatorRuntime=true -PqaDirectory=build/gun-model-fix-qa/tacz12-live
+```
+
+实际结果（Java 17 / macOS arm64，隐藏且不聚焦的客户端）：
+
+| 验收 | 结果 |
+| --- | --- |
+| TaCZ 1.2.0-hotfix / AABB；1.1.7-hotfix2 / OBB | 各 450 个真实枪模变换样本通过，与历史记录的四元数分量最大误差均为 0；枪模最大步长恢复到约 `0.0671°`，静止为 0，基础镜头及逻辑瞄准不变 |
+| 两版本实际换弹、ADS/腰射及镜头动画 | 各四组换弹、四次实射、100 组镜头对照与连续扫描通过；1.2 同时安装 Player Animator |
+| TaCZ 1.2 服务端 | 22 项 GameTest 通过，含 52 个弹道、9 个眼位和 70 个通用投射物场景，以及药水/弓/弩入口 |
+| 不安装 TaCZ | 31 条公共输入/发射检查、22 项 GameTest 及原有设置、登录、失重、第三人称渲染、粒子和暂停菜单后台验收通过；TaCZ 专项按缺失跳过 |
+| 构建及发布包 | `build / jarJar`、七组共 55,496 条数学断言通过；Java class 61，新增角度读取的两条 SRG 映射存在，`all.jar` 内置 MixinExtras，不含 QA、历史样本或 TaCZ 实现类 |
+
+结果和日志保存在 `build/gun-model-fix-qa/`，包审计与 SHA-256 见 `release-audit.json`。临时游戏目录、测试世界和旧诊断探针已清理，正式回归源码保留。修改仅在 `1.20-forge`，版本 `0.0.6-test-26.11.17-hotfix3`，未提交或推送。未使用玩家完整整合包做视觉验收。
