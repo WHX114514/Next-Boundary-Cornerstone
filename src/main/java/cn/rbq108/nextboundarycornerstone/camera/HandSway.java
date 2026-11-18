@@ -1,5 +1,6 @@
 package cn.rbq108.nextboundarycornerstone.camera;
 
+import cn.rbq108.nextboundarycornerstone.body.SegmentedHitboxes;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 
@@ -7,6 +8,7 @@ import net.minecraft.util.Mth;
 public final class HandSway {
     private static LocalPlayer owner;
     private static float pitch, yaw, previousPitch, previousYaw;
+    private static boolean renderingBob;
 
     private HandSway() {}
 
@@ -36,4 +38,31 @@ public final class HandSway {
 
     public static float pitch(float partialTick) { return Mth.lerp(partialTick, previousPitch, pitch); }
     public static float yaw(float partialTick) { return Mth.lerp(partialTick, previousYaw, yaw); }
+
+    /** First-person renderers subtract bob from world angles. Shift both samples into that frame. */
+    public static void withRenderBob(LocalPlayer player, float partialTick, Runnable render) {
+        if (renderingBob || owner != player || !SegmentedHitboxes.enabled(player)) {
+            render.run();
+            return;
+        }
+
+        float x = player.xBob, oldX = player.xBobO;
+        float y = player.yBob, oldY = player.yBobO;
+        double pitchOffset = (double) player.getViewXRot(partialTick) - pitch(1);
+        double yawOffset = (double) player.getViewYRot(partialTick) - yaw(player.isPassenger() ? partialTick : 1);
+        renderingBob = true;
+        try {
+            player.xBob = (float) (x + pitchOffset);
+            player.xBobO = (float) (oldX + pitchOffset);
+            player.yBob = (float) (y + yawOffset);
+            player.yBobO = (float) (oldY + yawOffset);
+            render.run();
+        } finally {
+            player.xBob = x;
+            player.xBobO = oldX;
+            player.yBob = y;
+            player.yBobO = oldY;
+            renderingBob = false;
+        }
+    }
 }

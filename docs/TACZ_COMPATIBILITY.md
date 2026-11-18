@@ -68,3 +68,18 @@ bash gradlew runFlightCompatibilityClient runGameTestServer -PqaDirectory=build/
 - `build` 与七组共 55,496 项数学断言通过。发布包为 `0.0.6-test-26.11.17-hotfix3`、Java class 65；新 Mixin 仅在客户端注册且可选启用，不含 QA、历史样本或 TaCZ 实现类。
 
 日志、结果和包审计见 `build/gun-model-121-fix-qa/`。后台窗口不可见且不聚焦，不使用桌面键鼠；未验证玩家完整整合包。已清理隔离游戏目录、测试世界及临时反汇编文件，保留正式回归源码与报告。修改仅在 master，未提交或推送。
+
+## 通用第一人称摆动适配（0.0.6-hotfix5）
+
+从 Forge 分支的 `0d9d8af` 同步共用手持渲染入口。渲染失重本地玩家时，临时把两轴的当前与历史摆动采样转换到世界角度，退出时恢复原值。同一玩家的嵌套渲染只转换一次。原版、TaCZ 和经过该入口的扩展使用同一组采样，前一版 TaCZ 专用摆动 Mixin 已移除。公开世界角度仍可供镜头和弹道使用。
+
+使用 TaCZ 1.2.0-hotfix、LR Tactical 0.4.4（`8PKufdk5`）和 TaCZ Fixes 3.1.0-hotfix2（`AMChB3Ha`）。扩展仅在隔离客户端 QA 加载，未加入开发依赖。两款扩展分别装载，各通过 225 个真实手持渲染样本，合计最大摆动角误差约 0.00000154°。检查了 12 帧 LR 挥砍及 121 帧双持开火与换弹。服务端确认左右手各生成一发子弹，双手换弹均完成。
+
+两款测试版本同装时，Fixes 的 `MixinLrAttackKeys` 期望 `ClientTickEvent.Post`，LR 的实际方法参数为 `ClientTickEvent.Pre`，NeoForge 加载阶段即报错。两个扩展使用原版 JAR 分开验收。同装结果保存在 `build/hotfix5-121-qa/addons-together.log`。
+
+- TaCZ 本体 450 个枪模样本通过，包含嵌套与异常退出的摆动恢复。实际换弹、两次开镜和两次腰射通过，确认子弹入场后的方向和速度。100 组镜头动效、2,000 步连续扫描、曳光和后坐力通过。
+- 有／无 TaCZ 各 19 项服务端 GameTest 通过。基石独立运行的 AABB、OBB 各通过 31 项检查，175 tick 操作轨迹的坐标分量最大差约 5.96e-8 格。贴壁 25 项、原生设置和本地 TCP 专服的浮空正反对照均通过。
+- Java 21 构建通过七组共 55,496 条数学断言。JAR 的摆动 Mixin 仅注册到客户端，包内无扩展与 QA 类。
+- Rehooked、Advanced Hook Launchers、Spartan Weaponry Unofficial 和 Immersive Engineering 的六姿态矩阵通过 265 项，移动射手与重力切换矩阵通过 175 项。
+
+客户端全程使用隐藏窗口。测试使用内置武器，玩家自定义资源尚未验证。报告与 SHA-256 保存在 `build/hotfix5-121-qa/`，临时游戏目录和模组 JAR 已清理。

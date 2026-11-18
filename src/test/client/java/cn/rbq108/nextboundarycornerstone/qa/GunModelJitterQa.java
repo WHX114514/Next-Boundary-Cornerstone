@@ -13,6 +13,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonArray;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -114,10 +115,19 @@ public final class GunModelJitterQa {
                 for(float partial:new float[]{0,.25f,.5f,.75f,1}) {
                     matrix=null;capturedPath=null;pose=new PoseStack();probing=true;
                     float aimPitch=p.getXRot(),aimYaw=p.getYRot();var aimQuat=new Quaternionf(GlobalVariables.currentQuat);
+                    var bobBefore = Bob.read(p);
+                    if (c == 0 && step == 3 && partial == 0) verifyRenderScope(p, bobBefore);
                     try {
-                        if(basePath)baseRender.invoke(p,p.getMainHandItem(),ItemDisplayContext.FIRST_PERSON_RIGHT_HAND,pose,null,15728880,partial);
-                        else render.invoke(renderer,p,p.getMainHandItem(),ItemDisplayContext.FIRST_PERSON_RIGHT_HAND,pose,null,15728880,partial);
+                        HandSway.withRenderBob(p, partial, () -> {
+                            try {
+                                if(basePath)baseRender.invoke(p,p.getMainHandItem(),ItemDisplayContext.FIRST_PERSON_RIGHT_HAND,pose,null,15728880,partial);
+                                else render.invoke(renderer,p,p.getMainHandItem(),ItemDisplayContext.FIRST_PERSON_RIGHT_HAND,pose,null,15728880,partial);
+                            } catch (Throwable failure) {
+                                throw new AssertionError("TaCZ renderer failed", failure);
+                            }
+                        });
                     }finally{probing=false;}
+                    if (!bobBefore.equals(Bob.read(p))) throw new AssertionError("render left shifted bob samples");
                     if(matrix==null || !path.equals(capturedPath))throw new AssertionError("actual TaCZ sway path not captured: "+path+" / "+capturedPath);
                     if(p.getXRot()!=aimPitch || p.getYRot()!=aimYaw || !aimQuat.equals(GlobalVariables.currentQuat))
                         throw new AssertionError("render changed logical aim");
@@ -143,5 +153,28 @@ public final class GunModelJitterQa {
             com.mojang.logging.LogUtils.getLogger().info("GUN_MODEL_SUMMARY {}",summary);
         }
         if(sample!=golden.size())throw new AssertionError("missing baseline samples");
+    }
+    private static void verifyRenderScope(LocalPlayer player, Bob original) {
+        var sentinel = new IllegalStateException("test renderer exception");
+        try {
+            HandSway.withRenderBob(player, 0, () -> {
+                var shifted = Bob.read(player);
+                if (shifted.equals(original)) throw new AssertionError("test did not enter rebased bob scope");
+                HandSway.withRenderBob(player, 0, () -> {
+                    if (!shifted.equals(Bob.read(player))) throw new AssertionError("nested render shifted bob twice");
+                    throw sentinel;
+                });
+            });
+            throw new AssertionError("render swallowed exception");
+        } catch (IllegalStateException failure) {
+            if (failure != sentinel) throw failure;
+        }
+        if (!original.equals(Bob.read(player))) throw new AssertionError("exception left shifted bob samples");
+    }
+
+    private record Bob(float x, float oldX, float y, float oldY) {
+        static Bob read(LocalPlayer player) {
+            return new Bob(player.xBob, player.xBobO, player.yBob, player.yBobO);
+        }
     }
 }
