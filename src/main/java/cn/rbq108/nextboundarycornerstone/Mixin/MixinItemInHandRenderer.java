@@ -18,19 +18,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
 
-    // Match LocalPlayer's current-frame view getters; only passenger yaw is interpolated.
-    @WrapOperation(method = "renderHandsWithItems", at = @At(value = "INVOKE", target =
-            "Lnet/minecraft/client/player/LocalPlayer;getViewXRot(F)F"))
-    private float cornerstone$screenPitch(LocalPlayer player, float partialTick, Operation<Float> original) {
-        return player.isNoGravity() ? HandSway.pitch(1) : original.call(player, partialTick);
-    }
-
-    @WrapOperation(method = "renderHandsWithItems", at = @At(value = "INVOKE", target =
-            "Lnet/minecraft/client/player/LocalPlayer;getViewYRot(F)F"))
-    private float cornerstone$screenYaw(LocalPlayer player, float partialTick, Operation<Float> original) {
-        return player.isNoGravity() ? HandSway.yaw(player.isPassenger() ? partialTick : 1) : original.call(player, partialTick);
-    }
-
     @WrapOperation(method = "renderHandsWithItems", at = @At(value = "INVOKE", target =
             "Lnet/minecraft/client/player/LocalPlayer;getXRot()F"))
     private float cornerstone$handPitch(LocalPlayer player, Operation<Float> original) {
