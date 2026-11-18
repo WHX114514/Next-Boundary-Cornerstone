@@ -32,7 +32,7 @@ repositories {
 base {
     archivesName = providers.gradleProperty('devBuild').isPresent()
             ? "cornerstone-${project.minecraft_version}-dev"
-            : "next-boundary-cornerstone-neoforge${project.minecraft_version}"
+            : "next-boundary-cornerstone-neoforge-${project.minecraft_version}"
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)

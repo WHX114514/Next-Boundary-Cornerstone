@@ -37,7 +37,8 @@ jobs:
             exit 1
           fi
 
-          if [[ "$(sed -n 's/^minecraft_version=//p' gradle.properties)" != '1.21.1' ]]; then
+          mc_version=$(sed -n 's/^minecraft_version=//p' gradle.properties)
+          if [[ "$mc_version" != '1.21.1' ]]; then
             echo "::error file=gradle.properties::该工作流用于 Minecraft 1.21.1"
             exit 1
           fi
@@ -47,6 +48,10 @@ jobs:
             echo "::error file=gradle.properties::mod_version 格式无效，需符合 版本号-(alpha|beta|release)[-hotfixN]"
             exit 1
           fi
+          channel="${BASH_REMATCH[2]}"
+
+          neo_version=$(sed -n 's/^neo_version=//p' gradle.properties)
+          ldlib_version=$(awk '/modId = "ldlib2"/{f=1} f && /versionRange/{gsub(/.*\[|,.*|".*/, ""); print; exit}' src/main/templates/META-INF/neoforge.mods.toml)
 
           if ! awk -v version="$version" '
             { sub(/\r$/, "") }
@@ -65,7 +70,13 @@ jobs:
             exit 1
           fi
 
-          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          {
+            printf 'version=%s\n' "$version"
+            printf 'mc_version=%s\n' "$mc_version"
+            printf 'neo_version=%s\n' "$neo_version"
+            printf 'ldlib_version=%s\n' "$ldlib_version"
+            printf 'channel=%s\n' "$channel"
+          } >> "$GITHUB_OUTPUT"
 
       - name: 替换 Gradle 官方源
         run: |
@@ -83,25 +94,70 @@ jobs:
       - name: 构建 JAR
         run: bash gradlew build --no-daemon
 
-      - name: 回填更新日志并上传 JAR
+      - name: 回填标题、更新日志并上传 JAR
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.release-info.outputs.version }}
+          MC_VERSION: ${{ steps.release-info.outputs.mc_version }}
+          NEO_VERSION: ${{ steps.release-info.outputs.neo_version }}
+          LDLIB_VERSION: ${{ steps.release-info.outputs.ldlib_version }}
+          CHANNEL: ${{ steps.release-info.outputs.channel }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          jar="build/libs/next-boundary-cornerstone-neoforge1.21.1-${VERSION}.jar"
+          jar="build/libs/next-boundary-cornerstone-neoforge-${MC_VERSION}-${VERSION}.jar"
           test -s "$jar"
-          release=$(gh release view --json body,assets,isImmutable -- "$TAG")
+
+          release=$(gh release view --json name,body,assets,isImmutable,isPrerelease -- "$TAG")
+          current_title=$(jq -r '.name // ""' <<< "$release")
           body=$(jq -r '.body // ""' <<< "$release")
+          is_prerelease=$(jq -r '.isPrerelease' <<< "$release")
           notes=$(<"$RUNNER_TEMP/release-notes.md")
-          if [[ "$body" != *"$notes"* ]]; then
-            {
-              if [[ -n "$body" ]]; then
-                printf '%s\n\n' "$body"
-              fi
-              printf '%s\n' "$notes"
-            } > "$RUNNER_TEMP/release-body.md"
-            gh release edit --notes-file "$RUNNER_TEMP/release-body.md" -- "$TAG"
+
+          prefix="[${MC_VERSION} NeoForge]"
+          lower_title=$(printf '%s' "$current_title" | tr '[:upper:]' '[:lower:]')
+          if [[ -z "$current_title" || "$current_title" == "$TAG" || "$current_title" == "$VERSION" ]]; then
+            desired_title="${prefix} ${VERSION}"
+          elif [[ "$lower_title" != *"${MC_VERSION}"* && "$lower_title" != *"neoforge"* ]]; then
+            desired_title="${prefix} ${current_title}"
+          else
+            desired_title="$current_title"
+          fi
+
+          env_line="> **适用版本**：Minecraft \`${MC_VERSION}\` · NeoForge \`>= ${NEO_VERSION}\`"
+          if [[ -n "$LDLIB_VERSION" ]]; then
+            env_line="${env_line} · 客户端前置 LDLib2 \`>= ${LDLIB_VERSION}\`"
+          fi
+
+          new_body="$body"
+          if [[ "$new_body" != *"$notes"* ]]; then
+            if [[ -n "$new_body" ]]; then
+              new_body="${new_body}"$'\n\n'"${notes}"
+            else
+              new_body="$notes"
+            fi
+          fi
+          if [[ "$new_body" != *"**适用版本**"* ]]; then
+            new_body="${env_line}"$'\n\n'"${new_body}"
+          fi
+
+          want_prerelease="false"
+          if [[ "$CHANNEL" != "release" ]]; then
+            want_prerelease="true"
+          fi
+
+          edit_args=()
+          if [[ "$desired_title" != "$current_title" ]]; then
+            edit_args+=(--title "$desired_title")
+          fi
+          if [[ "$new_body" != "$body" ]]; then
+            printf '%s\n' "$new_body" > "$RUNNER_TEMP/release-body.md"
+            edit_args+=(--notes-file "$RUNNER_TEMP/release-body.md")
+          fi
+          if [[ "$is_prerelease" != "$want_prerelease" ]]; then
+            edit_args+=("--prerelease=${want_prerelease}")
+          fi
+          if (( ${#edit_args[@]} > 0 )); then
+            gh release edit "${edit_args[@]}" -- "$TAG"
           fi
 
           asset_state=$(jq -r --arg name "${jar##*/}" '.assets[] | select(.name == $name) | .state' <<< "$release")
@@ -118,3 +174,82 @@ jobs:
             upload_options+=(--clobber)
           fi
           gh release upload "${upload_options[@]}" -- "$TAG" "$jar"
+
+      - name: 发布到 Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: mGw1RyDv
+          VERSION: ${{ steps.release-info.outputs.version }}
+          MC_VERSION: ${{ steps.release-info.outputs.mc_version }}
+          NEO_VERSION: ${{ steps.release-info.outputs.neo_version }}
+          LDLIB_VERSION: ${{ steps.release-info.outputs.ldlib_version }}
+          CHANNEL: ${{ steps.release-info.outputs.channel }}
+        run: |
+          if [[ -z "$MODRINTH_TOKEN" ]]; then
+            echo "::notice::未配置 MODRINTH_TOKEN Secret，已跳过 Modrinth 自动发布"
+            exit 0
+          fi
+
+          jar="build/libs/next-boundary-cornerstone-neoforge-${MC_VERSION}-${VERSION}.jar"
+          test -s "$jar"
+
+          version_number="${VERSION}"
+          version_name="[${MC_VERSION} NeoForge] ${VERSION}"
+          user_agent="${GITHUB_REPOSITORY}/${VERSION} (https://github.com/${GITHUB_REPOSITORY})"
+
+          existing=$(curl -fsSL \
+            -H "Authorization: ${MODRINTH_TOKEN}" \
+            -H "User-Agent: ${user_agent}" \
+            "https://api.modrinth.com/v2/project/${MODRINTH_PROJECT_ID}/version")
+          if jq -e --arg vn "$version_number" --arg mc "$MC_VERSION" \
+            '.[] | select(.version_number == $vn and (.loaders | index("neoforge")) != null and (.game_versions | index($mc)) != null)' \
+            <<< "$existing" > /dev/null; then
+            echo "Modrinth 版本 ${version_name} 已存在，跳过上传"
+            exit 0
+          fi
+
+          notes=$(<"$RUNNER_TEMP/release-notes.md")
+          env_line="> **适用版本**：Minecraft \`${MC_VERSION}\` · NeoForge \`>= ${NEO_VERSION}\`"
+          if [[ -n "$LDLIB_VERSION" ]]; then
+            env_line="${env_line} · 客户端前置 LDLib2 \`>= ${LDLIB_VERSION}\`"
+          fi
+          changelog="${env_line}"$'\n\n'"${notes}"
+
+          jq -n \
+            --arg project_id "$MODRINTH_PROJECT_ID" \
+            --arg name "$version_name" \
+            --arg version_number "$version_number" \
+            --arg changelog "$changelog" \
+            --arg mc_version "$MC_VERSION" \
+            --arg version_type "$CHANNEL" \
+            '{
+              project_id: $project_id,
+              name: $name,
+              version_number: $version_number,
+              changelog: $changelog,
+              dependencies: [
+                { project_id: "B1CBVXHX", dependency_type: "required" },
+                { project_id: "SzzJttH8", dependency_type: "optional" },
+                { project_id: "gzevkJbM", dependency_type: "optional" }
+              ],
+              game_versions: [$mc_version],
+              version_type: $version_type,
+              loaders: ["neoforge"],
+              featured: true,
+              file_parts: ["primary_jar"],
+              primary_file: "primary_jar"
+            }' > "$RUNNER_TEMP/modrinth-payload.json"
+
+          response=$(curl -sS -w '\n%{http_code}' -X POST "https://api.modrinth.com/v2/version" \
+            -H "Authorization: ${MODRINTH_TOKEN}" \
+            -H "User-Agent: ${user_agent}" \
+            -F "data=<${RUNNER_TEMP}/modrinth-payload.json;type=application/json" \
+            -F "primary_jar=@${jar};type=application/java-archive")
+          http_code="${response##*$'\n'}"
+          resp_body="${response%$'\n'*}"
+          if [[ "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then
+            echo "::error::Modrinth 发布失败 (HTTP ${http_code}): ${resp_body}"
+            exit 1
+          fi
+          published_id=$(jq -r '.id // empty' <<< "$resp_body")
+          echo "Modrinth 发布成功: https://modrinth.com/mod/next-boundary-cornerstone/version/${published_id:-$version_number}"
