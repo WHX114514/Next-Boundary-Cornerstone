@@ -46,6 +46,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: 构建 JAR
+        id: build
         env:
           CUSTOM_VERSION: ${{ inputs.custom_version }}
         run: |
@@ -54,12 +55,15 @@ jobs:
             echo "::error::模组版本号格式无效，需符合 版本号-(alpha|beta|release)[-hotfixN]"
             exit 1
           fi
-          ./gradlew build -PdevBuild "-Pmod_version=$version" --no-daemon
+          short_sha=$(git rev-parse --short=8 HEAD)
+          dev_version="${version}-${short_sha}"
+          printf 'sha=%s\n' "$short_sha" >> "$GITHUB_OUTPUT"
+          ./gradlew build -PdevBuild "-Pmod_version=$dev_version" --no-daemon
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: cornerstone-1.21.1-dev.${{ github.run_number }}
+          name: cornerstone-1.21.1-dev.${{ github.run_number }}-${{ steps.build.outputs.sha }}
           path: build/libs/cornerstone-1.21.1-dev-*.jar
           if-no-files-found: error
           retention-days: 14
