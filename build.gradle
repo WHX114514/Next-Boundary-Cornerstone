@@ -232,7 +232,7 @@ def isDevBuild = providers.gradleProperty('devBuild').isPresent()
 tasks.named('jar', Jar).configure {
     archiveFileName = isDevBuild
             ? "cornerstone-${minecraft_version}-dev-${version}-slim.jar"
-            : "next-boundary-cornerstone-forge${minecraft_version}-${version}-slim.jar"
+            : "next-boundary-cornerstone-forge-${minecraft_version}-${version}-slim.jar"
     manifest {
         attributes(["Specification-Title"     : mod_id,
                     "Specification-Vendor"    : mod_authors,
@@ -250,7 +250,7 @@ tasks.named('jar', Jar).configure {
 tasks.named('jarJar', Jar).configure {
     archiveFileName = isDevBuild
             ? "cornerstone-${minecraft_version}-dev-${version}.jar"
-            : "next-boundary-cornerstone-forge${minecraft_version}-${version}.jar"
+            : "next-boundary-cornerstone-forge-${minecraft_version}-${version}.jar"
 }
 
 tasks.withType(JavaCompile).configureEach {

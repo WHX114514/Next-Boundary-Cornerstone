@@ -1,6 +1,6 @@
 # 更新日志
 
-发布前，在 `gradle.properties` 中按 `版本号-(alpha|beta|release)[-hotfixN]` 格式更新 `mod_version`（如 `0.0.6-alpha`、`0.0.6-alpha-hotfix5`），并在这里新增对应的 `## 版本号` 章节。将改动推送到 `1.20-forge` 后，在 GitHub Releases 页面新建 Release，选择 `1.20-forge` 作为新标签的目标，然后点击 **Publish release**。工作流会从该标签对应的提交构建 Forge 1.20.1 的 JAR，并把 JAR 和对应版本的更新日志补到你发布的 Release 中。
+发布前，在 `gradle.properties` 中按 `版本号-(alpha|beta|release)[-hotfixN]` 格式更新 `mod_version`（如 `0.0.6-alpha`、`0.0.6-alpha-hotfix5`），并在这里新增对应的 `## 版本号` 章节。将改动推送到 `1.20-forge` 后，在 GitHub Releases 页面新建 Release，选择 `1.20-forge` 作为目标并创建带平台后缀的标签（如 `0.0.6-alpha-hotfix5+1.20.1-forge`，避免与 `master` 标签重名），然后点击 **Publish release**。工作流会自动构建 Forge 1.20.1 的 JAR，补全标题前缀、适用环境说明、Pre-release 标记、更新日志与附件，并同步发布到 Modrinth。
 
 ## 0.0.6-alpha-hotfix5
 
