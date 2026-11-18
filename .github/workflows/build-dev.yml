@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       custom_version:
-        description: '自定义版本号（留空自动生成）'
+        description: '自定义版本号（留空使用 gradle.properties）'
         required: false
         default: ''
         type: string
@@ -45,29 +45,21 @@ jobs:
       - name: 赋予 gradlew 权限
         run: chmod +x gradlew
 
-      - name: 计算版本号
-        id: resolve-version
+      - name: 构建 JAR
+        env:
+          CUSTOM_VERSION: ${{ inputs.custom_version }}
         run: |
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          BASE_VERSION=$(grep "^mod_version=" gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
-          
-          if [ -n "${{ inputs.custom_version }}" ]; then
-            RESOLVED_VERSION="${{ inputs.custom_version }}"
-          else
-            RESOLVED_VERSION="${BASE_VERSION}-dev.b${{ github.run_number }}.${SHORT_SHA}"
+          version=${CUSTOM_VERSION:-$(sed -n 's/^mod_version=//p' gradle.properties)}
+          if [[ ! "$version" =~ ^[0-9]+(\.[0-9]+)+-(alpha|beta|release)(-hotfix[0-9]*)?$ ]]; then
+            echo "::error::模组版本号格式无效，需符合 版本号-(alpha|beta|release)[-hotfixN]"
+            exit 1
           fi
-          
-          echo "version=${RESOLVED_VERSION}" >> $GITHUB_OUTPUT
-          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "Target version: ${RESOLVED_VERSION}"
-
-      - name: 构建 jar
-        run: ./gradlew build -Pmod_version=${{ steps.resolve-version.outputs.version }} --no-daemon
+          ./gradlew build -PdevBuild "-Pmod_version=$version" --no-daemon
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: next-boundary-cornerstone-neoforge1.21.1-${{ steps.resolve-version.outputs.version }}
-          path: build/libs/*.jar
+          name: cornerstone-1.21.1-dev.${{ github.run_number }}
+          path: build/libs/cornerstone-1.21.1-dev-*.jar
           if-no-files-found: error
           retention-days: 14

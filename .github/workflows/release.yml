@@ -1,0 +1,120 @@
+name: 构建 Release (1.21.1)
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-neoforge-1.21.1-${{ github.event.release.id }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    name: 构建并补全 Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: 检出 Release 对应的提交
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 读取版本和更新日志
+        id: release-info
+        run: |
+          if ! git merge-base --is-ancestor HEAD refs/remotes/origin/master; then
+            echo "::error::请为 master 上的提交创建 Release 标签"
+            exit 1
+          fi
+
+          if [[ "$(sed -n 's/^minecraft_version=//p' gradle.properties)" != '1.21.1' ]]; then
+            echo "::error file=gradle.properties::该工作流用于 Minecraft 1.21.1"
+            exit 1
+          fi
+
+          version=$(sed -n 's/^mod_version=//p' gradle.properties)
+          if [[ ! "$version" =~ ^[0-9]+(\.[0-9]+)+-(alpha|beta|release)(-hotfix[0-9]*)?$ ]]; then
+            echo "::error file=gradle.properties::mod_version 格式无效，需符合 版本号-(alpha|beta|release)[-hotfixN]"
+            exit 1
+          fi
+
+          if ! awk -v version="$version" '
+            { sub(/\r$/, "") }
+            /^##[[:blank:]]/ {
+              in_section = ($0 == "## " version)
+              sections += in_section
+              next
+            }
+            in_section {
+              if ($0 ~ /[^[:space:]]/) has_notes = 1
+              if (has_notes) print
+            }
+            END { if (sections != 1 || !has_notes) exit 1 }
+          ' CHANGELOGS.md > "$RUNNER_TEMP/release-notes.md"; then
+            echo "::error file=CHANGELOGS.md::请为 $version 添加唯一且有正文的章节（## $version）"
+            exit 1
+          fi
+
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+
+      - name: 替换 Gradle 官方源
+        run: |
+          sed -i -E 's|https\\://mirrors.aliyun.com/github/releases/gradle/gradle-distributions/v[^/]+|https\\://services.gradle.org/distributions|' gradle/wrapper/gradle-wrapper.properties
+
+      - name: 配置 JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: 配置 Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 构建 JAR
+        run: bash gradlew build --no-daemon
+
+      - name: 回填更新日志并上传 JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release-info.outputs.version }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          jar="build/libs/next-boundary-cornerstone-neoforge1.21.1-${VERSION}.jar"
+          test -s "$jar"
+          release=$(gh release view --json body,assets,isImmutable -- "$TAG")
+          body=$(jq -r '.body // ""' <<< "$release")
+          notes=$(<"$RUNNER_TEMP/release-notes.md")
+          if [[ "$body" != *"$notes"* ]]; then
+            {
+              if [[ -n "$body" ]]; then
+                printf '%s\n\n' "$body"
+              fi
+              printf '%s\n' "$notes"
+            } > "$RUNNER_TEMP/release-body.md"
+            gh release edit --notes-file "$RUNNER_TEMP/release-body.md" -- "$TAG"
+          fi
+
+          asset_state=$(jq -r --arg name "${jar##*/}" '.assets[] | select(.name == $name) | .state' <<< "$release")
+          if [[ "$asset_state" == 'uploaded' ]]; then
+            exit 0
+          fi
+          if jq -e '.isImmutable' <<< "$release" > /dev/null; then
+            echo "::error::此 Release 已锁定，GitHub 不允许在发布后上传附件"
+            exit 1
+          fi
+
+          upload_options=()
+          if [[ "$asset_state" == 'starter' ]]; then
+            upload_options+=(--clobber)
+          fi
+          gh release upload "${upload_options[@]}" -- "$TAG" "$jar"
